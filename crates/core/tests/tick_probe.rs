@@ -44,6 +44,8 @@ fn record(t: u32) -> Input {
 #[ignore]
 fn tick_cost_of_a_two_fighter_duel() {
     let mut w = World::new(5);
+    // M1: the game's own control, from the helmet
+    w.settings.control = tool_core::world::Control::FirstPerson;
     w.act("duel.spawn", "bandit").unwrap();
     let mut worst = 0u128;
     let start = Instant::now();

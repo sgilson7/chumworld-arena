@@ -102,6 +102,11 @@ impl Game {
         self.inner.ui_version
     }
 
+    /// The save's text, for the page to keep in the browser or download.
+    pub fn save_text(&self) -> String {
+        self.inner.save_text()
+    }
+
     /// A screen, setting or flag: the new view model, or the error, as JSON.
     pub fn act(&mut self, name: &str, value: &str) -> String {
         api::act(&mut self.inner, name, value)

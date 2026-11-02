@@ -374,7 +374,9 @@ pub const EYE_FORWARD: Fx = ONE * 9 / 100;
 pub const EYE_UP: Fx = ONE * 3 / 100;
 /// M1: in first person, the player's own figure is not drawn within this
 /// of the head's middle (the head, the helmet), so the view is not inside it.
-pub const HEAD_CULL: Fx = ONE * 17 / 100;
+/// (22 cm: the face's dots sit 18 to 19 cm out and the hat's cone 20 cm,
+/// R3.2; the shoulders' facets, 31 cm out, stay.)
+pub const HEAD_CULL: Fx = ONE * 22 / 100;
 
 /// The eye in first person, `alpha` of the way from the last tick to this,
 /// for a view facing `aim`: in the head as the body carries it, so a blow
@@ -999,7 +1001,7 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         // M7 (P4): through wounds, which draw what is still on the body
         let from = out.list.len();
         crate::wounds::figure(w, id, &p, dress, look, out);
-        if id == 0 && w.first_person() {
+        if id == 0 && w.eye_view {
             // M1: the head and helmet the eye sits in are not drawn
             cull_near(&mut out.list, from, p.head, HEAD_CULL);
         }
@@ -1891,7 +1893,8 @@ mod tests {
     /// drawn in first person; the arms and the sword are.
     #[test]
     fn in_first_person_the_eye_sits_in_the_head_and_the_head_is_not_drawn() {
-        let w = first_person();
+        let mut w = first_person();
+        w.eye_view = true;
         let eye = eye(&w, ONE, w.aim);
         assert!(eye.dist(w.me.pose.head) < ONE / 8, "{:?}", eye);
         let look = crate::look::tests::look();
@@ -1904,7 +1907,7 @@ mod tests {
             .count();
         assert_eq!(near, 0, "nothing drawn round the eye");
         let mut sh = w.clone();
-        sh.settings.control = crate::world::Control::Shoulder;
+        sh.eye_view = false;
         let mut out2 = Shapes::default();
         draw(&sh, ONE, &look, &mut out2);
         let near = out2

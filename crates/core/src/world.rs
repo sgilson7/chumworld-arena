@@ -150,6 +150,9 @@ pub struct World {
     /// M2: the rounds of a duel, when the duel is fought in rounds
     /// (`rounds.rs`); none on the port's path
     pub rounds: Option<crate::rounds::Rounds>,
+    /// M1: the frame is drawn from the player's eye (the game sets it for
+    /// a duel in first person): the player's head is then not drawn
+    pub eye_view: bool,
 }
 
 impl World {
@@ -179,6 +182,7 @@ impl World {
             settings: Settings::default(),
             guard_pitch: crate::arm::GUARD_PITCH,
             rounds: None,
+            eye_view: false,
         }
     }
 

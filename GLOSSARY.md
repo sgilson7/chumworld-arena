@@ -14,6 +14,12 @@ Where slush comes out. Each line has up to {line.spouts} spouts.
 Not: tap, dispenser, nozzle
 -->
 
+### Aim help
+
+A setting that keeps the foe in view: none, or a soft pull that turns your view a little when the foe nears its edge. It never turns your view up or down.
+
+Not: aim assist, auto-aim, lock-on
+
 ### Arena
 
 The stone ring a duel is fought in: a flat floor {ring.radius} metres from its middle to the wall that keeps both fighters in.
@@ -56,7 +62,7 @@ Not: roll
 
 ### Draw
 
-Taking the sword out of its sheath with X. Drawn, the mouse moves the sword hand and the view holds on the foe.
+Taking the sword out of its sheath with X. Drawn, the mouse still turns you; hold the right button to move the sword hand instead.
 
 Not: unsheathe
 
@@ -66,11 +72,41 @@ One fight between two fighters in the arena, each moving only through the keys a
 
 Not: match, bout, deathmatch
 
+### Field of view
+
+How wide you see from inside the helmet, in degrees across the screen, from {fov.min} to {fov.max}.
+
+Not: FOV, zoom
+
 ### Health
 
 How much harm a body can take. A blade takes more the faster it moves when it hits. You start with {health.player}.
 
 Not: HP, hit points
+
+### Host
+
+Opening a duel for another browser to join online. Online play comes after the first release of Practice.
+
+Not: server, lobby
+
+### Inner ring
+
+A ring of greyer stones on the arena's floor, {rounds.safe_across} metres across, round its middle: the safe ground in sudden death.
+
+Not: safe zone
+
+### Join
+
+Entering a duel another browser has opened online.
+
+Not: connect, matchmaking
+
+### Knight
+
+A fighter in plate. In Practice the computer fights as a knight through the same input a player gives.
+
+Not: bot, enemy AI, NPC, Black Knight
 
 ### Ladder
 
@@ -98,7 +134,7 @@ Not: platemail, plate mail
 
 ### Practice
 
-A duel against the computer, from the start screen.
+A duel against the computer's knight, from the menu: best of three rounds.
 
 Not: training mode, tutorial
 
@@ -106,11 +142,29 @@ Not: training mode, tutorial
 
 A cut from low in front up over the shoulder: hold the left button and move the mouse up.
 
+### Round
+
+One part of a duel: it ends when a knight falls. The first to win {rounds.to_win} rounds wins the duel.
+
+Not: bout, set, match
+
 ### Run
 
 Moving at {run.speed} metres a second while Shift is held with a movement key, sword sheathed.
 
 Not: sprint
+
+### Save
+
+What the game keeps in this browser between visits: your settings and your knight's look. You can download it as a file and load it again.
+
+Not: profile, account, cloud save
+
+### Sudden death
+
+After {rounds.sudden} seconds a round enters sudden death: only the inner ring is safe, and outside it you lose {rounds.sand_rate} health a second.
+
+Not: overtime, storm
 
 ### Team deathmatch
 
@@ -126,4 +180,4 @@ Not: lunge, poke
 
 ### Walk
 
-Moving at {walk.speed} metres a second with W, A, S or D, the way the camera faces.
+Moving at {walk.speed} metres a second with W, A, S or D, relative to where you look.

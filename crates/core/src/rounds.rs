@@ -289,8 +289,9 @@ fn fight(w: &mut World, r: &mut Rounds) {
 }
 
 /// `act("rounds.<name>", value)`: `begin` a duel in rounds against the
-/// pilot named; `clock` sets the round's ticks (staging sudden death for a
-/// test or a picture).
+/// pilot named; `clock` sets the round's ticks and `score` the rounds won
+/// ("1,0"), staging sudden death or a duel's last round for a test or a
+/// picture.
 pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
     match name {
         "begin" => begin(w, value.trim()),
@@ -307,8 +308,31 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
                 None => Err("There is no duel in rounds to set the clock of.".into()),
             }
         }
+        "score" => {
+            let parsed: Option<Vec<u8>> = value.split(',').map(|v| v.trim().parse().ok()).collect();
+            let wins = match parsed.as_deref() {
+                Some(&[a, b]) if a < TO_WIN && b < TO_WIN => [a, b],
+                _ => {
+                    return Err(format!(
+                    "A score is the rounds each side has won, under {TO_WIN}, as \"1,0\", not \"{value}\"."
+                ))
+                }
+            };
+            match w.rounds.as_mut() {
+                Some(r) => {
+                    r.wins = wins;
+                    r.round = 1 + a_plus_b(wins);
+                    Ok(())
+                }
+                None => Err("There is no duel in rounds to set the score of.".into()),
+            }
+        }
         _ => Err(format!("Unknown action \"rounds.{name}\".")),
     }
+}
+
+fn a_plus_b(w: [u8; 2]) -> u8 {
+    w[0] + w[1]
 }
 
 /// Whole seconds left before sudden death, none once it has come.

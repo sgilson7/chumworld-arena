@@ -18,7 +18,7 @@ use crate::input;
 use crate::look;
 use crate::prim::{self, MeshId};
 use crate::render;
-use crate::world::HudItem;
+use crate::world::{AimHelp, HudItem};
 
 pub fn ok<T: Serialize>(value: &T) -> String {
     serde_json::json!({ "ok": value }).to_string()
@@ -37,6 +37,28 @@ pub struct Action {
     pub enabled: bool,
     /// also take the pointer (pointer lock) on this click
     pub engage: bool,
+    /// M2: ask the reader for a file first, and send its text as the value
+    pub file: bool,
+}
+
+/// M2: one setting as the settings screen shows it: what it is, its value
+/// in words, and the buttons that change it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Setting {
+    pub id: String,
+    pub label: String,
+    pub value: String,
+    pub actions: Vec<Action>,
+}
+
+/// M2: what the page does with the save: keep the save's text in the
+/// browser when `seq` changes, offer it as a download named `file_name`
+/// when `export` changes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SaveView {
+    pub seq: u32,
+    pub export: u32,
+    pub file_name: String,
 }
 
 /// One row of a panel's table: a key and what it does.
@@ -54,6 +76,11 @@ pub struct Panel {
     pub heading: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub text: String,
+    /// M2: a second, smaller line (a disabled button's reason, the save)
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub note: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub settings: Vec<Setting>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub rows_heading: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -98,6 +125,7 @@ pub struct Ui {
     /// whether the game wants the pointer held (pointer lock): the page lets
     /// go of it when this is false, and takes it again on a click when true
     pub capture: bool,
+    pub save: SaveView,
     pub version: u32,
 }
 
@@ -109,6 +137,7 @@ fn controls(g: &Game) -> (String, Vec<Row>) {
     };
     (
         s.get("controls"),
+        // M1: the first-person controls (CA-Q6: A)
         vec![
             row("key_move", "control_move"),
             row("key_run", "control_run"),
@@ -117,7 +146,6 @@ fn controls(g: &Game) -> (String, Vec<Row>) {
             row("key_draw", "control_draw"),
             row("key_hand", "control_hand"),
             row("key_swing", "control_swing"),
-            row("key_hold_look", "control_hold_look"),
             row("key_reach", "control_reach"),
             row("key_dodge", "control_dodge"),
         ],
@@ -131,6 +159,20 @@ fn button(g: &Game, name: &str, value: &str, label: &str, engage: bool) -> Actio
         label: g.strings.get(label),
         enabled: true,
         engage,
+        file: false,
+    }
+}
+
+fn panel(id: &str) -> Panel {
+    Panel {
+        id: id.into(),
+        heading: String::new(),
+        text: String::new(),
+        note: String::new(),
+        settings: Vec::new(),
+        rows_heading: String::new(),
+        rows: Vec::new(),
+        actions: Vec::new(),
     }
 }
 
@@ -169,12 +211,94 @@ pub fn bars(g: &Game) -> Vec<Bar> {
             let who = if id == 0 {
                 s.get("who_you")
             } else {
-                let kind = crate::player::fighter(&g.world, id).kind;
-                s.get(&format!("who_{}", crate::pilot::kind_name(kind)))
+                // M2: by the pilot's entry, so the knight is named a knight
+                s.get(&format!("who_{}", g.world.foes[id - 1].brain.key))
             };
             bar(g, id, who)
         })
         .collect()
+}
+
+/// The settings screen's rows: the look speed, the pitch, the field of
+/// view and the aim help, each with its value in words.
+fn settings(g: &Game) -> Vec<Setting> {
+    let s = &g.strings;
+    let k = &g.kept;
+    let steps = |name: &str| {
+        vec![
+            button(g, name, "-", "setting_less", false),
+            button(g, name, "+", "setting_more", false),
+        ]
+    };
+    let toggle = |name: &str| vec![button(g, name, "toggle", "setting_change", false)];
+    let on_off = |b: bool| s.get(if b { "setting_on" } else { "setting_off" });
+    vec![
+        Setting {
+            id: "look_speed".into(),
+            label: s.get("setting_look_speed"),
+            value: fill(&s.get("setting_percent"), &[("n", k.look_pct.to_string())]),
+            actions: steps("settings.look_speed"),
+        },
+        Setting {
+            id: "invert_pitch".into(),
+            label: s.get("setting_invert_pitch"),
+            value: on_off(k.invert_pitch),
+            actions: toggle("settings.invert_pitch"),
+        },
+        Setting {
+            id: "fov".into(),
+            label: s.get("setting_fov"),
+            value: fill(&s.get("setting_degrees"), &[("n", k.fov.to_string())]),
+            actions: steps("settings.fov"),
+        },
+        Setting {
+            id: "aim_help".into(),
+            label: s.get("setting_aim_help"),
+            value: s.get(match k.aim_help {
+                AimHelp::None => "aim_help_none",
+                AimHelp::SoftPull => "aim_help_soft_pull",
+            }),
+            actions: toggle("settings.aim_help"),
+        },
+    ]
+}
+
+/// The score in words: "You 1 · Knight 0".
+fn score(g: &Game, r: &crate::rounds::Rounds) -> String {
+    fill(
+        &g.strings.get("round_score"),
+        &[("you", r.wins[0].to_string()), ("foe", r.wins[1].to_string())],
+    )
+}
+
+/// How a round ended, in words: who fell and to what.
+fn fall_text(g: &Game, r: &crate::rounds::Rounds) -> (String, String) {
+    use crate::rounds::{Blow, Fall};
+    let s = &g.strings;
+    let n = [("n", r.round.to_string())];
+    match r.fall {
+        Some(Fall::One { who, blow }) => {
+            let heading = fill(&s.get(if who == 1 { "round_to_you" } else { "round_to_foe" }), &n);
+            let text = match blow {
+                Blow::Sand => s.get(if who == 1 {
+                    "fell_foe_sand"
+                } else {
+                    "fell_you_sand"
+                }),
+                Blow::Blade => s.get(if who == 1 {
+                    "fell_foe_blade"
+                } else {
+                    "fell_you_blade"
+                }),
+                Blow::Cut(k) => fill(
+                    &s.get(if who == 1 { "fell_foe_cut" } else { "fell_you_cut" }),
+                    &[("blow", s.get(k.key()))],
+                ),
+            };
+            (heading, text)
+        }
+        _ => (fill(&s.get("round_again"), &n), s.get("fell_both")),
+    }
 }
 
 /// The view model for the game as it stands.
@@ -182,23 +306,102 @@ pub fn ui(g: &Game) -> Ui {
     let s = &g.strings;
     let (rows_heading, rows) = controls(g);
     let mut panels = Vec::new();
+    let rounds = g.world.rounds.as_ref();
     match g.screen {
-        Screen::Start => panels.push(Panel {
-            id: "start".into(),
+        Screen::Title => panels.push(Panel {
             heading: s.get("title"),
-            text: s.get("start_text"),
-            rows_heading,
-            rows,
-            actions: vec![button(g, "screen.show", "duel", "practice", true)],
+            text: s.get("title_text"),
+            actions: vec![button(g, "screen.show", "menu", "continue", false)],
+            ..panel("title")
+        }),
+        Screen::Menu => {
+            let off = |label: &str| Action {
+                enabled: false,
+                ..button(g, "online.none", "", label, false)
+            };
+            panels.push(Panel {
+                heading: s.get("title"),
+                text: s.get("menu_text"),
+                note: s.get("online_next"),
+                actions: vec![
+                    button(g, "screen.show", "duel", "practice", true),
+                    off("host"),
+                    off("join"),
+                    button(g, "screen.show", "settings", "settings", false),
+                ],
+                ..panel("menu")
+            });
+            // the controls beside the menu, read before the first duel
+            panels.push(Panel {
+                rows_heading,
+                rows,
+                ..panel("controls")
+            });
+            if !g.notice.is_empty() {
+                panels.push(Panel {
+                    text: g.notice.clone(),
+                    ..panel("notice")
+                });
+            }
+        }
+        Screen::Settings => panels.push(Panel {
+            heading: s.get("settings"),
+            note: g.notice.clone(),
+            settings: settings(g),
+            actions: vec![
+                button(g, "save.download", "", "save_download", false),
+                Action {
+                    file: true,
+                    ..button(g, "save.file", "", "save_load", false)
+                },
+                button(g, "screen.show", "back", "back", false),
+            ],
+            ..panel("settings")
         }),
         Screen::Paused => panels.push(Panel {
-            id: "paused".into(),
             heading: s.get("paused"),
             text: s.get("swing_how"),
+            actions: vec![
+                button(g, "screen.show", "duel", "resume", true),
+                button(g, "screen.show", "settings", "settings", false),
+                button(g, "screen.show", "menu", "leave_duel", false),
+            ],
             rows_heading,
             rows,
-            actions: vec![button(g, "screen.show", "duel", "resume", true)],
+            ..panel("paused")
         }),
+        Screen::Round => {
+            if let Some(r) = rounds {
+                let (heading, text) = fall_text(g, r);
+                panels.push(Panel {
+                    heading,
+                    text,
+                    note: score(g, r),
+                    ..panel("round")
+                });
+            }
+        }
+        Screen::Result => {
+            if let Some(r) = rounds {
+                let won = r.winner() == Some(0);
+                panels.push(Panel {
+                    heading: s.get(if won { "result_won" } else { "result_lost" }),
+                    text: fill(
+                        &s.get(if won {
+                            "result_won_text"
+                        } else {
+                            "result_lost_text"
+                        }),
+                        &[("you", r.wins[0].to_string()), ("foe", r.wins[1].to_string())],
+                    ),
+                    actions: vec![
+                        button(g, "screen.show", "duel", "rematch", true),
+                        button(g, "screen.show", "menu", "back_to_menu", false),
+                    ],
+                    ..panel("result")
+                });
+            }
+        }
         Screen::Duel => {}
     }
     let mut hud = vec![HudItem {
@@ -206,6 +409,28 @@ pub fn ui(g: &Game) -> Ui {
         text: s.get("hint_pause"),
         shown: g.hint_shown(),
     }];
+    if let Some(r) = rounds {
+        // the round, the score and the time before sudden death
+        let left = crate::rounds::seconds_left(r);
+        let clock = format!("{}:{:02}", left / 60, left % 60);
+        hud.push(HudItem {
+            id: "round".into(),
+            text: fill(
+                &s.get("round_line"),
+                &[
+                    ("n", r.round.to_string()),
+                    ("score", score(g, r)),
+                    ("clock", clock),
+                ],
+            ),
+            shown: g.screen.plays(),
+        });
+        hud.push(HudItem {
+            id: "sudden".into(),
+            text: s.get("sudden_death"),
+            shown: g.screen == Screen::Duel && r.sudden(),
+        });
+    }
     g.world.hud(s, &mut hud);
     let values = g.glossary_values();
     Ui {
@@ -213,11 +438,7 @@ pub fn ui(g: &Game) -> Ui {
         title: s.get("title"),
         panels,
         hud,
-        bars: if g.screen == Screen::Start {
-            Vec::new()
-        } else {
-            bars(g)
-        },
+        bars: if g.in_duel() { bars(g) } else { Vec::new() },
         hints: g
             .glossary
             .iter()
@@ -227,7 +448,12 @@ pub fn ui(g: &Game) -> Ui {
             })
             .collect(),
         no_webgl: s.get("no_webgl"),
-        capture: g.screen == Screen::Duel,
+        capture: matches!(g.screen, Screen::Duel | Screen::Round),
+        save: SaveView {
+            seq: g.save_seq,
+            export: g.save_export,
+            file_name: s.get("save_file_name"),
+        },
         version: g.ui_version,
     }
 }
@@ -297,50 +523,111 @@ mod tests {
     }
 
     #[test]
-    fn the_start_screen_shows_the_title_the_controls_and_a_practice_button_that_takes_the_pointer() {
-        let g = game();
+    fn the_title_leads_to_the_menu_with_practice_host_join_and_settings() {
+        let mut g = game();
         let u = json(&ok(&ui(&g)));
-        let p = &u["ok"]["panels"][0];
-        assert_eq!(u["ok"]["screen"], "start");
-        assert_eq!(p["heading"], "Chumworld Arena");
-        assert_eq!(p["rows"][4]["key"], "X");
-        assert_eq!(p["rows"][4]["does"], "Draw or sheathe");
-        assert_eq!(p["actions"][0]["label"], "Practice");
+        assert_eq!(u["ok"]["screen"], "title");
+        assert_eq!(u["ok"]["panels"][0]["heading"], "Chumworld Arena");
+        assert_eq!(u["ok"]["panels"][0]["actions"][0]["value"], "menu");
+        let v = json(&act(&mut g, "screen.show", "menu"));
+        let p = &v["ok"]["panels"][0];
+        assert_eq!(v["ok"]["screen"], "menu");
+        let c = &v["ok"]["panels"][1];
+        assert_eq!(c["rows"][4]["key"], "X");
+        assert_eq!(c["rows"][4]["does"], "Draw or sheathe");
+        let labels: Vec<&str> = p["actions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| a["label"].as_str().unwrap())
+            .collect();
+        assert_eq!(labels, ["Practice", "Host", "Join", "Settings"]);
         assert_eq!(p["actions"][0]["engage"], true);
-        assert_eq!(p["actions"][0]["name"], "screen.show");
         assert_eq!(p["actions"][0]["value"], "duel");
+        // M2: Host and Join shown, but not yet open, and the menu says why
+        assert_eq!(p["actions"][1]["enabled"], false);
+        assert_eq!(p["actions"][2]["enabled"], false);
+        assert_eq!(p["note"], "Host and Join open when online play comes next.");
         assert!(
-            u["ok"]["bars"].as_array().unwrap().is_empty(),
+            v["ok"]["bars"].as_array().unwrap().is_empty(),
             "no bars before the duel"
         );
+        // the settings: four rows, each with its value in words
+        let v = json(&act(&mut g, "screen.show", "settings"));
+        let rows = v["ok"]["panels"][0]["settings"].as_array().unwrap();
+        let values: Vec<&str> = rows.iter().map(|r| r["value"].as_str().unwrap()).collect();
+        assert_eq!(values, ["100%", "Off", "105°", "None"]);
+        let acts = v["ok"]["panels"][0]["actions"].as_array().unwrap();
+        assert_eq!(acts[1]["file"], true, "loading a save asks for a file");
+        assert_eq!(v["ok"]["save"]["file_name"], "chumworld-arena-save.json");
+    }
+
+    /// M2: the round's result names who fell and the blow, with the score.
+    #[test]
+    fn a_round_s_result_names_who_fell_and_the_blow() {
+        use crate::rounds::{Blow, Fall, Kind2, Phase};
+        let mut g = game();
+        act(&mut g, "screen.show", "menu");
+        act(&mut g, "screen.show", "duel");
+        let r = g.world.rounds.as_mut().unwrap();
+        r.phase = Phase::Beat(10);
+        r.wins = [1, 0];
+        r.fall = Some(Fall::One {
+            who: 1,
+            blow: Blow::Cut(Kind2::Chop),
+        });
+        g.screen = Screen::Round;
+        let u = json(&ok(&ui(&g)));
+        let p = &u["ok"]["panels"][0];
+        assert_eq!(p["heading"], "Round 1 to you");
+        assert_eq!(p["text"], "The knight fell to your chop.");
+        assert_eq!(p["note"], "You 1 · Knight 0");
+        let r = g.world.rounds.as_mut().unwrap();
+        r.fall = Some(Fall::One {
+            who: 0,
+            blow: Blow::Sand,
+        });
+        let u = json(&ok(&ui(&g)));
+        assert_eq!(u["ok"]["panels"][0]["heading"], "Round 1 to the knight");
+        assert_eq!(u["ok"]["panels"][0]["text"], "You fell outside the inner ring.");
     }
 
     #[test]
     fn the_duel_shows_both_fighters_health_in_words_and_as_a_share() {
         let mut g = game();
+        act(&mut g, "screen.show", "menu");
         let v = json(&act(&mut g, "screen.show", "duel"));
         let bars = v["ok"]["bars"].as_array().unwrap();
         assert_eq!(bars.len(), 2);
         assert_eq!(bars[0]["who"], "You");
         assert_eq!(bars[0]["text"], "100 / 100");
         assert_eq!(bars[0]["share"], 10_000);
-        assert_eq!(bars[1]["who"], "Bandit");
-        // the bandit's 90 of 90 (data/pilots.json)
-        assert_eq!(bars[1]["text"], "90 / 90");
+        assert_eq!(bars[1]["who"], "Knight");
+        // the knight's 100 of 100 (data/pilots.json)
+        assert_eq!(bars[1]["text"], "100 / 100");
         g.world.foes[0].fighter.health.hp = 30;
         let u = json(&ok(&ui(&g)));
-        // 30 of 90 is 33.33%: 3 333 hundredths of a percent
-        assert_eq!(u["ok"]["bars"][1]["share"], 3_333);
-        assert_eq!(u["ok"]["bars"][1]["text"], "30 / 90");
+        assert_eq!(u["ok"]["bars"][1]["share"], 3_000);
+        assert_eq!(u["ok"]["bars"][1]["text"], "30 / 100");
         g.world.foes[0].fighter.health.hp = -12;
         let u = json(&ok(&ui(&g)));
-        assert_eq!(u["ok"]["bars"][1]["text"], "0 / 90", "never below none");
+        assert_eq!(u["ok"]["bars"][1]["text"], "0 / 100", "never below none");
         assert_eq!(u["ok"]["bars"][1]["share"], 0);
+        // the round, the score and the clock over the duel
+        let round = u["ok"]["hud"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["id"] == "round")
+            .unwrap()
+            .clone();
+        assert_eq!(round["text"], "Round 1 · You 0 · Knight 0 · 1:30");
     }
 
     #[test]
     fn act_answers_with_the_new_screen_or_the_error() {
         let mut g = game();
+        act(&mut g, "screen.show", "menu");
         let v = json(&act(&mut g, "screen.show", "duel"));
         assert_eq!(v["ok"]["screen"], "duel");
         assert!(
@@ -384,8 +671,8 @@ mod tests {
         let list = m.as_array().unwrap();
         assert_eq!(
             list.len(),
-            Mesh::ALL.len() + 2,
-            "the primitives and the ring's floor and wall"
+            Mesh::ALL.len() + 4,
+            "the primitives and the ring's floor, kerb, wall and stands"
         );
         assert_eq!(list[0]["vertices"], 36, "the cube's 12 triangles");
         assert_eq!(n["vertex"]["stride"], 36);

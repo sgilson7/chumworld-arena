@@ -471,8 +471,8 @@
   {
     "name": "the camera shows pending movement",
     "file": "crates/core/src/world.rs",
-    "find": "            self.aim.turned(pending)\n",
-    "replace": "            self.aim\n",
+    "find": "                ..pending\n            })",
+    "replace": "                ..Mouse::default()\n            })",
     "test": "the_camera_shows_pending_mouse_movement_and_the_tick_does_not_jump_it"
   },
   {
@@ -499,15 +499,15 @@
   {
     "name": "a pause forgets the time it lasted",
     "file": "crates/core/src/game.rs",
-    "find": "                // forgotten, so resuming runs no catch-up ticks\n                self.pending.clear();\n                self.clock.rest();",
-    "replace": "                // forgotten, so resuming runs no catch-up ticks\n                self.pending.clear();",
+    "find": "            self.pending.clear();\n            self.clock.rest();",
+    "replace": "            self.pending.clear();",
     "test": "a_paused_world_holds_still_and_resuming_runs_no_catch_up"
   },
   {
     "name": "play draws at the clock's alpha",
     "file": "crates/core/src/game.rs",
-    "find": "                    self.ui_version += 1;\n                }\n                self.alpha = self.clock.alpha();",
-    "replace": "                    self.ui_version += 1;\n                }\n                self.alpha = 0;",
+    "find": "                self.ui_version += 1;\n            }\n            self.alpha = self.clock.alpha();",
+    "replace": "                self.ui_version += 1;\n            }\n            self.alpha = 0;",
     "test": "the_body_is_drawn_between_ticks_by_the_clock_s_alpha"
   },
   {
@@ -520,8 +520,8 @@
   {
     "name": "the look speed is held in range",
     "file": "crates/core/src/game.rs",
-    "find": "                self.world.aim.pct = pct.clamp(camera::LOOK_PCT_MIN, camera::LOOK_PCT_MAX);",
-    "replace": "                self.world.aim.pct = pct;",
+    "find": "self.kept.look_pct = pct.clamp(camera::LOOK_PCT_MIN, camera::LOOK_PCT_MAX);",
+    "replace": "self.kept.look_pct = pct;",
     "test": "the_look_speed_is_a_setting_held_in_its_range"
   },
   {
@@ -779,8 +779,8 @@
   {
     "name": "M1 player: drawn, the mouse moves the hand",
     "file": "crates/core/src/player.rs",
-    "find": "    let looks = !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down();",
-    "replace": "    let looks = !w.me.drawn() || w.me.health.down();",
+    "find": "        !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down()\n",
+    "replace": "        !w.me.drawn() || w.me.health.down()\n",
     "test": "sheathed_the_mouse_looks_and_drawn_it_moves_the_hand_unless_the_right_button_is_held"
   },
   {
@@ -1687,32 +1687,11 @@
     "test": "the_ring_s_floor_is_flat_at_nought"
   },
   {
-    "name": "M0 ring: the wall's top faces down",
-    "file": "crates/core/src/ring.rs",
-    "find": "        push_coloured(&mut out, a0.add(up), b0.add(up), b1.add(up), cap);",
-    "replace": "        push_coloured(&mut out, a0.add(up), b1.add(up), b0.add(up), cap);",
-    "test": "the_wall_s_faces_wind_toward_where_they_are_seen_from"
-  },
-  {
-    "name": "M0 ring: the floor's middle fan faces down",
-    "file": "crates/core/src/ring.rs",
-    "find": "                push_coloured(&mut out, V3::ZERO, b, a, rgb);",
-    "replace": "                push_coloured(&mut out, V3::ZERO, a, b, rgb);",
-    "test": "every_floor_stone_faces_up_and_lies_on_the_ground"
-  },
-  {
     "name": "M0 game: Practice puts no foe in the ring",
     "file": "crates/core/src/game.rs",
-    "find": "                if self.world.foes.is_empty() {",
-    "replace": "                if self.world.foes.len() > 9 {",
-    "test": "the_game_opens_on_the_start_screen_and_practice_goes_through_the_door"
-  },
-  {
-    "name": "M0 game: Practice stands the foe off the opening heading",
-    "file": "crates/core/src/game.rs",
-    "find": "                    self.world.aim.yaw = crate::world::START_YAW;\n",
-    "replace": "",
-    "test": "practice_stands_the_foe_six_metres_ahead_across_the_middle"
+    "find": "        crate::rounds::begin(&mut self.world, PRACTICE_FOE).expect(\"the knight is in the pilots' book\");",
+    "replace": "        let _ = PRACTICE_FOE;",
+    "test": "the_game_opens_on_the_title_then_the_menu_and_practice_begins_a_duel_in_rounds"
   },
   {
     "name": "M0 api: a bar's words show health below none",
@@ -1724,9 +1703,9 @@
   {
     "name": "M0 api: the start screen shows bars",
     "file": "crates/core/src/api.rs",
-    "find": "        bars: if g.screen == Screen::Start {",
-    "replace": "        bars: if g.screen == Screen::Paused {",
-    "test": "the_start_screen_shows_the_title_the_controls_and_a_practice_button_that_takes_the_pointer"
+    "find": "        bars: if g.in_duel() { bars(g) } else { Vec::new() },",
+    "replace": "        bars: bars(g),",
+    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
   },
   {
     "name": "M1: the guard rides with the view's pitch",
@@ -1881,5 +1860,166 @@
     "find": ".div_ceil(tps)",
     "replace": " / tps",
     "test": "the_seconds_before_sudden_death_count_down_by_whole_seconds"
+  },
+  {
+    "name": "M2: the floor's stones lie over their bed",
+    "file": "crates/core/src/ring.rs",
+    "find": "                mm(s.lift_mm[0]) + (mm(s.lift_mm[1] - s.lift_mm[0]) as i64 * v as i64 / 1000) as Fx",
+    "replace": "                mm(s.lift_mm[0]) * 4 + (mm(s.lift_mm[1] - s.lift_mm[0]) as i64 * v as i64 / 1000) as Fx",
+    "test": "every_floor_stone_faces_up_and_lies_a_few_millimetres_over_its_bed"
+  },
+  {
+    "name": "M2: a course of its own marks the inner ring",
+    "file": "crates/core/src/ring.rs",
+    "find": "    out.push((safe - half_mark, safe + half_mark, true));",
+    "replace": "    out.push((safe - half_mark, safe + half_mark, false));",
+    "test": "a_course_of_its_own_marks_the_inner_ring_at_six_metres"
+  },
+  {
+    "name": "M2: the kerb is 1.4 m tall",
+    "file": "crates/core/src/ring.rs",
+    "find": "pub const KERB_HIGH: Fx = ONE * 14 / 10;",
+    "replace": "pub const KERB_HIGH: Fx = ONE * 7 / 10;",
+    "test": "the_kerb_and_wall_stand_at_the_edge_their_faces_toward_the_eye"
+  },
+  {
+    "name": "M2: a block's faces point out",
+    "file": "crates/core/src/ring.rs",
+    "find": "        push_coloured(out, m, q.add(up), m.add(up), c);",
+    "replace": "        push_coloured(out, m, m.add(up), q.add(up), c);",
+    "test": "a_block_s_faces_point_out"
+  },
+  {
+    "name": "M2: the ring is a few dozen instances",
+    "file": "crates/core/src/ring.rs",
+    "find": "    4 + 2 * spec().banners as usize + 4",
+    "replace": "    4 + 2 * spec().banners as usize + 5",
+    "test": "the_ring_is_one_group_of_a_few_dozen_instances"
+  },
+  {
+    "name": "M2: a save reads back as written",
+    "file": "crates/core/src/save.rs",
+    "find": "            \"invert_pitch\": k.invert_pitch,",
+    "replace": "            \"invert_pitch\": false,",
+    "test": "a_save_reads_back_as_it_was_written"
+  },
+  {
+    "name": "M2: a save holds nothing but settings and the knight",
+    "file": "crates/core/src/save.rs",
+    "find": "        \"knight\": k.knight.id(),",
+    "replace": "        \"knight\": k.knight.id(),\n        \"when\": 0,",
+    "test": "a_save_holds_the_settings_and_the_knight_and_nothing_else"
+  },
+  {
+    "name": "M2: an old save is refused",
+    "file": "crates/core/src/save.rs",
+    "find": "    if m.get(\"version\").and_then(|v| v.as_u64()) != Some(VERSION) {",
+    "replace": "    if m.get(\"version\").and_then(|v| v.as_u64()) == Some(99) {",
+    "test": "a_bad_or_old_save_is_refused_with_its_reason"
+  },
+  {
+    "name": "M2: an edited save is refused by its checksum",
+    "file": "crates/core/src/save.rs",
+    "find": "    if checksum(&game.to_string()) != sum {",
+    "replace": "    if checksum(&game.to_string()) == \"x\" && sum.is_empty() {",
+    "test": "a_bad_or_old_save_is_refused_with_its_reason"
+  },
+  {
+    "name": "M2: a save's field out of range is refused",
+    "file": "crates/core/src/save.rs",
+    "find": "            crate::world::FOV_MAX,\n        )?,",
+    "replace": "            1000,\n        )?,",
+    "test": "a_bad_or_old_save_is_refused_with_its_reason"
+  },
+  {
+    "name": "M2: a save with more fields is refused",
+    "file": "crates/core/src/save.rs",
+    "find": "    keys_are(g, &GAME_KEYS, \"game\")?;",
+    "replace": "",
+    "test": "a_bad_or_old_save_is_refused_with_its_reason"
+  },
+  {
+    "name": "M2: the screen follows the rounds",
+    "file": "crates/core/src/game.rs",
+    "find": "            crate::rounds::Phase::Beat(_) => Screen::Round,",
+    "replace": "            crate::rounds::Phase::Beat(_) => Screen::Duel,",
+    "test": "the_screen_follows_the_rounds_to_the_result_and_rematch_starts_again"
+  },
+  {
+    "name": "M2: rematch starts a new duel",
+    "file": "crates/core/src/game.rs",
+    "find": "                    if !self.in_duel() || self.screen == Screen::Result {",
+    "replace": "                    if !self.in_duel() {",
+    "test": "the_screen_follows_the_rounds_to_the_result_and_rematch_starts_again"
+  },
+  {
+    "name": "M2: the field of view steps within 100 to 110",
+    "file": "crates/core/src/game.rs",
+    "find": "                    (self.kept.fov + step * FOV_STEP).clamp(crate::world::FOV_MIN, crate::world::FOV_MAX);",
+    "replace": "                    self.kept.fov + step * FOV_STEP;",
+    "test": "the_settings_step_within_their_ranges_and_each_change_is_saved"
+  },
+  {
+    "name": "M2: a setting changed is saved",
+    "file": "crates/core/src/game.rs",
+    "find": "        apply(&mut self.world, &self.kept);\n        self.save_seq += 1;\n        self.ui_version += 1;",
+    "replace": "        apply(&mut self.world, &self.kept);\n        self.ui_version += 1;",
+    "test": "the_settings_step_within_their_ranges_and_each_change_is_saved"
+  },
+  {
+    "name": "M2: settings go back where they were opened",
+    "file": "crates/core/src/game.rs",
+    "find": "                } else if self.screen == Screen::Settings && name == \"key.escape\" {\n                    self.show(self.settings_from);",
+    "replace": "                } else if self.screen == Screen::Settings && name == \"key.escape\" {\n                    self.show(Screen::Menu);",
+    "test": "the_settings_step_within_their_ranges_and_each_change_is_saved"
+  },
+  {
+    "name": "M2: a refused save leaves the settings",
+    "file": "crates/core/src/game.rs",
+    "find": "            Err(why) => {\n                let key",
+    "replace": "            Err(why) => {\n                self.kept = crate::save::Kept::default();\n                let key",
+    "test": "a_save_read_at_the_start_or_from_a_file_sets_the_settings_and_a_bad_one_is_refused"
+  },
+  {
+    "name": "M2: a save file read is kept in the browser",
+    "file": "crates/core/src/game.rs",
+    "find": "                    // a file read is kept in this browser too\n                    self.save_seq += 1;",
+    "replace": "                    // a file read is kept in this browser too",
+    "test": "a_save_read_at_the_start_or_from_a_file_sets_the_settings_and_a_bad_one_is_refused"
+  },
+  {
+    "name": "M2: staged acts run on each duel",
+    "file": "crates/core/src/game.rs",
+    "find": "            let _ = self.world.act(&n, &v);",
+    "replace": "            let _ = (n, v);",
+    "test": "a_staged_act_runs_on_each_new_duel_and_a_bad_one_is_refused_at_once"
+  },
+  {
+    "name": "M1: the duel's camera takes the field of view set",
+    "file": "crates/core/src/game.rs",
+    "find": "            cam.fov = camera::vertical_fov(self.world.settings.fov, self.aspect);",
+    "replace": "",
+    "test": "the_duel_is_seen_from_the_eye_at_the_field_of_view_set"
+  },
+  {
+    "name": "M2: Host and Join shown but not open",
+    "file": "crates/core/src/api.rs",
+    "find": "                enabled: false,\n                ..button(g, \"online.none\", \"\", label, false)",
+    "replace": "                enabled: true,\n                ..button(g, \"online.none\", \"\", label, false)",
+    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
+  },
+  {
+    "name": "M2: a round's result names the blow",
+    "file": "crates/core/src/api.rs",
+    "find": "                    &[(\"blow\", s.get(k.key()))],",
+    "replace": "                    &[(\"blow\", s.get(\"blow_thrust\"))],",
+    "test": "a_round_s_result_names_who_fell_and_the_blow"
+  },
+  {
+    "name": "M2: the knight is named in its bar",
+    "file": "crates/core/src/api.rs",
+    "find": "                s.get(&format!(\"who_{}\", g.world.foes[id - 1].brain.key))",
+    "replace": "                s.get(&format!(\"who_{}\", crate::pilot::kind_name(g.world.foes[id - 1].fighter.kind)))",
+    "test": "the_duel_shows_both_fighters_health_in_words_and_as_a_share"
   }
 ]

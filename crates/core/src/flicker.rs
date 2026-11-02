@@ -679,8 +679,8 @@ mod tests {
         assert_eq!(i[0].pass, Pass::Solid);
     }
 
-    /// The ring as the page receives it (the static array: its floor and
-    /// wall), seen from anywhere a camera can be in it: no two surfaces in
+    /// The ring as the page receives it (the static array: M2's floor,
+    /// kerb, wall, stands, banners and towers), seen from anywhere a camera can be in it: no two surfaces in
     /// one plane. (CHUMWORLD scanned its terrain, props and water here.)
     #[test]
     fn the_static_scene_draws_no_two_surfaces_in_one_plane() {
@@ -696,8 +696,9 @@ mod tests {
             .iter()
             .map(|i| g.meshes.vertices(i.mesh).len() / (3 * prim::VERTEX_VALUES))
             .sum();
-        // the floor's 336 triangles and the wall's 288
-        assert_eq!(tris, 336 + 288, "the scan reads the ring's triangles");
+        // M2: the ring's four meshes (floor, kerb, wall, stands with their
+        // crowd) and its banners and towers, far more than M0's 624
+        assert!(tris > 5_000, "the scan reads the ring's triangles: {tris}");
         let seen = Seen {
             bottom: -int(1),
             eyes,

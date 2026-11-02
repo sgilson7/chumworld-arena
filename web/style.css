@@ -30,14 +30,30 @@ body[data-ready="false"] #view { visibility: hidden; }
 #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; letter-spacing: 0.08em; color: var(--ink-soft); }
 
 #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.55) 100%); }
-body[data-screen="start"] #overlay { align-items: flex-end; justify-content: flex-start; padding: 0 0 8vh 6vw; background: linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%); }
+body[data-screen="title"] #overlay, body[data-screen="menu"] #overlay { align-items: flex-end; justify-content: flex-start; gap: 16px; padding: 0 0 8vh 6vw; background: linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%); }
+/* the round's result: a band across the upper view, the duel still seen */
+body[data-screen="round"] #overlay { align-items: flex-start; padding-top: 14vh; background: none; }
+#round { text-align: center; min-width: 420px; }
+#round .note { font-size: 18px; letter-spacing: 0.08em; color: var(--ink); }
 .panel { min-width: 320px; max-width: 440px; max-height: calc(100vh - 32px); overflow: auto; padding: 28px 32px 24px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); box-shadow: var(--shadow); }
 .panel h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: 0.06em; }
-#start h1 { font-size: 44px; letter-spacing: 0.1em; text-transform: uppercase; }
+#title h1, #menu h1 { font-size: 44px; letter-spacing: 0.1em; text-transform: uppercase; }
+#title { max-width: 620px; }
+#title h1 { font-size: 60px; }
 .panel h2 { margin: 20px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
 .panel p { margin: 0 0 14px; color: var(--ink-soft); }
 .panel button { display: block; width: 100%; padding: 13px 22px; border: 1px solid var(--accent-deep); border-radius: 4px; background: var(--accent); color: #f6efe2; font: inherit; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; box-shadow: 0 3px 0 var(--accent-deep); }
-.panel button:hover { filter: brightness(1.1); }
+.panel button + button { margin-top: 10px; }
+.panel button:hover:not(:disabled) { filter: brightness(1.1); }
+.panel button:disabled { background: var(--stone); border-color: var(--stone-edge); color: var(--ink-soft); box-shadow: none; cursor: not-allowed; }
+.panel .note { margin: 14px 0 0; font-size: 14px; font-style: italic; }
+/* a setting: its name, its value in words, and its buttons */
+.setting { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--stone-edge); }
+.setting .label { flex: 1; }
+.setting output { min-width: 84px; text-align: right; font-weight: 700; color: var(--you); }
+.setting button { width: auto; min-width: 44px; margin: 0; padding: 6px 12px; font-size: 15px; letter-spacing: 0.04em; box-shadow: none; }
+.setting + button { margin-top: 20px; }
+.setting button + button { margin-top: 0; }
 .panel button:focus-visible { outline: 2px solid var(--you); outline-offset: 3px; }
 table.controls { width: 100%; border-collapse: collapse; }
 table.controls td { padding: 4px 0; vertical-align: middle; font-size: 14px; }
@@ -49,7 +65,7 @@ kbd { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 3
    bottom left, the foe's top right; a stripe on the foe's bar tells them
    apart besides the colour (BRIEF.md, Accessibility). */
 #bars { position: fixed; inset: 0; pointer-events: none; }
-body:not([data-screen="duel"]) #bars { display: none; }
+body:not([data-screen="duel"]):not([data-screen="round"]) #bars { display: none; }
 .bar { position: fixed; width: min(360px, 40vw); padding: 8px 12px 10px; background: rgba(15, 14, 12, 0.6); border: 1px solid var(--stone-edge); border-radius: 4px; }
 #bar-you { left: 24px; bottom: 24px; }
 .bar:not(#bar-you) { right: 24px; top: 24px; }
@@ -64,7 +80,11 @@ body:not([data-screen="duel"]) #bars { display: none; }
 #hud { position: fixed; inset: auto 0 5vh 0; display: flex; justify-content: center; pointer-events: none; }
 .hud-item { margin: 0; padding: 7px 16px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); color: var(--ink); font-size: 15px; letter-spacing: 0.04em; opacity: 0; transition: opacity 1.2s ease; }
 .hud-item.shown { opacity: 1; }
-body:not([data-screen="duel"]) #hud { display: none; }
+body:not([data-screen="duel"]):not([data-screen="round"]) #hud { display: none; }
+/* the round, the score and the clock, top middle; sudden death under it,
+   in words and with a striped edge besides its colour */
+#hud-round { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.08em; }
+#hud-sudden { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); color: #f6efe2; background: repeating-linear-gradient(135deg, rgba(110, 29, 24, 0.85) 0 10px, rgba(70, 20, 16, 0.85) 10px 16px); font-weight: 700; letter-spacing: 0.08em; transition: opacity 0.2s ease; }
 /* the swing cue's word, small and faint below the middle of the view */
 #hud-swing { position: fixed; top: 61vh; left: 50%; transform: translateX(-50%); font-size: 13px; padding: 4px 12px; background: rgba(0, 0, 0, 0.35); transition: opacity 0.15s ease; }
 #hud-swing.shown { opacity: 0.85; }
@@ -76,6 +96,6 @@ body:not([data-screen="duel"]) #hud { display: none; }
 [data-term] { text-decoration: underline dotted rgba(233, 227, 216, 0.5); text-underline-offset: 3px; cursor: help; }
 @media (max-height: 640px) {
   .panel { padding: 16px 20px 14px; }
-  #start h1 { font-size: 30px; }
+  #title h1, #menu h1 { font-size: 30px; }
   table.controls td { padding: 1px 0; }
 }

@@ -1,6 +1,8 @@
 // The page draws what the core returns and decides nothing.
 //
-// CHUMWORLD's page (d9cb5b5) less its menus, save, sound and figure. It
+// CHUMWORLD's page (d9cb5b5) less its sound and figure; M2's screens and
+// settings come from the core's view model like every panel, and the save
+// is kept by web/save.js. It
 // loads the data files, starts the core through the shim, and each display
 // frame passes the clock, the held actions and the mouse and wheel movement
 // in, then draws the frame that comes out (gl.js). The screen's panels, the
@@ -12,6 +14,7 @@
 import init, { Game, numbers } from "./pkg/tool_shim.js";
 import { makeRenderer } from "./gl.js";
 import { makeInput } from "./input.js";
+import { makeSave } from "./save.js";
 
 const el = (id) => document.getElementById(id);
 const make = (tag, text, className) => {
@@ -80,6 +83,9 @@ async function main() {
 
   let ui = null;
   const input = makeInput(canvas, controls, N.actions, () => {});
+  // the browser's save and the save file (web/save.js); the core decides
+  // what is in it and when it is written
+  const save = makeSave();
   const params = new URLSearchParams(location.search);
 
   // Sends one action through the core's door and draws what comes back.
@@ -96,24 +102,36 @@ async function main() {
     if (gesture && result.ok.capture && !input.engaged()) input.engage();
   }
 
+  function button(a) {
+    const node = make("button", a.label);
+    node.disabled = !a.enabled;
+    node.dataset.action = a.name;
+    node.dataset.value = a.value;
+    node.addEventListener("click", () => {
+      // the browser grants the pointer only inside a click
+      if (a.engage) input.engage();
+      node.blur();
+      // a button that asks for a file sends the file's text
+      if (a.file) save.pick((text) => act(a.name, text));
+      else act(a.name, a.value);
+    });
+    return node;
+  }
+
   function panel(p) {
     const box = make("section", undefined, "panel");
     box.id = p.id;
     if (p.heading) box.append(make("h1", p.heading));
     if (p.text) box.append(make("p", p.text));
-    (p.actions || []).forEach((a) => {
-      const button = make("button", a.label);
-      button.disabled = !a.enabled;
-      button.dataset.action = a.name;
-      button.dataset.value = a.value;
-      button.addEventListener("click", () => {
-        // the browser grants the pointer only inside a click
-        if (a.engage) input.engage();
-        button.blur();
-        act(a.name, a.value);
-      });
-      box.append(button);
+    (p.settings || []).forEach((s) => {
+      const row = make("div", undefined, "setting");
+      row.id = `setting-${s.id}`;
+      const value = make("output", s.value);
+      row.append(make("span", s.label, "label"), value, ...s.actions.map(button));
+      box.append(row);
     });
+    (p.actions || []).forEach((a) => box.append(button(a)));
+    if (p.note) box.append(make("p", p.note, "note"));
     if (p.rows) {
       if (p.rows_heading) box.append(make("h2", p.rows_heading));
       const table = make("table", undefined, "controls");
@@ -168,8 +186,9 @@ async function main() {
       node.textContent = item.text;
       node.classList.toggle("shown", item.shown);
     }
-    document.querySelectorAll("#overlay h1, #overlay h2, #overlay td span, #overlay button").forEach(mark);
+    document.querySelectorAll("#overlay h1, #overlay h2, #overlay td span, #overlay button, #overlay .label").forEach(mark);
     if (!u.capture) input.release();
+    save.show(u.save, () => game.save_text());
     // a screen of buttons opens with its first one focused, for the keyboard
     const first = el("overlay").querySelector("button");
     if (changed && first) first.focus({ preventScroll: true });
@@ -205,6 +224,8 @@ async function main() {
     const [name, value] = asked.split(":");
     act(name, value || "");
   }
+  // the save this browser keeps, if any, read by the core before anything shows
+  act("save.stored", save.stored());
   show(JSON.parse(game.ui()).ok);
 
   function resize() {
