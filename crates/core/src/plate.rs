@@ -112,6 +112,8 @@ pub fn covered(kind: Kind) -> u16 {
         }
         // the banneret on all ten, as a knight
         Kind::Banneret => (1 << PARTS) - 1,
+        // M6 (R7.302): the champion and the mirror on all ten, as a knight
+        Kind::Champion | Kind::Mirror => (1 << PARTS) - 1,
         _ => 0,
     }
 }

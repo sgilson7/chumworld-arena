@@ -52,6 +52,8 @@ pub const REQUIRED: &[&str] = &[
     "who_hedge",
     "who_veteran",
     "who_banneret",
+    "who_champion",
+    "who_mirror",
     "wound_take_up",
     "swing_level_left",
     "swing_level_right",

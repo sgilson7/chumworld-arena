@@ -357,6 +357,8 @@ pub fn mass(kind: Kind) -> i32 {
         // M6 (R7.201): a big man in leather and a little plate; a knight
         Kind::Veteran => 95,
         Kind::Banneret => 108,
+        // M6 (R7.301): the champion and the mirror in full plate, as a knight
+        Kind::Champion | Kind::Mirror => 110,
     }
 }
 

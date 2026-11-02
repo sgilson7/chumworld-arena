@@ -1383,7 +1383,10 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 /// A foe of `kind` ahead of the player, facing them, sword drawn. A second
 /// and later foe stands to one side or the other of the first.
 pub fn spawn(w: &mut World, kind: Kind) {
-    spawn_keyed(w, kind, crate::pilot::kind_name(kind));
+    // the book's entry the act would drive it by: the champion and the
+    // mirror are named as themselves but piloted on Knight B's (R7.303, R5.27)
+    let key = crate::pilot::pilot_named(crate::pilot::kind_name(kind)).map_or("bandit", |(_, k)| k);
+    spawn_keyed(w, kind, key);
 }
 
 /// The same, driven by the pilot book's entry `key` (M2: the knight).
@@ -1541,6 +1544,17 @@ mod tests {
         far.foes[0].body.pos = far.player.pos.add(facing(0, 0).scale(fx::int(16)));
         far.step(&Input::default());
         assert_eq!(far.me.engaged, None);
+    }
+
+    #[test]
+    fn a_ladder_foe_spawned_by_kind_is_driven_by_its_book_entry() {
+        // R5.27: the champion and the mirror have no entry of their own yet
+        let mut w = World::new(1);
+        spawn(&mut w, Kind::Champion);
+        spawn(&mut w, Kind::Squire);
+        let keys: Vec<&str> = w.foes.iter().map(|f| f.brain.key.as_str()).collect();
+        assert_eq!(keys, ["knight_b", "squire"]);
+        assert_eq!(w.foes[0].fighter.kind, Kind::Champion);
     }
 
     #[test]

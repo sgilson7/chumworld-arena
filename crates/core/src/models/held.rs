@@ -23,6 +23,7 @@ pub fn kind_held(kind: Kind) -> Held {
         // M6: the ladder's opponents carry the knights' longsword
         Kind::Squire | Kind::Sellsword | Kind::Hedge => Held::Longsword,
         Kind::Veteran | Kind::Banneret => Held::Longsword,
+        Kind::Champion | Kind::Mirror => Held::Longsword,
     }
 }
 
