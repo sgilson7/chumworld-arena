@@ -153,6 +153,9 @@ pub struct World {
     /// M1: the frame is drawn from the player's eye (the game sets it for
     /// a duel in first person): the player's head is then not drawn
     pub eye_view: bool,
+    /// M5: the second seat, online: the foe is a person in another browser,
+    /// seen from its own helmet (`seat.rs`); none offline
+    pub seat: Option<crate::seat::Seat>,
 }
 
 impl World {
@@ -183,6 +186,7 @@ impl World {
             guard_pitch: crate::arm::GUARD_PITCH,
             rounds: None,
             eye_view: false,
+            seat: None,
         }
     }
 
@@ -208,6 +212,8 @@ impl World {
         // (M2: between rounds, and once a duel is over, the player's record
         // is set aside)
         let input = &crate::rounds::input(self, input);
+        // M5: the second seat's record is set aside the same way
+        crate::seat::gate(self);
         // 1. a hard blow holds the world still for a few ticks
         if self.feel.stop > 0 {
             crate::feel::hold(self, input);
@@ -218,6 +224,8 @@ impl World {
         // holds on the foe)
         let look = crate::player::look_mouse(self, input);
         self.aim = self.aim.turned(look);
+        // M5: the second seat's view, as the player's
+        crate::seat::look(self);
         crate::player::hold_on(self);
         // 3. each foe's record, from its pilot
         let inputs = crate::pilot::step(self);
@@ -229,8 +237,10 @@ impl World {
         // guard rides with the view first)
         crate::wounds::steer(self, input, &inputs);
         let ridden = crate::player::ride_guard(self);
+        let seat_ridden = crate::seat::ride_guard(self);
         crate::arm::step(self, input, &inputs);
         crate::player::keep_guard(self, ridden);
+        crate::seat::keep_guard(self, seat_ridden);
         crate::blade::step(self);
         crate::health::step(self);
         crate::feel::step(self);

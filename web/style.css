@@ -55,6 +55,17 @@ body[data-screen="round"] #overlay { align-items: flex-start; padding-top: 14vh;
 .setting + button { margin-top: 20px; }
 .setting button + button { margin-top: 0; }
 .panel button:focus-visible { outline: 2px solid var(--you); outline-offset: 3px; }
+/* M5: a box of text on a panel: a code to copy or to paste in */
+.field { display: block; margin: 0 0 14px; }
+.field .label { display: block; margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.field input, .field textarea { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--stone-edge); border-radius: 4px; background: var(--stone); color: var(--ink); font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+.field textarea { height: 84px; resize: vertical; word-break: break-all; }
+#room-out { font-size: 34px; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--you); }
+#room-in { font-size: 26px; letter-spacing: 0.3em; text-align: center; text-transform: uppercase; }
+.field + button { margin-top: 4px; }
+#online-status p { margin: 0; color: var(--ink); }
+#online-status { min-width: 0; padding: 14px 20px; }
+body[data-screen="online"] #overlay { flex-direction: column; gap: 12px; }
 table.controls { width: 100%; border-collapse: collapse; }
 table.controls td { padding: 4px 0; vertical-align: middle; font-size: 14px; }
 table.controls td:first-child { width: 46%; }

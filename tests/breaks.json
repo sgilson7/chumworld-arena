@@ -1710,7 +1710,7 @@
   {
     "name": "M1: the guard rides with the view's pitch",
     "file": "crates/core/src/player.rs",
-    "find": "    w.me.arm.shell.pitch = pitch;\n    Some(pitch)",
+    "find": "    f.arm.shell.pitch = pitch;\n    Some(pitch)",
     "replace": "    Some(pitch)",
     "test": "in_first_person_the_guard_follows_the_view_s_heading_and_pitch"
   },
@@ -1724,14 +1724,14 @@
   {
     "name": "M1: a held left button gathers a gesture and holds the view",
     "file": "crates/core/src/player.rs",
-    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
+    "find": "let gathering = input.button(input::SWING) && f.arm.swing.cut.is_none();",
     "replace": "let gathering = false;",
     "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
   },
   {
     "name": "M1: a committed cut leaves the mouse to the view",
     "file": "crates/core/src/player.rs",
-    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
+    "find": "let gathering = input.button(input::SWING) && f.arm.swing.cut.is_none();",
     "replace": "let gathering = input.button(input::SWING);",
     "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
   },
@@ -2000,13 +2000,6 @@
     "find": "            cam.fov = camera::vertical_fov(self.world.settings.fov, self.aspect);",
     "replace": "",
     "test": "the_duel_is_seen_from_the_eye_at_the_field_of_view_set"
-  },
-  {
-    "name": "M2: Host and Join shown but not open",
-    "file": "crates/core/src/api.rs",
-    "find": "                enabled: false,\n                ..button(g, \"online.none\", \"\", label, false)",
-    "replace": "                enabled: true,\n                ..button(g, \"online.none\", \"\", label, false)",
-    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
   },
   {
     "name": "M2: a round's result names the blow",
@@ -2602,5 +2595,250 @@
     "find": "map_or(\"bandit\", |(_, k)| k);",
     "replace": "map_or(\"bandit\", |_| crate::pilot::kind_name(kind));",
     "test": "a_ladder_foe_spawned_by_kind_is_driven_by_its_book_entry"
+  },
+  {
+    "name": "M5 kit: another build is let in",
+    "file": "crates/core/src/online.rs",
+    "find": "if protocol != PROTOCOL || build != self.build {",
+    "replace": "if protocol != PROTOCOL {",
+    "test": "another_build_or_protocol_is_turned_away_with_a_reason"
+  },
+  {
+    "name": "M5 kit: a tick runs on a guess",
+    "file": "crates/core/src/online.rs",
+    "find": "world.tick([a, b]);",
+    "replace": "world.tick([a, a]);",
+    "test": "two_lagged_copies_reach_the_world_of_a_copy_fed_on_time"
+  },
+  {
+    "name": "M5 kit: a message round trip loses the input",
+    "file": "crates/core/src/online.rs",
+    "find": "    Input {\n        tick: u32,\n        input: Input,\n    },",
+    "replace": "    Input {\n        tick: u32,\n        #[serde(skip)]\n        input: Input,\n    },",
+    "test": "every_message_round_trips"
+  },
+  {
+    "name": "M5 kit: the room name carries the build",
+    "file": "crates/core/src/online.rs",
+    "find": "format!(\"{app_id}-p{PROTOCOL}-{code}\")",
+    "replace": "format!(\"{app_id}-b-{code}\")",
+    "test": "the_room_name_carries_the_protocol_and_not_the_build"
+  },
+  {
+    "name": "M5 kit: garbage inputs are taken",
+    "file": "crates/core/src/online.rs",
+    "find": "if !window.contains(&tick) || self.inputs[other].contains_key(&tick) {",
+    "replace": "if false {",
+    "test": "garbage_on_the_wire_changes_only_the_status"
+  },
+  {
+    "name": "M5 kit: a copy guesses the other seat",
+    "file": "crates/core/src/online.rs",
+    "find": "let (Some(&a), Some(&b)) = (self.inputs[0].get(&t), self.inputs[1].get(&t)) else {",
+    "replace": "let (Some(&a), Some(&b)) = (self.inputs[0].get(&t), Some(self.inputs[1].get(&t).unwrap_or(&Input::default()))) else {",
+    "test": "a_copy_waits_for_the_other_seat_and_does_not_guess"
+  },
+  {
+    "name": "M5 kit: a third browser takes the seat",
+    "file": "crates/core/src/online.rs",
+    "find": "        if self.peer.is_some() || self.greeting.is_some() {",
+    "replace": "        if false {",
+    "test": "a_peer_that_leaves_is_reported_and_a_third_is_told_the_room_is_full"
+  },
+  {
+    "name": "M5 kit: disagreeing sums pass",
+    "file": "crates/core/src/online.rs",
+    "find": "            if a != b {\n                self.status = DESYNC;",
+    "replace": "            if a != b {\n                self.status = PLAYING;",
+    "test": "worlds_that_disagree_are_reported_as_a_desync"
+  },
+  {
+    "name": "M5 kit: an early sum is dropped",
+    "file": "crates/core/src/online.rs",
+    "find": "                self.theirs.insert(tick, sum);",
+    "replace": "                let _ = (tick, sum);",
+    "test": "worlds_that_disagree_are_reported_as_a_desync"
+  },
+  {
+    "name": "M5 wire: the input is not the record's own JSON",
+    "file": "crates/core/src/online.rs",
+    "find": "    Input {\n        tick: u32,\n        input: Input,\n    },",
+    "replace": "    Input {\n        tick: u32,\n        #[serde(rename = \"i\")]\n        input: Input,\n    },",
+    "test": "an_input_on_the_wire_is_the_record_s_own_json"
+  },
+  {
+    "name": "M5 rollback: a wrong guess is kept",
+    "file": "crates/core/src/rollback.rs",
+    "find": "            self.redo = Some(self.redo.map_or(tick, |r| r.min(tick)));",
+    "replace": "            let _ = tick;",
+    "test": "rollback_reaches_the_world_lockstep_reaches_under_delay_and_reordering"
+  },
+  {
+    "name": "M5 rollback: the guess is not the last record",
+    "file": "crates/core/src/rollback.rs",
+    "find": "            .or_else(|| theirs.range(..t).next_back().map(|(_, i)| i))",
+    "replace": "            .or(None)",
+    "test": "a_forced_misprediction_recovers_to_the_same_state"
+  },
+  {
+    "name": "M5 rollback: a forced misprediction is not run again",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        for t in from..self.tick {\n            self.run(t);\n        }",
+    "replace": "        for t in from..from {\n            self.run(t);\n        }",
+    "test": "a_forced_misprediction_recovers_to_the_same_state"
+  },
+  {
+    "name": "M5 rollback: the window is not kept",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        self.tick >= self.frontier + WINDOW",
+    "replace": "        self.tick >= self.frontier + WINDOW + 4",
+    "test": "a_copy_never_runs_more_than_its_window_past_its_confirmed_ticks"
+  },
+  {
+    "name": "M5 rollback: a stale record is taken",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        let honest = tick >= self.frontier && tick <= self.tick + LEAD;",
+    "replace": "        let honest = tick <= self.tick + LEAD;",
+    "test": "a_copy_never_runs_more_than_its_window_past_its_confirmed_ticks"
+  },
+  {
+    "name": "M5 rollback: sums of guessed worlds",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        while self.next_sum <= self.tick && self.next_sum <= self.frontier && self.redo.is_none() {",
+    "replace": "        while self.next_sum <= self.tick && self.redo.is_none() {",
+    "test": "rollback_reaches_the_world_lockstep_reaches_under_delay_and_reordering"
+  },
+  {
+    "name": "M5 seat: the guest's knight stands at a pilot's guard",
+    "file": "crates/core/src/seat.rs",
+    "find": "    f.fighter = crate::player::Fighter::new(kind, crate::models::kind_held(kind), 1, at, yaw, true);",
+    "replace": "    let _ = (at, yaw);",
+    "test": "the_guest_s_knight_stands_as_the_host_s_does"
+  },
+  {
+    "name": "M5 seat: the guest's mouse does not turn its view",
+    "file": "crates/core/src/seat.rs",
+    "find": "    if looks {\n        s.aim = s.aim.turned(m);\n    }",
+    "replace": "    if looks {\n        let _ = m;\n    }",
+    "test": "the_guest_s_mouse_turns_the_guest_s_view_as_the_host_s_turns_the_host_s"
+  },
+  {
+    "name": "M5 seat: the guest's knight does not face its view",
+    "file": "crates/core/src/motion.rs",
+    "find": "        let fp = (id == 0 && w.first_person()) || crate::seat::is(w, id);",
+    "replace": "        let fp = id == 0 && w.first_person();",
+    "test": "the_guest_s_mouse_turns_the_guest_s_view_as_the_host_s_turns_the_host_s"
+  },
+  {
+    "name": "M5 seat: the guest's right button does not free the hand",
+    "file": "crates/core/src/seat.rs",
+    "find": "    w.foes[0].fighter.mouse_looks = looks;",
+    "replace": "    w.foes[0].fighter.mouse_looks = true;",
+    "test": "the_guest_s_right_button_moves_the_hand_and_not_the_view"
+  },
+  {
+    "name": "M5 seat: the guest's guard does not ride its view",
+    "file": "crates/core/src/seat.rs",
+    "find": "    crate::player::ride_guard_of(&mut w.foes[0].fighter, guard, l)",
+    "replace": "    let _ = (guard, l);\n    None",
+    "test": "a_record_moves_either_seat_s_knight_alike"
+  },
+  {
+    "name": "M5 seat: the guest's page is not turned round",
+    "file": "crates/core/src/seat.rs",
+    "find": "    std::mem::swap(&mut w.aim, &mut s.aim);",
+    "replace": "    let _ = s;",
+    "test": "the_guest_s_page_sees_the_world_turned_round"
+  },
+  {
+    "name": "M5 seat: the score is not turned round",
+    "file": "crates/core/src/seat.rs",
+    "find": "        r.wins.swap(0, 1);",
+    "replace": "        let _ = &r.wins;",
+    "test": "the_guest_s_page_sees_the_world_turned_round"
+  },
+  {
+    "name": "M5 seat: one seat's rematch begins a duel",
+    "file": "crates/core/src/seat.rs",
+    "find": "    over && inputs.iter().all(|i| i.keys & REMATCH != 0)",
+    "replace": "    over && inputs.iter().any(|i| i.keys & REMATCH != 0)",
+    "test": "a_rematch_needs_both_seats"
+  },
+  {
+    "name": "M5 seat: the guest's record reaches no knight",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            let i = w.seat.as_ref().map(|s| s.input).unwrap_or_default();",
+    "replace": "            let i = Input::default();",
+    "test": "a_record_moves_either_seat_s_knight_alike"
+  },
+  {
+    "name": "M5 versus: a bad room code is read",
+    "file": "crates/core/src/versus.rs",
+    "find": "    let ok = code.len() == CODE_LENGTH && code.bytes().all(|b| CODE_LETTERS.contains(&b));",
+    "replace": "    let ok = !code.is_empty();",
+    "test": "a_room_code_is_five_letters_and_is_read_back_loosely"
+  },
+  {
+    "name": "M5 versus: the look speed is not in the record",
+    "file": "crates/core/src/versus.rs",
+    "find": "    let s = |v: i32| (v as i64 * k.look_pct as i64 / 100) as i32;",
+    "replace": "    let s = |v: i32| v;",
+    "test": "the_reader_s_look_speed_and_pitch_go_into_the_record"
+  },
+  {
+    "name": "M5 game: Host opens no link",
+    "file": "crates/core/src/game.rs",
+    "find": "            (Role::Host, Way::Room) => self.cmd(\"open\", \"room\", room, String::new()),",
+    "replace": "            (Role::Host, Way::Room) => {\n                let _ = room;\n            }",
+    "test": "host_shows_a_room_code_and_join_takes_one"
+  },
+  {
+    "name": "M5 game: a silence never ends the duel",
+    "file": "crates/core/src/game.rs",
+    "find": "                if now - h > crate::versus::TIMEOUT_US {",
+    "replace": "                if now - h > crate::versus::TIMEOUT_US * 1000 {",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: an ended duel stays on the duel screen",
+    "file": "crates/core/src/game.rs",
+    "find": "        if ended && self.screen != Screen::Online && self.screen != Screen::Settings {",
+    "replace": "        if false && ended {",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: a left duel's bye is lost",
+    "file": "crates/core/src/game.rs",
+    "find": "            self.parting.extend(v.session.take_outbox());",
+    "replace": "            v.session.take_outbox();",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: the duel never starts online",
+    "file": "crates/core/src/game.rs",
+    "find": "        if fresh {\n            self.play_ticks = 0;\n            self.show(Screen::Duel);\n        }",
+    "replace": "        if fresh {\n            self.play_ticks = 0;\n        }",
+    "test": "two_games_meet_by_pasted_codes_and_agree"
+  },
+  {
+    "name": "M5 game: the rematch is never asked",
+    "file": "crates/core/src/versus.rs",
+    "find": "            i.keys |= crate::seat::REMATCH;",
+    "replace": "            i.keys |= 0;",
+    "test": "an_online_rematch_waits_for_both_players"
+  },
+  {
+    "name": "M5 game: a closing page leaves no word",
+    "file": "crates/core/src/game.rs",
+    "find": "            \"page.leaving\" => self.leave_online(),",
+    "replace": "            \"page.leaving\" => {}",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 api: the menu keeps Host shut",
+    "file": "crates/core/src/api.rs",
+    "find": "                    button(g, \"online.host\", \"room\", \"host\", false),",
+    "replace": "                    Action {\n                        enabled: false,\n                        ..button(g, \"online.host\", \"room\", \"host\", false)\n                    },",
+    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
   }
 ]

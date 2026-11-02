@@ -68,6 +68,12 @@ What the sword does while the left button is held and the mouse moves: the way t
 
 Not: slash, swipe, combo
 
+### Desync
+
+The two browsers in an online duel no longer agree on the duel: each sums its duel every {online.sum_seconds} second, and the sums for the same moment differ. The duel stops, and the game says so; it is a fault in the game.
+
+Not: lag, rubber-banding
+
 ### Diagonal cut
 
 A cut along a slant, from high on one side to low on the other or the other way: hold the left button and move the mouse clearly on a slant.
@@ -116,7 +122,7 @@ Not: Ser Duncan
 
 ### Host
 
-Opening a duel for another browser to join online. Online play comes after the first release of Practice.
+Opening a duel for another browser to join online, by a room code or by pasted codes. The host fights as the black helm.
 
 Not: server, lobby
 
@@ -134,7 +140,7 @@ Not: Ivory King, Burnt Ivory King
 
 ### Join
 
-Entering a duel another browser has opened online.
+Entering a duel another browser has opened online, by its room code or by pasted codes. The one who joins fights as the ivory crown.
 
 Not: connect, matchmaking
 
@@ -174,6 +180,12 @@ Turning a blow aside with your own blade: the blades meet and neither reaches a 
 
 Not: deflect
 
+### Pasted codes
+
+Meeting online with no relay: the host's page makes an invitation, a long code the host sends to the other player by any means; the other player pastes it and sends back a reply, which the host pastes in turn.
+
+Not: token, key, password
+
 ### Plate
 
 The armour a knight wears: shaped steel over the body, with gaps at the joints. It takes most of a cut and a little of a thrust, wears with each blow it takes, and breaks off once battered enough. A part in plate is never cut off.
@@ -186,9 +198,21 @@ A duel against the computer's knight, from the menu: best of three rounds.
 
 Not: training mode, tutorial
 
+### Relay
+
+A public machine on the internet that introduces two browsers by room code. Once they have met, the duel passes between the browsers directly and the relay carries none of it.
+
+Not: server, lobby
+
 ### Rising cut
 
 A cut from low in front up over the shoulder: hold the left button and move the mouse up.
+
+### Room code
+
+{online.code_length} letters the host's page shows and the other player types after choosing Join, so the two browsers find each other through the relays.
+
+Not: lobby code, PIN, password
 
 ### Round
 
