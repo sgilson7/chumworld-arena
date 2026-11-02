@@ -244,6 +244,7 @@ impl K {
     }
 
     /// A box `size` across centred at `p` in the body's axes, turned by `turn`.
+    #[allow(clippy::too_many_arguments)]
     fn boxed(
         &mut self,
         seg: usize,
@@ -260,6 +261,7 @@ impl K {
     }
 
     /// A ten-sided column of radius `r` from `a` to `b`.
+    #[allow(clippy::too_many_arguments)]
     fn limb(&mut self, seg: usize, layer: Layer, role: Role, a: V3, b: V3, r: Fx, rgb: Rgb) {
         let at = bar(a, b, (2 * r, 2 * r), self.right);
         self.push(seg, layer, role, Mesh::Cyl, at, rgb);

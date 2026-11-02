@@ -6,7 +6,8 @@ shows with `check(condition, "what this shows")`.
 
 Expected values are worked out by hand from the brief and the data (C4),
 never copied from the tool's own output: the player starts with 100 health
-(health.rs, PLAYER) and the bandit with 90 (data/pilots.json). Waits are on
+(health.rs, PLAYER) and Practice's foe, Knight B, with 100
+(data/pilots.json, knight_b; M3). Waits are on
 selectors and data-* attributes the page sets, never on a fixed time.
 """
 
@@ -29,9 +30,9 @@ def run(page, check, engine):
     page.wait_for_selector("#bar-you", timeout=10000)
     check(page.inner_text("#bar-you .who") == STRINGS["who_you"], "the player's bar is named")
     check(page.inner_text("#bar-you .text") == "100 / 100", "the player starts whole: 100 of 100")
-    check(page.inner_text("#bar-foe1 .who") == STRINGS["who_bandit"], "the foe's bar names the bandit")
-    check(page.inner_text("#bar-foe1 .text") == "90 / 90", "the bandit starts whole: 90 of 90")
-    check(page.get_attribute("#bar-foe1", "data-share") == "10000", "the bandit's bar is full")
+    check(page.inner_text("#bar-foe1 .who") == STRINGS["who_knight_b"], "the foe's bar names Knight B")
+    check(page.inner_text("#bar-foe1 .text") == "100 / 100", "Knight B starts whole: 100 of 100")
+    check(page.get_attribute("#bar-foe1", "data-share") == "10000", "Knight B's bar is full")
     page.keyboard.press("Escape")
     page.wait_for_selector('body[data-screen="paused"]', timeout=10000)
     check(page.inner_text("#paused h1") == STRINGS["paused"], "Esc pauses the duel")

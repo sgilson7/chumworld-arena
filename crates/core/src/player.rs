@@ -1095,8 +1095,11 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
             }
             Ok(())
         }
-        // M3: every foe turned this many degrees from facing the player
-        // (90: its right side to them, 180: its back): staging a picture
+        // M3: every foe turned this many degrees from facing straight back
+        // along the player's view (90: its right side to the camera, 180:
+        // its back), its sword sheathed
+        // so it holds the way it faces, its wounds and plate kept: staging
+        // a picture
         "turn" => {
             let d: i32 = value
                 .trim()
@@ -1104,15 +1107,14 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
                 .ok()
                 .filter(|d| (-180..=180).contains(d))
                 .ok_or_else(|| format!("A turn is whole degrees from -180 to 180, not \"{value}\"."))?;
-            let feet = w.player.pos;
+            let toward_camera = fx::wrap(w.aim.yaw + fx::HALF_TURN);
             for f in &mut w.foes {
-                let yaw = fx::wrap(yaw_of(feet.sub(f.body.pos)) + deg(d));
+                let yaw = fx::wrap(toward_camera + deg(d));
                 let at = f.body.pos;
                 f.body = Body::new(at, yaw);
-                f.fighter.look_yaw = yaw;
-                let frame = frame_of(&f.body, &f.fighter.build(), &f.fighter.gait, 0, at.y);
-                f.fighter.arm.carry(&frame);
-                f.fighter.arm.frame = frame;
+                let health = f.fighter.health;
+                f.fighter = Fighter::new(f.fighter.kind, f.fighter.held, f.fighter.team, at, yaw, false);
+                f.fighter.health = health;
             }
             Ok(())
         }
