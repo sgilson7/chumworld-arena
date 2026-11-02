@@ -66,6 +66,13 @@ pub struct Hit {
     pub vel: V3,
     pub speed: Fx,
     pub at: V3,
+    /// M3 (`plate.rs`): the blade's nearest point at the contact, so the
+    /// way from the part's spine to the blade can find a gap in plate
+    pub from: V3,
+    /// M3: what of CHUMWORLD's damage went through, percent (100 with no
+    /// plate), and whether the part wore plate when struck (`plate::land`)
+    pub through_pct: i32,
+    pub plated: bool,
 }
 
 /// Two blades meeting this tick, and how fast they met.
@@ -664,6 +671,9 @@ fn strike(w: &mut World, i: usize, j: usize, body: &[(Part, Swept, Fx)], blow: b
             vel: ve.sub(vb),
             speed,
             at: c.on_b,
+            from: c.on_a,
+            through_pct: 100,
+            plated: false,
         });
     }
     set(&mut w.blades.touching, key, true);
@@ -1098,6 +1108,9 @@ mod tests {
             vel: V3::ZERO,
             speed: fx::int(9),
             at: w.me.pose.head,
+            from: w.me.pose.head,
+            through_pct: 100,
+            plated: false,
         });
         crate::health::step(&mut w);
         assert!(w.player_down());

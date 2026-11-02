@@ -334,6 +334,12 @@ impl Seen {
 
 /// Every pair of instances that fight, with the area they share.
 pub fn fights(insts: &[Inst], table: &MeshTable, seen: &Seen) -> Vec<Fight> {
+    fights_over(insts, table, seen, MIN_AREA)
+}
+
+/// M3: the same, letting be only overlaps of `min_area` or less (a
+/// costume's plates are smaller than `MIN_AREA`'s 10 cm square).
+pub fn fights_over(insts: &[Inst], table: &MeshTable, seen: &Seen, min_area: i64) -> Vec<Fight> {
     let bottom = seen.bottom;
     // the widest gap the depth buffer cannot tell apart, short of the far plane
     let window = if seen.eyes.is_empty() {
@@ -377,7 +383,7 @@ pub fn fights(insts: &[Inst], table: &MeshTable, seen: &Seen) -> Vec<Fight> {
     }
     shared
         .into_iter()
-        .filter(|(_, (area, _, _, _))| *area > MIN_AREA)
+        .filter(|(_, (area, _, _, _))| *area > min_area)
         .map(|((a, b), (area, _, at, n))| Fight { n, a, b, area, at })
         .collect()
 }

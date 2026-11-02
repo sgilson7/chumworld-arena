@@ -19,6 +19,7 @@ pub fn kind_held(kind: Kind) -> Held {
         Kind::Lookout => Held::Rock,
         Kind::Leader | Kind::Trainer => Held::Sword,
         Kind::Merchant | Kind::Villager => Held::Nothing,
+        Kind::KnightA | Kind::KnightB => Held::Longsword,
     }
 }
 
@@ -49,6 +50,15 @@ fn blade(item: Held) -> Blade {
             guard: 28,
             blade: 1000,
             width: 54,
+            thick: 10,
+        },
+        // M3 (CA-Q12: A, R5.2): a 95 cm blade on a grip long enough for
+        // two hands (26 cm), a guard as the sword's, a little narrower
+        Held::Longsword => Blade {
+            hilt: 130,
+            guard: 28,
+            blade: 950,
+            width: 52,
             thick: 10,
         },
         Held::Knife => Blade {
@@ -122,7 +132,7 @@ pub fn model(item: Held, grip: V3, tip: V3) -> Model {
     // a part `size` across centred `y` along the item, `x` across it
     let at = |x: Fx, y: Fx, size: V3| put(&f, v3(x, y, 0), size);
     match item {
-        Held::ShortSword | Held::Sword | Held::Knife => {
+        Held::ShortSword | Held::Sword | Held::Longsword | Held::Knife => {
             let b = blade(item);
             let (steel, edge) = (t.c("steel"), t.c("steel_edge"));
             let (grip_c, brass) = if item == Held::Knife {

@@ -205,6 +205,8 @@ impl Fighter {
             framing: 0,
             prev_framing: 0,
         };
+        // M3: a knight comes in its whole plate (`plate.rs`)
+        f.health.limbs.plate = crate::plate::full(kind);
         f.pose = pose_from(&body, &f);
         f.prev_pose = f.pose;
         f
@@ -377,6 +379,13 @@ pub const EYE_UP: Fx = ONE * 3 / 100;
 /// (22 cm: the face's dots sit 18 to 19 cm out and the hat's cone 20 cm,
 /// R3.2; the shoulders' facets, 31 cm out, stay.)
 pub const HEAD_CULL: Fx = ONE * 22 / 100;
+
+/// `HEAD_CULL` for a body of this build: it grows with the height, as the
+/// head does (M3: a knight's 1.85 m makes it 23.9 cm, so Knight A's visor
+/// slit, 22.7 cm from its head's middle, is not drawn across the eye).
+pub fn head_cull(build: &Build) -> Fx {
+    (HEAD_CULL as i64 * build.height as i64 / pose::build(Kind::Player).height as i64) as Fx
+}
 
 /// The eye in first person, `alpha` of the way from the last tick to this,
 /// for a view facing `aim`: in the head as the body carries it, so a blow
@@ -696,6 +705,7 @@ impl Scabbard {
 fn mouth(item: Held) -> Fx {
     match item {
         Held::Sword => ONE * 138 / 1000,
+        Held::Longsword => ONE * 158 / 1000,
         Held::Cleaver => ONE * 150 / 1000,
         _ => ONE * 106 / 1000,
     }
@@ -990,6 +1000,10 @@ pub fn finish(w: &mut World, input: &Input, foes: &[Input]) {
 /// doors), its shadow, and for the player the hand's target while drawn.
 pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
     for id in 0..count(w) {
+        // M3 hook: a picture of a foe leaves the player out (`wounds.hide_me`)
+        if id == 0 && w.wounds.hide_me {
+            continue;
+        }
         let f = fighter(w, id);
         let p = f.prev_pose.lerp(&f.pose, alpha);
         // the player wears the speedster pieces M4's inventory says (or,
@@ -1003,12 +1017,12 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         crate::wounds::figure(w, id, &p, dress, look, out);
         if id == 0 && w.eye_view {
             // M1: the head and helmet the eye sits in are not drawn
-            cull_near(&mut out.list, from, p.head, HEAD_CULL);
+            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));
         }
         if f.held != Held::Nothing && !w.sticks {
             crate::models::held(f.held, p.grip, p.tip, look, out);
         }
-        if matches!(f.held, Held::ShortSword | Held::Sword) && !w.sticks {
+        if matches!(f.held, Held::ShortSword | Held::Sword | Held::Longsword) && !w.sticks {
             let b = body(w, id);
             let at = Body {
                 pos: b.feet(alpha),
@@ -1060,7 +1074,7 @@ pub fn cull_near(list: &mut Vec<crate::render::Shape>, from: usize, at: V3, r: F
 /// with room.
 pub fn scabbard_size(item: Held) -> (i32, i32) {
     match item {
-        Held::Sword => (74, 32),
+        Held::Sword | Held::Longsword => (74, 32),
         _ => (66, 30),
     }
 }
@@ -1183,6 +1197,67 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
         }
         "reset" => {
             reset(w);
+            Ok(())
+        }
+        // M3: the player made anew as this kind, holding its own weapon,
+        // sheathed where they stand (`knight_a`, `knight_b`; the hook the
+        // duel's start uses to put the player in plate)
+        "me" => {
+            let kind = crate::pilot::kind_named(value.trim())
+                .filter(|k| crate::plate::armoured(*k))
+                .ok_or_else(|| format!("The player is a knight_a or a knight_b, not \"{value}\"."))?;
+            w.me = Fighter::new(
+                kind,
+                crate::models::kind_held(kind),
+                0,
+                w.player.pos,
+                w.player.facing,
+                false,
+            );
+            Ok(())
+        }
+        // M3: every foe moved this many centimetres to the right of the
+        // player's line of sight (negative: left), keeping its facing:
+        // staging a picture clear of the player's own figure
+        "aside" => {
+            let cm: i32 = value
+                .trim()
+                .parse()
+                .ok()
+                .filter(|c| (-1000..=1000).contains(c))
+                .ok_or_else(|| format!("Aside is whole centimetres from -1000 to 1000, not \"{value}\"."))?;
+            let way = right_of(w.aim.yaw).scale(cm * ONE / 100);
+            for f in &mut w.foes {
+                let at = f.body.pos.add(way);
+                let yaw = f.body.facing;
+                f.body = Body::new(at, yaw);
+                let frame = frame_of(&f.body, &f.fighter.build(), &f.fighter.gait, 0, at.y);
+                f.fighter.arm.carry(&frame);
+                f.fighter.arm.frame = frame;
+            }
+            Ok(())
+        }
+        // M3: every foe turned this many degrees from facing straight back
+        // along the player's view (90: its right side to the camera, 180:
+        // its back), its sword sheathed
+        // so it holds the way it faces, its wounds and plate kept: staging
+        // a picture
+        "turn" => {
+            let d: i32 = value
+                .trim()
+                .parse()
+                .ok()
+                .filter(|d| (-180..=180).contains(d))
+                .ok_or_else(|| format!("A turn is whole degrees from -180 to 180, not \"{value}\"."))?;
+            let toward_camera = fx::wrap(w.aim.yaw + fx::HALF_TURN);
+            for f in &mut w.foes {
+                let yaw = fx::wrap(toward_camera + deg(d));
+                let at = f.body.pos;
+                f.body = Body::new(at, yaw);
+                let health = f.fighter.health;
+                f.fighter = Fighter::new(f.fighter.kind, f.fighter.held, f.fighter.team, at, yaw, false);
+                f.fighter.health = health;
+            }
             Ok(())
         }
         "sticks" => {

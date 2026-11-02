@@ -45,6 +45,15 @@ impl Knight {
         }
     }
 
+    /// M3: the body the player wears in a duel: Knight A or Knight B (the
+    /// computer's knight wears the other, `rounds::begin`).
+    pub fn kind(self) -> crate::pose::Kind {
+        match self {
+            Knight::A => crate::pose::Kind::KnightA,
+            Knight::B => crate::pose::Kind::KnightB,
+        }
+    }
+
     pub fn named(s: &str) -> Option<Knight> {
         match s {
             "a" => Some(Knight::A),

@@ -334,6 +334,9 @@ pub struct Limbs {
     pub flinch: u8,
     pub flinch_seg: u8,
     pub flinch_way: V3,
+    /// M3 (`plate.rs`): each part's plate, its integrity left (0: none, or
+    /// broken off and the mail beneath showing)
+    pub plate: [i32; PARTS],
 }
 
 impl Limbs {
@@ -475,6 +478,8 @@ pub struct Piece {
     pub landed: bool,
     /// ticks into its fade out (0: whole)
     pub fade: u8,
+    /// M3: a plate broken off (`shed`), not a part cut off: no stump
+    pub plate: bool,
 }
 
 /// Pieces kept below `pieces.most` for those fading out.
@@ -518,6 +523,9 @@ pub struct State {
     pub freeze_at: Option<u64>,
     /// drops and splats made since the world began, for the tones
     pub made: u32,
+    /// M3: the player's own figure, sword and scabbard left undrawn, so a
+    /// picture of a foe is clear of them (`wounds.hide_me`; never in play)
+    pub hide_me: bool,
 }
 
 fn blood_on(w: &World) -> bool {
@@ -578,7 +586,8 @@ pub fn mark(w: &mut World, h: &Hit, k: usize, cuts: bool) {
     if id >= player::count(w) {
         return;
     }
-    let taken = crate::health::damage(h.speed, h.part);
+    // M3: what went through plate (`plate::land` set it)
+    let taken = crate::health::damage_through(h.speed, h.part, h.through_pct);
     if taken <= 0 {
         return;
     }
@@ -613,7 +622,8 @@ pub fn mark(w: &mut World, h: &Hit, k: usize, cuts: bool) {
         return;
     }
     let dmg = player::fighter(w, id).health.limbs.dmg[s];
-    if s != TORSO && (dmg >= sp.take_off(s, kind) || h.speed >= sp.one_cut(s, kind)) {
+    // M3 (CA-Q8: A): a part that wore plate when struck is never taken off
+    if s != TORSO && !h.plated && (dmg >= sp.take_off(s, kind) || h.speed >= sp.one_cut(s, kind)) {
         take_off(w, id, s, h.vel, h.speed);
     }
 }
@@ -659,28 +669,9 @@ pub fn take_off(w: &mut World, id: usize, s: usize, vel: V3, speed: Fx) {
     // (CHUMWORLD dressed a severed part of the player in the speedster
     // pieces worn; the ring has none, R2.4)
     let dress = (0, 0);
-    let mut piece = piece_of(kind, dress, &now, &before, s, segs);
-    let kick = vel.scale(sp.pieces.kick_pct * ONE / 100);
-    let rise = v3(0, cms(sp.pieces.rise_cms), 0);
-    for (k, share) in [(0, ONE / 3), (1, ONE), (2, ONE * 2 / 3)] {
-        piece.q[k] = piece.q[k].sub(kick.scale(share)).sub(rise);
-    }
-    // near the most kept, the oldest begins to fade out; at the most, the
-    // one furthest faded (or the oldest) goes, so there are never more
-    let most = sp.pieces.most;
-    if w.wounds.pieces.iter().filter(|p| p.fade == 0).count() + PIECE_ROOM >= most {
-        if let Some(old) = w.wounds.pieces.iter_mut().find(|p| p.fade == 0) {
-            old.fade = 1;
-        }
-    }
-    if w.wounds.pieces.len() >= most {
-        let k = (0..w.wounds.pieces.len())
-            .max_by_key(|&k| (w.wounds.pieces[k].fade, std::cmp::Reverse(k)))
-            .unwrap_or(0);
-        w.wounds.pieces.remove(k);
-    }
-    let joint = piece.p[0];
-    w.wounds.pieces.push(piece);
+    let bare = crate::plate::bare(&player::fighter(w, id).health.limbs.plate);
+    let piece = piece_of(kind, dress, bare, &now, &before, s, segs);
+    let joint = fling(w, piece, vel);
     let gore = s == HEAD;
     {
         let f = player::parts_mut(w, id).1;
@@ -715,6 +706,54 @@ pub fn take_off(w: &mut World, id: usize, s: usize, vel: V3, speed: Fx) {
     }
 }
 
+/// M3 (`plate.rs`): the plate on part `s` of fighter `id` broken off by a
+/// blow along `vel`: it falls as a piece, as a part taken off does
+/// (`fling`), with no stump and no blood; the part shows its mail.
+pub fn shed(w: &mut World, id: usize, s: usize, vel: V3) {
+    let (kind, now, before, plate) = {
+        let f = player::fighter(w, id);
+        (f.kind, player::pose_of(w, id), f.prev_pose, f.health.limbs.plate)
+    };
+    if !crate::plate::armoured(kind) || s >= PARTS {
+        return;
+    }
+    // the model before the plate came off (its bit not yet bare)
+    let bare = crate::plate::bare(&plate) & !bit(s);
+    let mut piece = piece_of(kind, (0, 0), bare, &now, &before, s, bit(s));
+    piece.parts = models::knight_plate(kind, &now, bare, s);
+    piece.plate = true;
+    piece.root = s as u8;
+    fling(w, piece, vel);
+}
+
+/// A piece thrown off along `vel` and kept: the oldest fade out near the
+/// most kept. Returns where its joint end is.
+fn fling(w: &mut World, mut piece: Piece, vel: V3) -> V3 {
+    let sp = spec();
+    let kick = vel.scale(sp.pieces.kick_pct * ONE / 100);
+    let rise = v3(0, cms(sp.pieces.rise_cms), 0);
+    for (k, share) in [(0, ONE / 3), (1, ONE), (2, ONE * 2 / 3)] {
+        piece.q[k] = piece.q[k].sub(kick.scale(share)).sub(rise);
+    }
+    // near the most kept, the oldest begins to fade out; at the most, the
+    // one furthest faded (or the oldest) goes, so there are never more
+    let most = sp.pieces.most;
+    if w.wounds.pieces.iter().filter(|p| p.fade == 0).count() + PIECE_ROOM >= most {
+        if let Some(old) = w.wounds.pieces.iter_mut().find(|p| p.fade == 0) {
+            old.fade = 1;
+        }
+    }
+    if w.wounds.pieces.len() >= most {
+        let k = (0..w.wounds.pieces.len())
+            .max_by_key(|&k| (w.wounds.pieces[k].fade, std::cmp::Reverse(k)))
+            .unwrap_or(0);
+        w.wounds.pieces.remove(k);
+    }
+    let joint = piece.p[0];
+    w.wounds.pieces.push(piece);
+    joint
+}
+
 /// The weapon falls from the hand: free until it lies still.
 fn drop_weapon(f: &mut Fighter) {
     let l = &mut f.health.limbs;
@@ -730,13 +769,15 @@ fn drop_weapon(f: &mut Fighter) {
 
 /// The three points of part `s` cut from `pose` (and a tick before, for its
 /// speed), with what it carries.
-fn piece_of(kind: Kind, dress: (u8, u8), now: &Pose, before: &Pose, s: usize, segs: u16) -> Piece {
+fn piece_of(kind: Kind, dress: (u8, u8), bare: u16, now: &Pose, before: &Pose, s: usize, segs: u16) -> Piece {
     let b = pose::build(kind);
     let pts = |p: &Pose| -> [V3; 3] {
         let up = p.head.sub(p.chest).norm();
         let fwd = facing(p.facing, 0);
         let (a, e) = match s {
             HEAD => (p.head.sub(up.scale(b.head / 2)), p.head.add(up.scale(b.head / 2))),
+            // M3: a torso's plate shed (`shed`); a torso is never taken off
+            TORSO => (p.pelvis, p.chest),
             2 | 4 => {
                 let k = (s - 2) / 2;
                 (p.shoulder[k], p.hand[k])
@@ -775,6 +816,7 @@ fn piece_of(kind: Kind, dress: (u8, u8), now: &Pose, before: &Pose, s: usize, se
     let q = pts(before);
     let r = match s {
         HEAD => b.head * 45 / 100,
+        TORSO => mm(blade::TORSO_MM) * b.height / pose::build(Kind::Player).height,
         2..=5 => mm(blade::FOREARM_MM) * b.height / pose::build(Kind::Player).height,
         _ => mm(blade::SHIN_MM) * b.height / pose::build(Kind::Player).height,
     };
@@ -783,8 +825,7 @@ fn piece_of(kind: Kind, dress: (u8, u8), now: &Pose, before: &Pose, s: usize, se
         worn: dress.0,
         variant: dress.1,
     };
-    let m = models::figure_model(kind, now, d);
-    let labels = labels(kind, d);
+    let (m, labels) = dressed(kind, now, d, bare);
     let parts = if labels.len() == m.parts.len() {
         m.parts
             .iter()
@@ -812,6 +853,7 @@ fn piece_of(kind: Kind, dress: (u8, u8), now: &Pose, before: &Pose, s: usize, se
         still: false,
         landed: false,
         fade: 0,
+        plate: false,
     }
 }
 
@@ -1712,12 +1754,12 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
     let p = &flinched(l, p);
     let blood = blood_on(w);
     let marked = l.flash.iter().any(|&t| t > 0) || (blood && l.stain.iter().any(|&t| t > 0));
-    if l.lost == 0 && !marked {
+    let knight = crate::plate::armoured(f.kind);
+    if l.lost == 0 && !marked && !knight {
         models::figure_dressed(f.kind, p, dress, look, out);
         return;
     }
-    let m = models::figure_model(f.kind, p, dress);
-    let labels = labels(f.kind, dress);
+    let (m, labels) = dressed(f.kind, p, dress, crate::plate::bare(&l.plate));
     if labels.len() == m.parts.len() {
         tinted(&m, &labels, !l.lost, l, blood).emit(look.ink(), out);
     } else {
@@ -1735,6 +1777,19 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
         );
     }
     models::figure_shadow(f.kind, p, look, out);
+}
+
+/// A body's model on `p` and the part each of its shapes is on: a knight
+/// in the plate it still wears (`bare`: the parts showing mail), labelled
+/// by the knight's own model; anyone else by `labels`.
+fn dressed(kind: Kind, p: &Pose, dress: Dress, bare: u16) -> (Model, std::borrow::Cow<'static, [u8]>) {
+    if crate::plate::armoured(kind) {
+        let k = models::knight_model(kind, p, bare);
+        let labels = k.segs();
+        (k.model(), std::borrow::Cow::Owned(labels))
+    } else {
+        (models::figure_model(kind, p, dress), labels(kind, dress))
+    }
 }
 
 /// How far the player stands from `at` decides a mark's fade: whole within
@@ -1800,7 +1855,9 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         } else {
             ONE
         };
-        if fade >= ONE {
+        if fade >= ONE && pc.plate {
+            kept.emit(ink, out);
+        } else if fade >= ONE {
             kept.emit(ink, out);
             let root = pc.root as usize;
             cap(
@@ -1936,6 +1993,10 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
                     speed: mps * ONE,
                     at: c.a.lerp(c.b, ONE / 2),
                     vel,
+                    // the blade came in from the side it moves away from
+                    from: c.a.lerp(c.b, ONE / 2).sub(vel.norm().scale(ONE / 2)),
+                    through_pct: 100,
+                    plated: false,
                 };
                 stage(w, hit);
             }
@@ -1992,6 +2053,14 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
             }
             Ok(())
         }
+        "hide_me" => {
+            w.wounds.hide_me = match value.trim() {
+                "on" | "true" => true,
+                "off" | "false" => false,
+                other => return Err(format!("Hide me is on or off, not \"{other}\".")),
+            };
+            Ok(())
+        }
         "blood" => {
             w.settings.blood = match value.trim() {
                 "on" | "true" => true,
@@ -2006,8 +2075,13 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 
 /// A blow staged as the blades would land it: health taken, then marked.
 pub fn stage(w: &mut World, hit: Hit) {
+    let mut hit = hit;
+    crate::plate::land(w, &mut hit);
     let id = hit.on as usize;
-    player::parts_mut(w, id).1.health.take(hit.speed, hit.part);
+    player::parts_mut(w, id)
+        .1
+        .health
+        .take_through(hit.speed, hit.part, hit.through_pct);
     mark(w, &hit, 0, true);
 }
 

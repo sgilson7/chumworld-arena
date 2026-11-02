@@ -63,7 +63,9 @@ impl Screen {
     }
 }
 
-/// The foe Practice puts in the ring: the computer's knight (M2, R4.4).
+/// The foe Practice puts in the ring: the computer's knight (M2, R4.4),
+/// thinking with the `knight` pilot. Its body is the knight the player does
+/// not wear (M3, CA-Q13: A; `rounds::begin`).
 pub const PRACTICE_FOE: &str = "knight";
 /// The most pixels the drawing buffer may hold (2560 × 1600); a larger
 /// screen draws at a lower resolution, scaled up by the browser.
@@ -189,7 +191,8 @@ impl Game {
     fn start_practice(&mut self) {
         self.duels += 1;
         self.world = self.fresh_world();
-        crate::rounds::begin(&mut self.world, PRACTICE_FOE).expect("the knight is in the pilots' book");
+        crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())
+            .expect("the knight is in the pilots' book");
         for (n, v) in self.staged.clone() {
             // each was tried on the world when it was staged
             let _ = self.world.act(&n, &v);
@@ -500,7 +503,7 @@ impl Game {
                     .split_once('=')
                     .ok_or_else(|| format!("A staged act is name=value, not \"{value}\"."))?;
                 let mut trial = self.fresh_world();
-                crate::rounds::begin(&mut trial, PRACTICE_FOE)?;
+                crate::rounds::begin(&mut trial, PRACTICE_FOE, self.kept.knight.kind())?;
                 trial.act(n, v)?;
                 self.staged.push((n.to_string(), v.to_string()));
             }
@@ -580,6 +583,52 @@ pub(crate) mod tests {
         }
     }
 
+    /// M3 (R4.8): the save's look B puts the player in Knight B and the
+    /// computer's knight in Knight A, and its bar reads "The black helm".
+    #[test]
+    fn the_save_s_knight_look_b_swaps_the_knights() {
+        let mut g = game();
+        g.act("save.knight", "b").unwrap();
+        practice(&mut g);
+        assert_eq!(g.world.me.kind, crate::pose::Kind::KnightB);
+        assert_eq!(g.world.foes[0].fighter.kind, crate::pose::Kind::KnightA);
+        assert_eq!(g.world.foes[0].brain.key, "knight");
+        let bars = crate::api::bars(&g);
+        assert_eq!(bars[1].who, "The black helm");
+    }
+
+    /// M3 in first person: whichever knight the player wears, nothing of
+    /// its own figure is drawn ahead of the eye within 25 cm (Knight A's
+    /// visor slit stood 12 cm ahead and 11 cm below it, 22.7 cm from the
+    /// head's middle, past the player's 22 cm cull, and filled the middle
+    /// of the view). Its shoulders, 38 cm off and more, stay.
+    #[test]
+    fn neither_knight_s_helm_is_drawn_across_its_own_eye() {
+        for look in ["a", "b"] {
+            let mut g = game();
+            g.act("save.knight", look).unwrap();
+            practice(&mut g);
+            let mut w = g.world.clone();
+            w.foes.clear();
+            let eye = crate::player::eye(&w, ONE, w.aim);
+            let ahead = crate::geom::facing(w.aim.yaw, 0);
+            let mut out = crate::render::Shapes::default();
+            crate::player::draw(&w, ONE, &crate::look::tests::look(), &mut out);
+            let near: Vec<_> = out
+                .list
+                .iter()
+                .filter(|s| s.at.t.dist(eye) < ONE / 4 && s.at.t.sub(eye).dot(ahead) > 0)
+                .collect();
+            assert!(
+                near.is_empty(),
+                "look {look}: {} shapes before the eye",
+                near.len()
+            );
+            let shoulders = out.list.iter().filter(|s| s.at.t.dist(eye) < ONE / 2).count();
+            assert!(shoulders > 0, "look {look}: the shoulders are still drawn");
+        }
+    }
+
     /// The title, then the menu, then Practice: a duel in rounds against
     /// the computer's knight, round 1.
     pub fn practice(g: &mut Game) {
@@ -601,6 +650,9 @@ pub(crate) mod tests {
         assert_eq!(g.world.rounds.as_ref().unwrap().round, 1);
         assert!(g.world.first_person(), "played from the helmet");
         assert!(g.world.eye_view);
+        // M3: the player wears Knight A, the computer's knight Knight B
+        assert_eq!(g.world.foes[0].fighter.kind, crate::pose::Kind::KnightB);
+        assert_eq!(g.world.me.kind, crate::pose::Kind::KnightA);
         assert_eq!(
             g.act("screen.show", "nowhere"),
             Err("There is no screen \"nowhere\".".into())

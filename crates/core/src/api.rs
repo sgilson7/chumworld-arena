@@ -211,8 +211,15 @@ pub fn bars(g: &Game) -> Vec<Bar> {
             let who = if id == 0 {
                 s.get("who_you")
             } else {
-                // M2: by the pilot's entry, so the knight is named a knight
-                s.get(&format!("who_{}", g.world.foes[id - 1].brain.key))
+                // M2: by the pilot's entry; M3: a foe in a knight's plate by
+                // the knight it wears ("The ivory crown"), whatever pilot
+                // thinks for it
+                let f = &g.world.foes[id - 1];
+                if crate::plate::armoured(f.fighter.kind) {
+                    s.get(&format!("who_{}", crate::pilot::kind_name(f.fighter.kind)))
+                } else {
+                    s.get(&format!("who_{}", f.brain.key))
+                }
             };
             bar(g, id, who)
         })
@@ -602,11 +609,14 @@ mod tests {
         assert_eq!(bars[0]["who"], "You");
         assert_eq!(bars[0]["text"], "100 / 100");
         assert_eq!(bars[0]["share"], 10_000);
-        assert_eq!(bars[1]["who"], "Knight");
+        // M3: Practice's foe wears Knight B, and its bar reads that knight's
+        // working label (data/strings.json `who_knight_b`)
+        assert_eq!(bars[1]["who"], "The ivory crown");
         // the knight's 100 of 100 (data/pilots.json)
         assert_eq!(bars[1]["text"], "100 / 100");
         g.world.foes[0].fighter.health.hp = 30;
         let u = json(&ok(&ui(&g)));
+        // 30 of 100 is 30%: 3 000 hundredths of a percent
         assert_eq!(u["ok"]["bars"][1]["share"], 3_000);
         assert_eq!(u["ok"]["bars"][1]["text"], "30 / 100");
         g.world.foes[0].fighter.health.hp = -12;

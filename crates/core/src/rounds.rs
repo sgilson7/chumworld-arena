@@ -24,7 +24,7 @@ use crate::fx::{self, Fx, ONE};
 use crate::geom::{facing, yaw_of, V3};
 use crate::input::Input;
 use crate::player::{self, Body, Fighter};
-use crate::pose::{Held, Kind};
+use crate::pose::Kind;
 use crate::swing::Way;
 use crate::world::World;
 
@@ -126,6 +126,9 @@ pub struct Rounds {
     pub outside: [u32; 2],
     /// the pilot the foe is spawned with each round (`pilot::pilot_named`)
     pub foe: String,
+    /// M3: the bodies each round stands up: the player's, the foe's (a
+    /// body and a pilot are chosen apart, `Brain::key`)
+    pub bodies: [Kind; 2],
 }
 
 impl Rounds {
@@ -140,10 +143,15 @@ impl Rounds {
     }
 }
 
-/// A duel in rounds begun: the player against the pilot `foe` (by the name
-/// `pilot::pilot_named` takes), round 1 at the opening marks.
-pub fn begin(w: &mut World, foe: &str) -> Result<(), String> {
-    crate::pilot::pilot_named(foe).ok_or_else(|| format!("There is no pilot \"{foe}\"."))?;
+/// A duel in rounds begun: the player, in the body `me`, against the pilot
+/// `foe` (by the name `pilot::pilot_named` takes), round 1 at the opening
+/// marks. M3: the foe wears its pilot's body, unless that is the knight the
+/// player wears; then it wears the other knight, so the two knights in the
+/// ring are never alike (the save's look B puts the player in Knight B and
+/// the computer's knight in Knight A, R4.8).
+pub fn begin(w: &mut World, foe: &str, me: Kind) -> Result<(), String> {
+    let (body, _) = crate::pilot::pilot_named(foe).ok_or_else(|| format!("There is no pilot \"{foe}\"."))?;
+    let theirs = if body == me { other_knight(body) } else { body };
     w.rounds = Some(Rounds {
         round: 1,
         wins: [0, 0],
@@ -153,23 +161,38 @@ pub fn begin(w: &mut World, foe: &str) -> Result<(), String> {
         last_blow: [None, None],
         outside: [0, 0],
         foe: foe.to_string(),
+        bodies: [me, theirs],
     });
     opening(w);
     Ok(())
+}
+
+/// The knight that is not `k`; any other body is itself.
+pub fn other_knight(k: Kind) -> Kind {
+    match k {
+        Kind::KnightA => Kind::KnightB,
+        Kind::KnightB => Kind::KnightA,
+        other => other,
+    }
 }
 
 /// The fighters stood at their opening marks, whole, swords drawn: on the
 /// line through the ring's middle along `world::START_YAW`, the player
 /// behind the middle and the foe ahead of it, apart by both reaches and
 /// `OPENING_SPACE`, each facing the other. Blades, blood, the feel of the
-/// last blow and the pilots' memory are cleared.
+/// last blow and the pilots' memory are cleared. M3: each stands in the
+/// body `Rounds::bodies` names, a knight in its whole plate again
+/// (`plate::full`, through `Fighter::new` and `pilot::foe_keyed`), holding
+/// its own weapon (a knight's longsword, `models::kind_held`).
 pub fn opening(w: &mut World) {
     let Some(r) = w.rounds.as_ref() else {
         return;
     };
-    let (kind, key) = crate::pilot::pilot_named(&r.foe).expect("begun with a known pilot");
+    let (_, key) = crate::pilot::pilot_named(&r.foe).expect("begun with a known pilot");
+    let [mine_kind, kind] = r.bodies;
+    let held = crate::models::kind_held(mine_kind);
     let yaw = crate::world::START_YAW;
-    let me = Fighter::new(Kind::Player, Held::ShortSword, 0, V3::ZERO, yaw, true);
+    let me = Fighter::new(mine_kind, held, 0, V3::ZERO, yaw, true);
     let salt = w.rng.next_u64();
     let them = crate::pilot::foe_keyed(&w.pilots.book, kind, key, V3::ZERO, yaw, salt);
     let gap = crate::pilot::reach(&me) + crate::pilot::reach(&them.fighter) + OPENING_SPACE;
@@ -178,7 +201,7 @@ pub fn opening(w: &mut World) {
     let theirs = ahead.scale(gap - gap / 2);
     // each built where it stands, so its arm starts there and not at the middle
     w.player = Body::new(mine, yaw);
-    w.me = Fighter::new(Kind::Player, Held::ShortSword, 0, mine, yaw, true);
+    w.me = Fighter::new(mine_kind, held, 0, mine, yaw, true);
     let back = yaw_of(mine.sub(theirs));
     let mut foe = crate::pilot::foe_keyed(&w.pilots.book, kind, key, theirs, back, salt);
     foe.brain.control = w.pilots.control.clone();
@@ -289,12 +312,13 @@ fn fight(w: &mut World, r: &mut Rounds) {
 }
 
 /// `act("rounds.<name>", value)`: `begin` a duel in rounds against the
-/// pilot named; `clock` sets the round's ticks and `score` the rounds won
+/// pilot named, the player in the body it wears; `clock` sets the round's ticks and `score` the rounds won
 /// ("1,0"), staging sudden death or a duel's last round for a test or a
 /// picture.
 pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
     match name {
-        "begin" => begin(w, value.trim()),
+        // the player keeps the body it wears (`duel.me` dresses it first)
+        "begin" => begin(w, value.trim(), w.me.kind),
         "clock" => {
             let t: u32 = value
                 .trim()
@@ -360,7 +384,7 @@ mod tests {
 
     fn duel() -> World {
         let mut w = World::new(3);
-        begin(&mut w, "knight").unwrap();
+        begin(&mut w, "knight", Kind::KnightA).unwrap();
         crate::player::act(&mut w, "pilot", "still").unwrap();
         w
     }
@@ -371,8 +395,8 @@ mod tests {
         b.prev_pos = at;
     }
 
-    /// By hand: the player's reach and the knight's are both the short
-    /// sword's on a body of their build; the gap between their feet is
+    /// By hand: the player's reach and the knight's are both the longsword's
+    /// on a knight's 1.85 m build (M3); the gap between their feet is
     /// both reaches and 4 m, split either side of the middle along the
     /// opening heading.
     #[test]
@@ -393,9 +417,10 @@ mod tests {
             w.foes[0].fighter.health.hp, 100,
             "the knight's 100 (data/pilots.json)"
         );
-        // a short sword reaches about a metre and a third, so they stand
-        // about 6.7 m apart: more than 6, less than 7.5
-        assert!(want > int(6) && want < int(15) / 2, "{want}");
+        // M3: the longsword on a knight reaches about 1.74 m (the short
+        // sword on the player's build was about 1.35 m), so they stand
+        // about 7.5 m apart: more than 7, less than 8
+        assert!(want > int(7) && want < int(8), "{want}");
     }
 
     /// A fall ends the round: the other side wins it, the beat runs three
@@ -519,6 +544,56 @@ mod tests {
             })
         );
         assert_eq!(r.wins, [0, 1]);
+    }
+
+    /// M3: every round stands both fighters up in their own knight's plate,
+    /// whole: plate battered or broken off in one round is back in the
+    /// next (R5.17). By hand: Knight A for the player, Knight B for the
+    /// computer's knight, both holding the longsword, and every part's
+    /// plate at `INTEGRITY` (head 66, torso 45, arms 27, legs 30).
+    #[test]
+    fn each_round_opens_with_both_knights_in_whole_plate_and_the_longsword() {
+        let mut w = duel();
+        assert_eq!(
+            (w.me.kind, w.foes[0].fighter.kind),
+            (Kind::KnightA, Kind::KnightB)
+        );
+        assert_eq!(w.me.held, crate::pose::Held::Longsword);
+        assert_eq!(w.foes[0].fighter.held, crate::pose::Held::Longsword);
+        let whole = [66, 45, 27, 27, 27, 27, 30, 30, 30, 30];
+        // the round's blows: the player's helm broken off and the foe's
+        // torso plate battered, the foe felled
+        w.me.health.limbs.plate[0] = 0;
+        w.foes[0].fighter.health.limbs.plate[1] = 12;
+        w.foes[0].fighter.health.hp = 0;
+        for _ in 0..=BEAT_TICKS {
+            w.step(&Input::default());
+        }
+        assert_eq!(w.rounds.as_ref().unwrap().round, 2);
+        assert_eq!(
+            (w.me.kind, w.foes[0].fighter.kind),
+            (Kind::KnightA, Kind::KnightB)
+        );
+        assert_eq!(w.me.health.limbs.plate, whole, "the player's plate whole again");
+        assert_eq!(
+            w.foes[0].fighter.health.limbs.plate, whole,
+            "the knight's plate whole again"
+        );
+        assert_eq!(w.foes[0].brain.key, "knight", "still the knight's pilot");
+    }
+
+    /// The two knights in the ring are never alike: a player in Knight B
+    /// puts the computer's knight in Knight A.
+    #[test]
+    fn a_player_in_knight_b_faces_the_computer_s_knight_in_knight_a() {
+        let mut w = World::new(3);
+        begin(&mut w, "knight", Kind::KnightB).unwrap();
+        assert_eq!(
+            (w.me.kind, w.foes[0].fighter.kind),
+            (Kind::KnightB, Kind::KnightA)
+        );
+        assert_eq!(w.foes[0].brain.key, "knight");
+        assert_eq!(w.rounds.as_ref().unwrap().bodies, [Kind::KnightB, Kind::KnightA]);
     }
 
     #[test]

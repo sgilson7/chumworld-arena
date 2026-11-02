@@ -212,17 +212,20 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "bandit" => Some(Kind::Bandit),
         "leader" => Some(Kind::Leader),
         "ant_king" => Some(Kind::AntKing),
+        "knight_a" => Some(Kind::KnightA),
+        "knight_b" => Some(Kind::KnightB),
         _ => None,
     }
 }
 
 /// M2: a pilot by the name the act takes, with the body it drives: the
 /// kinds above under their own names, and the computer's knight, the
-/// practice foe, on the bandit's body (M3 brings the knights' own figures,
-/// CA-7) with its own entry in the book (`data/pilots.json`, R4.4).
+/// practice foe, with its own entry in the book (`data/pilots.json`, R4.4),
+/// in Knight B's plate (M3, CA-Q13: A; a duel in rounds may dress it in
+/// Knight A instead, `rounds::begin`).
 pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
     match name {
-        "knight" => Some((Kind::Bandit, "knight")),
+        "knight" => Some((Kind::KnightB, "knight")),
         _ => kind_named(name).map(|k| (k, key_of(k))),
     }
 }
@@ -238,6 +241,8 @@ fn key_of(k: Kind) -> &'static str {
         Kind::Orc => "orc",
         Kind::Leader => "leader",
         Kind::AntKing => "ant_king",
+        Kind::KnightA => "knight_a",
+        Kind::KnightB => "knight_b",
         _ => "bandit",
     }
 }
@@ -246,6 +251,7 @@ fn held_named(s: &str) -> Held {
     match s {
         "cleaver" => Held::Cleaver,
         "sword" => Held::Sword,
+        "longsword" => Held::Longsword,
         _ => Held::ShortSword,
     }
 }
@@ -296,6 +302,7 @@ pub fn foe_keyed(book: &Book, kind: Kind, key: &str, at: V3, yaw: i32, salt: u64
     let spec = &book.kinds[key];
     let mut f = Fighter::new(kind, held_named(&spec.held), 1, at, yaw, true);
     f.health = crate::health::Health::new(spec.health);
+    f.health.limbs.plate = crate::plate::full(kind);
     f.servo_pct = spec.servo_pct;
     // drawn at its own guard
     let frame = f.arm.frame;

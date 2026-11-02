@@ -667,8 +667,8 @@
   {
     "name": "M1 health: a blow takes by speed over 1.5 m/s",
     "file": "crates/core/src/health.rs",
-    "find": "    (over * PER_MPS_PCT as i64 * pct / 10_000 / ONE as i64) as i32",
-    "replace": "    (over * PER_MPS_PCT as i64 * pct / 5_000 / ONE as i64) as i32",
+    "find": "    (over * PER_MPS_PCT as i64 * share * pct.max(0) as i64 / 1_000_000 / ONE as i64) as i32",
+    "replace": "    (over * PER_MPS_PCT as i64 * share * pct.max(0) as i64 / 500_000 / ONE as i64) as i32",
     "test": "a_blow_takes_health_by_its_speed_and_where_it_lands"
   },
   {
@@ -1689,7 +1689,7 @@
   {
     "name": "M0 game: Practice puts no foe in the ring",
     "file": "crates/core/src/game.rs",
-    "find": "        crate::rounds::begin(&mut self.world, PRACTICE_FOE).expect(\"the knight is in the pilots' book\");",
+    "find": "        crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())\n            .expect(\"the knight is in the pilots' book\");",
     "replace": "        let _ = PRACTICE_FOE;",
     "test": "the_game_opens_on_the_title_then_the_menu_and_practice_begins_a_duel_in_rounds"
   },
@@ -1766,7 +1766,7 @@
   {
     "name": "M1: the head is not drawn round the eye",
     "file": "crates/core/src/player.rs",
-    "find": "            cull_near(&mut out.list, from, p.head, HEAD_CULL);",
+    "find": "            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));",
     "replace": "",
     "test": "in_first_person_the_eye_sits_in_the_head_and_the_head_is_not_drawn"
   },
@@ -2018,8 +2018,267 @@
   {
     "name": "M2: the knight is named in its bar",
     "file": "crates/core/src/api.rs",
-    "find": "                s.get(&format!(\"who_{}\", g.world.foes[id - 1].brain.key))",
-    "replace": "                s.get(&format!(\"who_{}\", crate::pilot::kind_name(g.world.foes[id - 1].fighter.kind)))",
+    "find": "                    s.get(&format!(\"who_{}\", crate::pilot::kind_name(f.fighter.kind)))",
+    "replace": "                    s.get(&format!(\"who_{}\", f.brain.key))",
     "test": "the_duel_shows_both_fighters_health_in_words_and_as_a_share"
+  },
+  {
+    "name": "M3 plate: a cut on plate keeps 30%",
+    "file": "crates/core/src/plate.rs",
+    "find": "pub const CUT_THROUGH_PCT: i32 = 30;",
+    "replace": "pub const CUT_THROUGH_PCT: i32 = 40;",
+    "test": "a_cut_on_plate_does_thirty_percent_and_wears_it"
+  },
+  {
+    "name": "M3 plate: a thrust on plate keeps 80%",
+    "file": "crates/core/src/plate.rs",
+    "find": "pub const THRUST_THROUGH_PCT: i32 = 80;",
+    "replace": "pub const THRUST_THROUGH_PCT: i32 = 90;",
+    "test": "a_thrust_on_plate_does_eighty_percent"
+  },
+  {
+    "name": "M3 plate: the armpit is a gap",
+    "file": "crates/core/src/plate.rs",
+    "find": "if share <= ARMPIT_PCT && inward != V3::ZERO",
+    "replace": "if false && inward != V3::ZERO",
+    "test": "a_cut_into_the_armpit_does_all_its_damage_and_the_same_cut_outside_does_not"
+  },
+  {
+    "name": "M3 plate: the visor's slit is a gap",
+    "file": "crates/core/src/plate.rs",
+    "find": "if (lo..=hi).contains(&up) && d.dot(front) >= VISOR_COS {",
+    "replace": "if false && d.dot(front) >= VISOR_COS {",
+    "test": "the_visor_s_slit_and_the_back_of_the_knee_are_gaps_from_their_own_side_only"
+  },
+  {
+    "name": "M3 plate: the back of the knee is a gap",
+    "file": "crates/core/src/plate.rs",
+    "find": "if near_knee && behind != V3::ZERO",
+    "replace": "if false && behind != V3::ZERO",
+    "test": "the_visor_s_slit_and_the_back_of_the_knee_are_gaps_from_their_own_side_only"
+  },
+  {
+    "name": "M3 plate: a gap goes through whole",
+    "file": "crates/core/src/plate.rs",
+    "find": "if !plated || gap {",
+    "replace": "if !plated {",
+    "test": "a_blow_is_a_thrust_within_forty_five_degrees_of_the_blade_s_line"
+  },
+  {
+    "name": "M3 plate: a thrust is within 45 degrees of the blade's line",
+    "file": "crates/core/src/plate.rs",
+    "find": "v.dot(a) >= THRUST_COS",
+    "replace": "v.dot(a) >= ONE",
+    "test": "a_blow_is_a_thrust_within_forty_five_degrees_of_the_blade_s_line"
+  },
+  {
+    "name": "M3 plate: what plate takes wears it",
+    "file": "crates/core/src/plate.rs",
+    "find": "l.plate[s] = (l.plate[s] - taken).max(0);",
+    "replace": "l.plate[s] = l.plate[s].max(0);",
+    "test": "plate_breaks_off_once_it_has_taken_its_integrity_and_then_shows_mail"
+  },
+  {
+    "name": "M3 plate: a plate at no integrity falls as a piece",
+    "file": "crates/core/src/plate.rs",
+    "find": "    if left == 0 {\n        wounds::shed(w, id, s, hit.vel);",
+    "replace": "    if left < 0 {\n        wounds::shed(w, id, s, hit.vel);",
+    "test": "plate_breaks_off_once_it_has_taken_its_integrity_and_then_shows_mail"
+  },
+  {
+    "name": "M3 plate: no plate for an unarmoured kind",
+    "file": "crates/core/src/plate.rs",
+    "find": "    if armoured(kind) {\n        INTEGRITY",
+    "replace": "    if true {\n        INTEGRITY",
+    "test": "a_kind_without_plate_takes_chumworld_s_blow_unchanged"
+  },
+  {
+    "name": "M3 plate: a plated part is never severed",
+    "file": "crates/core/src/wounds.rs",
+    "find": "if s != TORSO && !h.plated && (",
+    "replace": "if s != TORSO && (",
+    "test": "a_plated_limb_is_never_severed_whatever_the_speed"
+  },
+  {
+    "name": "M3 plate: a part's damage is what went through",
+    "file": "crates/core/src/wounds.rs",
+    "find": "let taken = crate::health::damage_through(h.speed, h.part, h.through_pct);",
+    "replace": "let taken = crate::health::damage(h.speed, h.part);",
+    "test": "a_cut_on_plate_does_thirty_percent_and_wears_it"
+  },
+  {
+    "name": "M3 plate: a staged blow meets plate",
+    "file": "crates/core/src/wounds.rs",
+    "find": "    let mut hit = hit;\n    crate::plate::land(w, &mut hit);",
+    "replace": "    let mut hit = hit;\n    hit.through_pct = 100;",
+    "test": "a_cut_on_plate_does_thirty_percent_and_wears_it"
+  },
+  {
+    "name": "M3 plate: the blades' blows meet plate",
+    "file": "crates/core/src/health.rs",
+    "find": "        crate::plate::land(w, &mut h);",
+    "replace": "        h.through_pct = 100;",
+    "test": "a_blow_the_blades_find_meets_plate_before_health_is_taken"
+  },
+  {
+    "name": "M3 plate: health takes what went through",
+    "file": "crates/core/src/health.rs",
+    "find": ".take_through(h.speed, h.part, h.through_pct);",
+    "replace": ".take(h.speed, h.part);",
+    "test": "a_blow_the_blades_find_meets_plate_before_health_is_taken"
+  },
+  {
+    "name": "M3 plate: the player's knight comes in plate",
+    "file": "crates/core/src/player.rs",
+    "find": "f.health.limbs.plate = crate::plate::full(kind);",
+    "replace": "let _ = kind;",
+    "test": "a_knight_comes_in_whole_plate_and_anyone_else_in_none"
+  },
+  {
+    "name": "M3 plate: the computer's knight comes in plate",
+    "file": "crates/core/src/pilot.rs",
+    "find": "f.health.limbs.plate = crate::plate::full(kind);",
+    "replace": "let _ = kind;",
+    "test": "a_knight_comes_in_whole_plate_and_anyone_else_in_none"
+  },
+  {
+    "name": "M3 plate: through plate is rounded once",
+    "file": "crates/core/src/health.rs",
+    "find": "* share * pct.max(0) as i64 / 1_000_000 / ONE as i64",
+    "replace": "* share / 10_000 / ONE as i64 * pct.max(0) as i64 / 100",
+    "test": "a_thrust_on_plate_does_eighty_percent"
+  },
+  {
+    "name": "M3 costume: A's pauldrons wider than its fauld",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "k.w(250 - 8 * i)",
+    "replace": "k.w(120 - 8 * i)",
+    "test": "each_knight_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M3 costume: B's hem wider than its belt",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "rx += k.w(46);",
+    "replace": "rx += k.w(2);",
+    "test": "each_knight_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M3 costume: B's crown over its helm",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "let tall = k.s(h);",
+    "replace": "let tall = k.s(h / 8);",
+    "test": "each_knight_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M3 costume: plates stand proud of the limb",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "let rr = r + self.proud();",
+    "replace": "let rr = r;",
+    "test": "no_plate_shares_a_face_with_another_colour"
+  },
+  {
+    "name": "M3 costume: under the triangle cap",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "        self.push(seg, Layer::Plate, Role::Body, Mesh::Cyl, at, rgb);\n    }",
+    "replace": "        self.push(seg, Layer::Plate, Role::Body, Mesh::Sphere, at, rgb);\n    }",
+    "test": "each_knight_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M3 costume: every part dressed",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "if k.plated(fa) {",
+    "replace": "if false && k.plated(fa) {",
+    "test": "every_part_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M3 costume: a bare part shows mail",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "(Layer::Mail, self.sc.mail)",
+    "replace": "(Layer::Mail, self.sc.frame)",
+    "test": "every_part_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M3 costume: the slit drawn where the visor gap is",
+    "file": "crates/core/src/models/knight.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 30);",
+    "test": "the_drawn_slit_is_where_the_visor_gap_is"
+  },
+  {
+    "name": "M3 costume: schemes clear of the highlights",
+    "file": "data/models.json",
+    "find": "\"accent\": [\n        74,",
+    "replace": "\"accent\": [\n        122,",
+    "test": "the_schemes_stand_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M3 longsword: a 95 cm blade",
+    "file": "crates/core/src/models/held.rs",
+    "find": "            blade: 950,",
+    "replace": "            blade: 900,",
+    "test": "the_longsword_is_two_handed_with_a_95_cm_blade"
+  },
+  {
+    "name": "M3 longsword: heft 80",
+    "file": "crates/core/src/arm.rs",
+    "find": "pub const LONGSWORD_HEFT_PCT: i32 = 80;",
+    "replace": "pub const LONGSWORD_HEFT_PCT: i32 = 100;",
+    "test": "the_longsword_is_two_handed_with_a_95_cm_blade"
+  },
+  {
+    "name": "M3 hook: Practice puts Knight A against Knight B",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        \"knight\" => Some((Kind::KnightB, \"knight\")),",
+    "replace": "        \"knight\" => Some((Kind::Bandit, \"knight\")),",
+    "test": "the_game_opens_on_the_title_then_the_menu_and_practice_begins_a_duel_in_rounds"
+  },
+  {
+    "name": "M3 merge: Practice puts the player in Knight A",
+    "file": "crates/core/src/save.rs",
+    "find": "            Knight::A => crate::pose::Kind::KnightA,",
+    "replace": "            Knight::A => crate::pose::Kind::KnightB,",
+    "test": "the_game_opens_on_the_title_then_the_menu_and_practice_begins_a_duel_in_rounds"
+  },
+  {
+    "name": "M3 merge: the save's look B puts the player in Knight B",
+    "file": "crates/core/src/game.rs",
+    "find": "crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())",
+    "replace": "crate::rounds::begin(&mut self.world, PRACTICE_FOE, crate::pose::Kind::KnightA)",
+    "test": "the_save_s_knight_look_b_swaps_the_knights"
+  },
+  {
+    "name": "M3 merge: the two knights in the ring are never alike",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    let theirs = if body == me { other_knight(body) } else { body };",
+    "replace": "    let theirs = body;",
+    "test": "a_player_in_knight_b_faces_the_computer_s_knight_in_knight_a"
+  },
+  {
+    "name": "M3 merge: each round stands the player in whole plate again",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    w.me = Fighter::new(mine_kind, held, 0, mine, yaw, true);",
+    "replace": "    let kept = w.me.health.limbs.plate;\n    w.me = Fighter::new(mine_kind, held, 0, mine, yaw, true);\n    w.me.health.limbs.plate = kept;",
+    "test": "each_round_opens_with_both_knights_in_whole_plate_and_the_longsword"
+  },
+  {
+    "name": "M3 merge: the player's knight holds the longsword",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    let held = crate::models::kind_held(mine_kind);",
+    "replace": "    let held = crate::pose::Held::ShortSword;",
+    "test": "each_round_opens_with_both_knights_in_whole_plate_and_the_longsword"
+  },
+  {
+    "name": "M3 merge: the computer's knight holds the longsword",
+    "file": "data/pilots.json",
+    "find": "\"knight\": {\"held\": \"longsword\",",
+    "replace": "\"knight\": {\"held\": \"short_sword\",",
+    "test": "each_round_opens_with_both_knights_in_whole_plate_and_the_longsword"
+  },
+  {
+    "name": "M3 merge: the head cull grows with a knight's build",
+    "file": "crates/core/src/player.rs",
+    "find": "            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));",
+    "replace": "            cull_near(&mut out.list, from, p.head, HEAD_CULL);",
+    "test": "neither_knight_s_helm_is_drawn_across_its_own_eye"
   }
 ]

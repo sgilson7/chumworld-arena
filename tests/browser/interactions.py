@@ -6,8 +6,9 @@ shows with `check(condition, "what this shows")`.
 
 Expected values are worked out by hand from the brief and the data (C4),
 never copied from the tool's own output: the player starts with 100 health
-(health.rs, PLAYER) and the computer's knight with 100 (data/pilots.json); the
-field of view opens at 105 and steps by one (world.rs, game.rs). Waits are on
+(health.rs, PLAYER) and the computer's knight, in Knight B's plate (M3), with
+100 (data/pilots.json, knight); the field of view opens at 105 and steps by
+one (world.rs, game.rs). Waits are on
 selectors and data-* attributes the page sets, never on a fixed time.
 """
 
@@ -48,8 +49,9 @@ def run(page, check, engine):
     page.wait_for_selector("#bar-you", timeout=10000)
     check(page.inner_text("#bar-you .who") == STRINGS["who_you"], "the player's bar is named")
     check(page.inner_text("#bar-you .text") == "100 / 100", "the player starts whole: 100 of 100")
-    check(page.inner_text("#bar-foe1 .who") == STRINGS["who_knight"], "the foe's bar names the knight")
-    check(page.inner_text("#bar-foe1 .text") == "100 / 100", "the knight starts whole: 100 of 100")
+    check(page.inner_text("#bar-foe1 .who") == STRINGS["who_knight_b"], "the foe's bar names Knight B")
+    check(page.inner_text("#bar-foe1 .text") == "100 / 100", "Knight B starts whole: 100 of 100")
+    check(page.get_attribute("#bar-foe1", "data-share") == "10000", "Knight B's bar is full")
     check(page.inner_text("#hud-round").startswith("Round 1"), "the round's line names round 1")
     page.keyboard.press("Escape")
     page.wait_for_selector('body[data-screen="paused"]', timeout=10000)

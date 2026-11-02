@@ -49,6 +49,9 @@ fn script(w: &World, t: u32) -> Input {
 fn a_scripted_player_against_the_knight_runs_to_the_duel_s_result() {
     let mut w = World::new(9);
     w.settings.control = Control::FirstPerson;
+    // M3: as Practice stands it, the player in Knight A's plate and the
+    // computer's knight in Knight B's, both with the longsword
+    w.act("duel.me", "knight_a").unwrap();
     w.act("rounds.begin", "knight").unwrap();
     let most = 60 * 60 * 10; // ten minutes: far past three rounds of sudden death
     let mut t = 0;

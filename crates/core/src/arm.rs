@@ -217,6 +217,12 @@ pub fn rails(item: Held) -> &'static [Rail] {
         own_from: cm(16) + mm(138),
         r: mm(27),
     }];
+    const LONGSWORD: [Rail; 1] = [Rail {
+        across: 0,
+        from: 0,
+        own_from: cm(18) + mm(158),
+        r: mm(26),
+    }];
     const CLEAVER: [Rail; 4] = [
         Rail {
             across: 0,
@@ -245,6 +251,7 @@ pub fn rails(item: Held) -> &'static [Rail] {
     ];
     match item {
         Held::Sword => &SWORD,
+        Held::Longsword => &LONGSWORD,
         Held::Cleaver => &CLEAVER,
         _ => &SHORT,
     }
@@ -265,6 +272,9 @@ pub struct Fence {
     /// (`blade::step`), so a blow lands at the speed it was swung
     pub blade: bool,
 }
+
+/// M3 (R5.2): the longsword's heft, percent (`sized`).
+pub const LONGSWORD_HEFT_PCT: i32 = 80;
 
 /// Each weapon's sizes. The short sword (70 cm blade, PLAN.md) is held in
 /// the right hand; the sword (100 cm) and the orc's cleaver in both. The
@@ -290,6 +300,17 @@ fn sized(item: Held) -> Weapon {
             grip: [cm(5), cm(16)],
             mass: [3, 3],
             heft_pct: 75,
+        },
+        // M3 (CA-Q12: A, R5.2): the knights' longsword: a 26 cm grip for
+        // both hands, and a heft between the sword's 75 (100 cm blade) and
+        // the short sword's 100 (70 cm): 79 by blade length, rounded to 80
+        Held::Longsword => Weapon {
+            item,
+            len: 0,
+            hilt: cm(26),
+            grip: [cm(5), cm(18)],
+            mass: [3, 3],
+            heft_pct: LONGSWORD_HEFT_PCT,
         },
         // T39: the hammer: long in the hands, its weight all in its head,
         // slower to swing than the cleaver

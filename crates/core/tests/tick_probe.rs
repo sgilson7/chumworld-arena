@@ -1,7 +1,8 @@
 //! A probe, not a check: what a tick of the ring's duel costs (CA-6, under
-//! 2 ms for two fighters). The duel is Practice's: the player and the bandit
-//! on its tree, the player cutting every second; the probe times 3 600
-//! ticks (a minute of play) and prints the mean and the worst. Numbers for
+//! 2 ms for two fighters). The duel is Practice's: the player in Knight A
+//! and the computer's knight in Knight B on its pilot (M3; the bandit
+//! before), the player cutting every second; the probe times 3 600 ticks
+//! (a minute of play) and prints the mean and the worst. Numbers for
 //! MEASUREMENTS.md, from a release build:
 //!
 //! ```bash
@@ -46,7 +47,9 @@ fn tick_cost_of_a_two_fighter_duel() {
     let mut w = World::new(5);
     // M1: the game's own control, from the helmet
     w.settings.control = tool_core::world::Control::FirstPerson;
-    w.act("duel.spawn", "bandit").unwrap();
+    // M3: Practice's two knights in plate, the computer's on its own pilot
+    w.act("duel.me", "knight_a").unwrap();
+    w.act("duel.spawn", "knight").unwrap();
     let mut worst = 0u128;
     let start = Instant::now();
     let n = 3600;
