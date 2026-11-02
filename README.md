@@ -1,8 +1,12 @@
-# A Builder tool
+# Chumworld Arena
 
-Replace this file with your tool's README once `BRIEF.md` is written. `crates/core/tests/copy.rs` reads it against `TONE.md`.
+A first-person sword duel for a desktop browser. You steer a simulated sword arm with the mouse and your feet with WASD, from inside a knight's helmet, in a stone ring. Play it at https://sgilson7.github.io/chumworld-arena/.
 
-This directory is a copy of the Builder template. Its rules are in `BUILDER-SPEC.md`, a coding agent's instructions are in `CLAUDE.md` and `AGENTS.md`, the meaning of each term is in `GLOSSARY.md`, and the rules for every string are in `TONE.md`.
+- **Practice:** a best-of-three duel against the computer's knight, which moves through the same input a player gives.
+- **Host and Join:** the same duel against another browser, met by a room code or by pasted codes. Nothing loads from another site until you press one.
+- **Controls:** hold the left button and swipe to cut; hold the right button to guard; Esc pauses.
+
+The combat is CHUMWORLD's (same author), copied at commit d9cb5b5 and changed as `SECOND-ORDER.md` records. The game is built under Builder: the rules are in `BUILDER-SPEC.md`, a coding agent's instructions in `CLAUDE.md` and `AGENTS.md`, each term in `GLOSSARY.md`, and the rules for every string in `TONE.md`.
 
 ## Build, test and serve
 
