@@ -214,6 +214,8 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "ant_king" => Some(Kind::AntKing),
         "knight_a" => Some(Kind::KnightA),
         "knight_b" => Some(Kind::KnightB),
+        "veteran" => Some(Kind::Veteran),
+        "banneret" => Some(Kind::Banneret),
         _ => None,
     }
 }
@@ -231,6 +233,8 @@ fn key_of(k: Kind) -> &'static str {
         Kind::AntKing => "ant_king",
         Kind::KnightA => "knight_a",
         Kind::KnightB => "knight_b",
+        Kind::Veteran => "veteran",
+        Kind::Banneret => "banneret",
         _ => "bandit",
     }
 }

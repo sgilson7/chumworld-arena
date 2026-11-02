@@ -65,6 +65,10 @@ pub enum Role {
     /// B's belt, where the skirt starts
     Waist,
     Trim,
+    /// M6: the banneret's plume
+    Plume,
+    /// M6: the banneret's cape
+    Cape,
 }
 
 /// One shape of a knight and what it is.
@@ -117,7 +121,11 @@ pub const SLOTS: [&str; 8] = [
 
 /// The scheme's name in `data/models.json`.
 pub fn scheme_name(kind: Kind) -> &'static str {
-    if kind == Kind::KnightB {
+    if kind == Kind::Veteran {
+        "veteran"
+    } else if kind == Kind::Banneret {
+        "banneret"
+    } else if kind == Kind::KnightB {
         "knight_b"
     } else {
         "knight_a"
@@ -288,6 +296,13 @@ fn across_at(r: Fx, ry: Fx, dy: Fx) -> Fx {
 
 /// A knight of `kind` on `pose`, its plate off the parts in `bare`.
 pub fn model(kind: Kind, pose: &Pose, bare: u16) -> Knight {
+    // M6: the ladder's opponents in their own files
+    if kind == Kind::Veteran {
+        return veteran::model(pose, bare);
+    }
+    if kind == Kind::Banneret {
+        return banneret::model(pose, bare);
+    }
     let t = table();
     let b = build(kind);
     let fwd = facing(pose.facing, 0);
@@ -846,6 +861,35 @@ fn helm(k: &mut K, b_knight: bool) {
         );
     }
 }
+
+/// M6: the drawing state for `kind` on `pose`, as `model` sets it up, for
+/// the ladder's opponents (`veteran.rs`, `banneret.rs`).
+fn start(kind: Kind, pose: &Pose, bare: u16) -> K {
+    let fwd = facing(pose.facing, 0);
+    let up0 = pose.chest.sub(pose.pelvis).norm();
+    let up = if up0 == V3::ZERO { V3::UP } else { up0 };
+    let back0 = fwd.neg();
+    let back = back0.sub(up.scale(back0.dot(up))).norm();
+    let back = if back == V3::ZERO { v3(0, 0, ONE) } else { back };
+    let right = up.cross(back).norm();
+    K {
+        out: Knight::default(),
+        b: build(kind),
+        ink: table().ink_figure,
+        right,
+        up,
+        back,
+        fwd: back.neg(),
+        pose: *pose,
+        sc: scheme(kind),
+        bare,
+    }
+}
+
+mod banneret;
+#[cfg(test)]
+mod ladder_poses;
+mod veteran;
 
 #[cfg(test)]
 mod tests;

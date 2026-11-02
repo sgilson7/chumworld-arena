@@ -80,17 +80,40 @@ pub const VISOR_COS: Fx = ONE * 766 / 1000;
 
 /// A kind that wears plate.
 pub fn armoured(kind: Kind) -> bool {
-    matches!(kind, Kind::KnightA | Kind::KnightB)
+    matches!(kind, Kind::KnightA | Kind::KnightB) || matches!(kind, Kind::Veteran | Kind::Banneret)
+}
+
+/// M6 (R7.202): the parts an armoured kind wears plate on, a bit each
+/// (`wounds::bit`). A knight and the banneret wear it on all ten; the pit
+/// veteran on his helm, his left upper arm (under the great pauldron) and
+/// both forearms (the vambraces), and nowhere else: his right upper arm is
+/// bare skin, his torso leather over a mail skirt and his legs cloth, so
+/// they take CHUMWORLD's blow whole and can be cut off (mail is cloth to
+/// this rule, R7.203).
+pub fn covered(kind: Kind) -> u16 {
+    match kind {
+        Kind::Veteran => {
+            wounds::bit(HEAD)
+                | wounds::bit(UPPER_ARM[LEFT])
+                | wounds::bit(FOREARM[LEFT])
+                | wounds::bit(FOREARM[RIGHT])
+        }
+        k if armoured(k) => (1 << PARTS) - 1,
+        _ => 0,
+    }
 }
 
 /// A body's plates when it comes into the ring: whole for a knight, none
 /// for anyone else.
 pub fn full(kind: Kind) -> [i32; PARTS] {
-    if armoured(kind) {
-        INTEGRITY
-    } else {
-        [0; PARTS]
+    let on = covered(kind);
+    let mut out = [0; PARTS];
+    for s in 0..PARTS {
+        if on & wounds::bit(s) != 0 {
+            out[s] = INTEGRITY[s];
+        }
     }
+    out
 }
 
 /// The parts with no plate on them, a bit each (`wounds::bit`).

@@ -29,6 +29,13 @@ pub enum Kind {
     /// ivory crown (working labels)
     KnightA,
     KnightB,
+    /// M6 (CA-7): the ladder's rung C, the pit veteran (working label):
+    /// bare upper arms, one huge left pauldron (`models/knight/veteran.rs`)
+    Veteran,
+    /// M6 (CA-7): the ladder's rung B, the banneret (working label):
+    /// fluted plate, a plume, a blue tabard, a cape
+    /// (`models/knight/banneret.rs`)
+    Banneret,
 }
 
 /// What a hand holds: picks the weapon's model and, in M1, its blade length.
@@ -159,6 +166,10 @@ fn size(kind: Kind) -> (i32, i32) {
         // M3 (R5.1): both knights one build, an adult a little over the
         // player's height and broad in plate
         Kind::KnightA | Kind::KnightB => (185, 110),
+        // M6 (R7.201): the veteran a little shorter and thick-set, the
+        // banneret on the knights' build
+        Kind::Veteran => (180, 112),
+        Kind::Banneret => (185, 108),
     }
 }
 
@@ -209,6 +220,8 @@ mod tests {
             Kind::AntKing,
             Kind::KnightA,
             Kind::KnightB,
+            Kind::Veteran,
+            Kind::Banneret,
         ] {
             let b = build(k);
             let pct = b.head as i64 * 100 / b.height as i64;

@@ -345,6 +345,9 @@ pub fn mass(kind: Kind) -> i32 {
         Kind::Lookout => 60,
         // M3 (R5.1): a knight and some 25 kg of plate
         Kind::KnightA | Kind::KnightB => 110,
+        // M6 (R7.201): a big man in leather and a little plate; a knight
+        Kind::Veteran => 95,
+        Kind::Banneret => 108,
     }
 }
 
