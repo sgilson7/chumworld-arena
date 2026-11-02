@@ -111,6 +111,26 @@ impl Game {
     pub fn act(&mut self, name: &str, value: &str) -> String {
         api::act(&mut self.inner, name, value)
     }
+
+    /// M5: the transport says a browser arrived.
+    pub fn online_connected(&mut self, peer: u32) {
+        self.inner.online_connected(peer)
+    }
+
+    /// M5: the transport says a browser left.
+    pub fn online_left(&mut self, peer: u32) {
+        self.inner.online_left(peer)
+    }
+
+    /// M5: text from a browser.
+    pub fn online_message(&mut self, peer: u32, text: &str) {
+        self.inner.online_message(peer, text)
+    }
+
+    /// M5: what the transport is to send, as JSON pairs of peer and text.
+    pub fn online_outbox(&mut self) -> String {
+        self.inner.online_outbox()
+    }
 }
 
 /// Sizes, layouts, bits and pass states, as JSON.

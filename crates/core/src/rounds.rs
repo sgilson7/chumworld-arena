@@ -214,6 +214,8 @@ pub fn opening(w: &mut World) {
     w.feel = crate::feel::State::default();
     w.wounds = crate::wounds::State::default();
     w.pilots.memory = crate::pilot::Memory::default();
+    // M5: online, the foe is the second seat's knight, stood up as the player is
+    crate::seat::opening(w, theirs, back);
 }
 
 /// The player's record as the duel takes it: nothing between rounds or

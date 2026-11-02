@@ -265,6 +265,9 @@ pub enum Control {
     Still,
     /// these records in turn, for tests (CW-3)
     Script(Vec<Input>),
+    /// M5: a person in another browser, through the record the second seat
+    /// holds for this tick (`seat.rs`)
+    Seat,
 }
 
 /// A pilot's own memory between ticks.
@@ -456,6 +459,10 @@ pub fn decide(w: &World, id: usize) -> (Input, Brain) {
         Control::Still => return (Input::default(), b),
         Control::Script(list) => {
             let i = list.get(b.ticks as usize - 1).copied().unwrap_or_default();
+            return (i, b);
+        }
+        Control::Seat => {
+            let i = w.seat.as_ref().map(|s| s.input).unwrap_or_default();
             return (i, b);
         }
         Control::Tree => {}

@@ -15,7 +15,13 @@ The state measured rather than recalled, so later changes can be compared with i
 | Parity with CHUMWORLD (CA-2) | `cargo test -p tool_core --test parity` | 600 of 600 ticks identical (M0; still after M1 and M2, on `Control::Shoulder`, R3.1) | 2026-11-02, Apple M2 Max |
 | A whole duel in rounds to its result (M2) | `cargo test --release -p tool_core --test duel_probe -- --nocapture` | a scripted player (turn, step in, a level cut and a chop each 3/4 s) against the knight's pilot, seed 9: over in 976 ticks (16 s), 2–0 to the player, both falls to a chop (R4.10). M3 merged, the player in Knight A against the knight in Knight B, both with the longsword: over in 1 648 ticks (27 s), 2–0 to the player, falls to a chop and a level cut | 2026-11-02, Apple M2 Max |
 | Ring instances and triangles (M2) | `ring::instances`, the flicker scan's count | 44 instances; about 19 000 triangles, most of them the crowd (R4.1) | 2026-11-02, Apple M2 Max |
+| Online frame at rollback's worst (M5, CA-6, under 2 ms) | `cargo test --release -p tool_core --test rollback_probe -- --ignored --nocapture` | the host's session held at its 8-tick window with every guess wrong, so each frame puts back a copy and runs 9 ticks, 3 600 frames: quiet machine, mean 851 µs, median 829 µs, 99th percentile 1 170 µs, worst 1 736 µs, none over 2 ms; busy machine (builds running beside it), mean 864 and 940 µs, 99th percentile 1 912 and 2 369 µs, worst 8 592 and 7 800 µs, 33 and 62 frames over 2 ms. A copy of the world 1 to 4 µs; a checksum 138 to 307 µs (R8.12) | 2026-11-02, Apple M2 Max |
+| Core tick beside it (M5) | `cargo test --release -p tool_core --test tick_probe -- --ignored --nocapture` | mean 125 µs, worst 373 µs over 3 600 ticks | 2026-11-02, Apple M2 Max |
+| WebAssembly size (M5) | printed by `./scripts/build.sh` | 1 241 KB with online play (R8.13) | 2026-11-02, Apple M2 Max |
+| Online, two browsers by pasted codes (M5) | `python3 tests/browser/online.py chromium firefox webkit` | ONLINE CHECK PASSED in all three; both pages' checksums equal at every tick both summed, to tick 600 and past | 2026-11-02, Apple M2 Max |
 
 ## Not measured
+
+- An online frame in WebAssembly in a browser (R8.12); the room-code path between two networks; two strict NATs (R8.14).
 
 Devices, browsers and conditions no measurement here covers.
