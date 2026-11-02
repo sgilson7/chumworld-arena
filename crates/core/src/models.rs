@@ -50,139 +50,18 @@ use crate::fx::{self, Fx, ONE};
 use crate::geom::{v3, Affine, V3};
 use crate::look::{rgb, Look, Rgb};
 use crate::pose::{Held, Kind, Pose};
-use crate::prim::{Mesh, MeshId, MeshTable, VERTEX_VALUES};
-use crate::render::{self, Group, Pass, Shape, Shapes};
+use crate::prim::{Mesh, VERTEX_VALUES};
+use crate::render::{self, Pass, Shape, Shapes};
 
 mod figure;
 mod held;
-mod lineup;
-mod props;
 
 pub use figure::{rest_pose, Dress, BOOTS, CIRCLET, GLOVES, HOOD, JACKET, SPEEDSTER_ALL, TROUSERS};
-pub use held::{float, grip_to_tip, kind_held, pickup, pickup_at, ring, Pickup, PHASE_TICKS};
-pub use lineup::{act, draw, Lineup, Show};
-pub use props::{cart_model, donkey, prop_radius, prop_shapes, DONKEY_TO_CART};
-// M7 travel: the woken waystone's glow, drawn over the baked waystone
-pub use props::waystone_glow;
-// M7 roadside: how tall a prop stands, for the landmarks seen from the
-// boundary, and the numbers its climbed props are built to
-pub use props::prop_top;
-pub mod props_numbers {
-    pub use super::props::{
-        TOR_EDGE, TOR_FOOT, TOR_RAMP_HALF, TOR_TOP, WATCH_FOOT, WATCH_HALF, WATCH_STAIR_HALF, WATCH_TOP,
-        WATCH_Z,
-    };
-    // T32 (TB): a town gate's towers and wing walls (`solid.rs`)
-    pub use super::props::{GATE_HALF, GATE_TOWER_HALF, GATE_TOWER_X, GATE_WING_END, GATE_WING_HALF};
-    // TE1: and their heights, for the ravine's gate climbed (`ravine.rs`)
-    pub use super::props::{GATE_ARCH, GATE_SINK, GATE_TOWER_TOP, GATE_WING_TOP};
-}
+pub use held::{grip_to_tip, kind_held};
 
 /// The parts each model is drawn from, for counting and testing.
 pub use figure::model as figure_model;
-pub use held::{model as held_model, pickup_model};
-pub use props::{beast_model, donkey_model, model as prop_model};
-
-/// A thing that never moves, placed by M2 (`places.rs`, `scatter.rs`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Prop {
-    House,
-    Barn,
-    Well,
-    Fence,
-    Tent,
-    Campfire,
-    Chest,
-    Scarecrow,
-    Shrine,
-    Hut,
-    Bridge,
-    Cart,
-    Bed,
-    Signpost,
-    HollowTree,
-    // M7 travel (P6, T11): the carved waystone at each travel point
-    Waystone,
-    // M7 save (P10, T16): the lantern post at a save point
-    SavePost,
-    // M7 roadside (P7, T12): what stands beside the ways out of the village
-    Wreck,
-    WreckBurnt,
-    Watchtower,
-    Tor,
-    LoneTree,
-    // M7 rumours (P11, T17): the woodpile each teller of rumours stands by
-    Logs,
-    // M7 forest (P13, T19): the bandits' flag over their camp, its pole
-    Flagpole,
-    // T32 (TB): the town in the bowl's own buildings: the market's stalls,
-    // the council's hall, the inn, the mills on the outflow
-    Stall,
-    StallCloth,
-    Hall,
-    Inn,
-    Mill,
-    // its gates: open, and shut and barred
-    TownGate,
-    GateShut,
-    // T33 (TC): the notice board on the town's market
-    NoticeBoard,
-}
-
-/// M7 forest (P13, T19): the flagpole's top over its foot (`props::flagpole`),
-/// above the forest's canopy round the camp (`forest` tests).
-pub const FLAGPOLE_TOP: Fx = fx::int(38);
-
-/// M7 forest (P13, T19): the animals of the forest (`animals.rs`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Beast {
-    Deer,
-    Rabbit,
-    Boar,
-    /// TE2: the ravine's rabid foxes (`fox.rs`)
-    Fox,
-}
-
-impl Beast {
-    pub const ALL: [Beast; 4] = [Beast::Deer, Beast::Rabbit, Beast::Boar, Beast::Fox];
-}
-
-impl Prop {
-    pub const ALL: [Prop; 32] = [
-        Prop::House,
-        Prop::Barn,
-        Prop::Well,
-        Prop::Fence,
-        Prop::Tent,
-        Prop::Campfire,
-        Prop::Chest,
-        Prop::Scarecrow,
-        Prop::Shrine,
-        Prop::Hut,
-        Prop::Bridge,
-        Prop::Cart,
-        Prop::Bed,
-        Prop::Signpost,
-        Prop::HollowTree,
-        Prop::Waystone,
-        Prop::SavePost,
-        Prop::Wreck,
-        Prop::WreckBurnt,
-        Prop::Watchtower,
-        Prop::Tor,
-        Prop::LoneTree,
-        Prop::Logs,
-        Prop::Flagpole,
-        Prop::Stall,
-        Prop::StallCloth,
-        Prop::Hall,
-        Prop::Inn,
-        Prop::Mill,
-        Prop::TownGate,
-        Prop::GateShut,
-        Prop::NoticeBoard,
-    ];
-}
+pub use held::model as held_model;
 
 /// Every kind of figure, in the lineup's order.
 pub const KINDS: [Kind; 9] = [
@@ -223,39 +102,6 @@ pub fn figure_shadow(kind: Kind, pose: &Pose, look: &Look, out: &mut Shapes) {
 /// the hands close) to its tip.
 pub fn held(item: Held, grip: V3, tip: V3, look: &Look, out: &mut Shapes) {
     held::model(item, grip, tip).emit(look.ink(), out);
-}
-
-/// Adds a prop that never moves to `group`: its kind's mesh (built once,
-/// reused by every later call with the same table), its base at `at`,
-/// turned by `yaw`, and its ink and glowing parts as shapes of their own.
-pub fn prop(kind: Prop, at: V3, yaw: i32, look: &Look, meshes: &mut MeshTable, group: &mut Group) {
-    let baked = props::baked(kind);
-    let place = Affine::translate(at).then(&Affine::rot_y(yaw));
-    let body = find_or_add(meshes, &baked.body);
-    group.shapes.solid(body, place, [ONE; 3], 0);
-    if !baked.hull.is_empty() {
-        let hull = find_or_add(meshes, &baked.hull);
-        group.shapes.push(Shape {
-            mesh: hull,
-            at: place,
-            rgb: look.ink(),
-            value: ONE,
-            pass: Pass::Ink,
-        });
-    }
-    let lit = Model {
-        parts: baked.loose.clone(),
-        decals: Vec::new(),
-    };
-    lit.placed(&place).emit(look.ink(), &mut group.shapes);
-}
-
-/// A world mesh already in the table with these values, or a new one.
-fn find_or_add(meshes: &mut MeshTable, values: &[i32]) -> MeshId {
-    match meshes.world.iter().position(|m| m.as_slice() == values) {
-        Some(k) => MeshId((Mesh::ALL.len() + k) as u32),
-        None => meshes.add(values.to_vec()),
-    }
 }
 
 // ---- the table: data/models.json ----

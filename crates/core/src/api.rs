@@ -2,17 +2,14 @@
 //! page's calls; everything the page draws in HTML comes from `ui`, a view
 //! model, and everything it sends back goes through `act(name, value)`,
 //! answered `{"ok": <ui>}` or `{"error": "..."}` with a message the page
-//! shows as it is. (After Peter's Mandible.)
+//! shows as it is. (After Peter's Mandible, by way of CHUMWORLD.)
 //!
 //! The view model names the screen, its panels (heading, text, rows of key
 //! and meaning, buttons with the action each sends), the lines over the
-//! game, and the glossary's definitions with their numbers filled in by the
-//! core. The page builds the DOM from it without knowing what a panel means.
-//! A button marked `engage` also asks the browser for the pointer, which only
-//! a click may do.
-//!
-//! Extension (M4's `ui.rs`): a menu or a screen adds its panels in `ui`
-//! below, by screen; a line over the game comes from `World::hud`.
+//! duel, each fighter's health as a bar with its words, and the glossary's
+//! definitions with their numbers filled in by the core. The page builds
+//! the DOM from it without knowing what a panel means. A button marked
+//! `engage` also asks the browser for the pointer, which only a click may do.
 
 use serde::Serialize;
 
@@ -72,6 +69,20 @@ pub struct Hint {
     pub definition: String,
 }
 
+/// One fighter's health as the page shows it: who, the words ("72 / 100"),
+/// and the share left in hundredths of a percent, which the page sets as
+/// the bar's width. The words carry it besides the bar's length (BRIEF.md,
+/// Accessibility).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Bar {
+    pub id: String,
+    pub who: String,
+    pub label: String,
+    pub text: String,
+    /// the share left, 0 to 10 000
+    pub share: i32,
+}
+
 /// Everything the page draws in HTML.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Ui {
@@ -79,6 +90,8 @@ pub struct Ui {
     pub title: String,
     pub panels: Vec<Panel>,
     pub hud: Vec<HudItem>,
+    /// the player's health, then the foe's, in the duel only
+    pub bars: Vec<Bar>,
     pub hints: Vec<Hint>,
     /// the text the page shows if it cannot draw (no WebGL 2)
     pub no_webgl: String,
@@ -86,16 +99,6 @@ pub struct Ui {
     /// go of it when this is false, and takes it again on a click when true
     pub capture: bool,
     pub version: u32,
-    /// M7: with the test act `lod.probe`, the most scatter chunks within
-    /// 25 m of the player any frame has left undrawn since, and how many
-    /// were looked at; the page puts it on `body[data-probe]` for the
-    /// browser check (R9.44)
-    pub probe: Option<[u32; 2]>,
-    /// M4: the HUD, the menu ring, dialogue, the shop and settings (`ui.rs`)
-    #[serde(flatten)]
-    pub menus: crate::ui::Views,
-    /// M7 save: what the page stores, downloads or forgets (`save::View`)
-    pub save: crate::save::View,
 }
 
 fn controls(g: &Game) -> (String, Vec<Row>) {
@@ -109,19 +112,14 @@ fn controls(g: &Game) -> (String, Vec<Row>) {
         vec![
             row("key_move", "control_move"),
             row("key_run", "control_run"),
-            row("key_sprint", "control_sprint"), // M7 (T14)
             row("key_look", "control_look"),
             row("key_pause", "control_pause"),
-            // M1: the duel's controls
             row("key_draw", "control_draw"),
             row("key_hand", "control_hand"),
             row("key_swing", "control_swing"),
             row("key_hold_look", "control_hold_look"),
-            row("key_lock", "control_lock"),
             row("key_reach", "control_reach"),
-            row("key_throw", "control_throw"),
             row("key_dodge", "control_dodge"),
-            row("key_imbue", "control_imbue"), // M6
         ],
     )
 }
@@ -145,40 +143,64 @@ pub fn fill(definition: &str, values: &[(&str, String)]) -> String {
     out
 }
 
+/// A fighter's bar: its health now (never below none) of its most.
+fn bar(g: &Game, id: usize, who: String) -> Bar {
+    let h = crate::player::fighter(&g.world, id).health;
+    let now = h.hp.max(0);
+    let most = h.most.max(1);
+    let text = fill(
+        &g.strings.get("health_of"),
+        &[("now", now.to_string()), ("most", most.to_string())],
+    );
+    Bar {
+        id: if id == 0 { "you".into() } else { format!("foe{id}") },
+        who,
+        label: g.strings.get("health"),
+        text,
+        share: (now as i64 * 10_000 / most as i64).min(10_000) as i32,
+    }
+}
+
+/// Each fighter's bar: the player's, then each foe's, named by its kind.
+pub fn bars(g: &Game) -> Vec<Bar> {
+    let s = &g.strings;
+    (0..crate::player::count(&g.world))
+        .map(|id| {
+            let who = if id == 0 {
+                s.get("who_you")
+            } else {
+                let kind = crate::player::fighter(&g.world, id).kind;
+                s.get(&format!("who_{}", crate::pilot::kind_name(kind)))
+            };
+            bar(g, id, who)
+        })
+        .collect()
+}
+
 /// The view model for the game as it stands.
 pub fn ui(g: &Game) -> Ui {
     let s = &g.strings;
     let (rows_heading, rows) = controls(g);
     let mut panels = Vec::new();
     match g.screen {
-        Screen::Title => panels.push(Panel {
-            id: "title".into(),
+        Screen::Start => panels.push(Panel {
+            id: "start".into(),
             heading: s.get("title"),
-            // M7 (T10): how to choose a cut
-            text: s.get("swing_how"),
+            text: s.get("start_text"),
             rows_heading,
             rows,
-            // M7 save: Continue when the browser holds a save
-            actions: vec![crate::save::title_button(g)
-                .unwrap_or_else(|| button(g, "screen.show", "play", "play", true))],
+            actions: vec![button(g, "screen.show", "duel", "practice", true)],
         }),
         Screen::Paused => panels.push(Panel {
             id: "paused".into(),
             heading: s.get("paused"),
-            text: s.get("swing_how"), // M7 (T10)
+            text: s.get("swing_how"),
             rows_heading,
             rows,
-            actions: vec![button(g, "screen.show", "play", "resume", true)],
+            actions: vec![button(g, "screen.show", "duel", "resume", true)],
         }),
-        Screen::Play => {}
-        // M4: drawn from `ui::views` below
-        Screen::Menu | Screen::Settings | Screen::Dialogue | Screen::Shop => {}
-        Screen::Song => {} // M7 travel: drawn from `travel::view`
+        Screen::Duel => {}
     }
-    // M4: the settings button and the menu's keys on the title and pause
-    crate::ui::panels(g, &mut panels);
-    // M7 save: New game, Load save file, Download save, and the save's line
-    crate::save::panels(g, &mut panels);
     let mut hud = vec![HudItem {
         id: "hint".into(),
         text: s.get("hint_pause"),
@@ -191,6 +213,11 @@ pub fn ui(g: &Game) -> Ui {
         title: s.get("title"),
         panels,
         hud,
+        bars: if g.screen == Screen::Start {
+            Vec::new()
+        } else {
+            bars(g)
+        },
         hints: g
             .glossary
             .iter()
@@ -200,11 +227,8 @@ pub fn ui(g: &Game) -> Ui {
             })
             .collect(),
         no_webgl: s.get("no_webgl"),
-        capture: g.screen == Screen::Play,
+        capture: g.screen == Screen::Duel,
         version: g.ui_version,
-        probe: g.probe,
-        menus: crate::ui::views(g),
-        save: crate::save::view(g),
     }
 }
 
@@ -234,30 +258,19 @@ pub fn numbers() -> String {
         "draw_values": render::DRAW_VALUES,
         "buffers": { "static": render::STATIC_BUFFER, "dynamic": render::DYNAMIC_BUFFER },
         "passes": render::pass_states(),
-        // the look's uniforms, then M2's sky's (`sky.rs`)
-        "uniforms": look::UNIFORMS.iter().chain(crate::sky::UNIFORMS).chain(crate::scatter::UNIFORMS).chain(crate::wind::UNIFORMS).map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
+        // the look's uniforms, then the sky's (`sky.rs`)
+        "uniforms": look::UNIFORMS.iter().chain(crate::sky::UNIFORMS).map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
         // the view values: each layer's matrix by layer number, then the eye
         "view": { "layers": [[0, 16], [16, 32]], "eye": [32, 35] },
-        // M2: `uploads` lists each new mesh as (id, vertex count, M7: index
-        // count, 0 for one drawn as it is); the water
-        // program's own uniforms (once) and its frame's (each frame), and the
-        // nearest distance each layer draws water at, by layer number
-        "upload_values": 3,
-        // M7: the scene program's values a frame (the wind's phases)
-        "scene": {
-            "frame": crate::wind::FRAME.iter().map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
-        },
-        "water": {
-            "uniforms": crate::water::UNIFORMS.iter().map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
-            "frame": crate::water::FRAME.iter().map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
-            "cut": [render::NEAR_LAYER_FAR / crate::fx::ONE, 0],
-        },
+        // a bar's share is hundredths of a percent; the page divides by this
+        // to set a width as a share of one
+        "bar_whole": 10_000,
     })
     .to_string()
 }
 
 /// Every mesh the page uploads, by number, with its vertex count: the
-/// primitives, then the world's.
+/// primitives, then the ring's.
 pub fn meshes(g: &Game) -> String {
     let list: Vec<serde_json::Value> = (0..g.meshes.count() as u32)
         .map(|id| {
@@ -268,25 +281,9 @@ pub fn meshes(g: &Game) -> String {
     serde_json::Value::Array(list).to_string()
 }
 
-/// M4: the map menu's image, RGBA, `ui::MAP_PX` a side.
-pub fn map_pixels(g: &Game) -> Vec<u8> {
-    crate::ui::map_pixels(g)
-}
-
-/// One mesh's vertex values by number; none for a number past the end. A
-/// number past the static table is a mesh the detail levels built (M2,
-/// `lod.rs`), there while the page holds it after `uploads`.
+/// One mesh's vertex values by number; none for a number past the end.
 pub fn mesh(g: &Game, id: u32) -> Vec<i32> {
-    if (id as usize) < g.meshes.count() {
-        return g.meshes.vertices(MeshId(id));
-    }
-    g.detail.lent(id).cloned().unwrap_or_default()
-}
-
-/// M7: a built mesh's indices, three a triangle; none for a mesh drawn as
-/// it is (the static table's, the water's).
-pub fn mesh_indices(g: &Game, id: u32) -> Vec<u32> {
-    g.detail.lent_indices(id).cloned().unwrap_or_default()
+    g.meshes.vertices(MeshId(id))
 }
 
 #[cfg(test)]
@@ -300,30 +297,58 @@ mod tests {
     }
 
     #[test]
-    fn the_title_screen_shows_the_title_the_controls_and_a_play_button_that_takes_the_pointer() {
+    fn the_start_screen_shows_the_title_the_controls_and_a_practice_button_that_takes_the_pointer() {
         let g = game();
         let u = json(&ok(&ui(&g)));
         let p = &u["ok"]["panels"][0];
-        assert_eq!(u["ok"]["screen"], "title");
-        assert_eq!(p["heading"], "CHUMWORLD");
-        assert_eq!(p["rows"][1]["key"], "Shift");
-        assert_eq!(p["rows"][1]["does"], "Run");
-        assert_eq!(p["actions"][0]["label"], "Play");
+        assert_eq!(u["ok"]["screen"], "start");
+        assert_eq!(p["heading"], "Chumworld Arena");
+        assert_eq!(p["rows"][4]["key"], "X");
+        assert_eq!(p["rows"][4]["does"], "Draw or sheathe");
+        assert_eq!(p["actions"][0]["label"], "Practice");
         assert_eq!(p["actions"][0]["engage"], true);
         assert_eq!(p["actions"][0]["name"], "screen.show");
+        assert_eq!(p["actions"][0]["value"], "duel");
+        assert!(
+            u["ok"]["bars"].as_array().unwrap().is_empty(),
+            "no bars before the duel"
+        );
+    }
+
+    #[test]
+    fn the_duel_shows_both_fighters_health_in_words_and_as_a_share() {
+        let mut g = game();
+        let v = json(&act(&mut g, "screen.show", "duel"));
+        let bars = v["ok"]["bars"].as_array().unwrap();
+        assert_eq!(bars.len(), 2);
+        assert_eq!(bars[0]["who"], "You");
+        assert_eq!(bars[0]["text"], "100 / 100");
+        assert_eq!(bars[0]["share"], 10_000);
+        assert_eq!(bars[1]["who"], "Bandit");
+        // the bandit's 90 of 90 (data/pilots.json)
+        assert_eq!(bars[1]["text"], "90 / 90");
+        g.world.foes[0].fighter.health.hp = 30;
+        let u = json(&ok(&ui(&g)));
+        // 30 of 90 is 33.33%: 3 333 hundredths of a percent
+        assert_eq!(u["ok"]["bars"][1]["share"], 3_333);
+        assert_eq!(u["ok"]["bars"][1]["text"], "30 / 90");
+        g.world.foes[0].fighter.health.hp = -12;
+        let u = json(&ok(&ui(&g)));
+        assert_eq!(u["ok"]["bars"][1]["text"], "0 / 90", "never below none");
+        assert_eq!(u["ok"]["bars"][1]["share"], 0);
     }
 
     #[test]
     fn act_answers_with_the_new_screen_or_the_error() {
         let mut g = game();
-        let v = json(&act(&mut g, "screen.show", "play"));
-        assert_eq!(v["ok"]["screen"], "play");
+        let v = json(&act(&mut g, "screen.show", "duel"));
+        assert_eq!(v["ok"]["screen"], "duel");
         assert!(
             v["ok"]["panels"].as_array().unwrap().is_empty(),
-            "nothing covers play"
+            "nothing covers the duel"
         );
         assert_eq!(v["ok"]["hud"][0]["shown"], true);
-        assert_eq!(v["ok"]["capture"], true, "play holds the pointer");
+        assert_eq!(v["ok"]["capture"], true, "the duel holds the pointer");
         let v = json(&act(&mut g, "key.escape", ""));
         assert_eq!(v["ok"]["panels"][0]["heading"], "Paused");
         assert_eq!(v["ok"]["panels"][0]["actions"][0]["label"], "Resume");
@@ -336,18 +361,6 @@ mod tests {
     fn glossary_numbers_are_filled_by_the_core() {
         let g = game();
         let u = ui(&g);
-        let run = u
-            .hints
-            .iter()
-            .find(|h| h.term == "Run")
-            .expect("Run is in the glossary");
-        assert!(run.definition.contains("7 metres a second"), "{}", run.definition);
-        let walk = u.hints.iter().find(|h| h.term == "Walk").unwrap();
-        assert!(
-            walk.definition.contains("3 metres a second"),
-            "{}",
-            walk.definition
-        );
         for h in &u.hints {
             assert!(
                 !h.definition.contains('{'),
@@ -355,6 +368,12 @@ mod tests {
                 h.term
             );
         }
+        let arena = u
+            .hints
+            .iter()
+            .find(|h| h.term == "Arena")
+            .expect("Arena is in the glossary");
+        assert!(arena.definition.contains("20 metres"), "{}", arena.definition);
     }
 
     #[test]
@@ -365,8 +384,8 @@ mod tests {
         let list = m.as_array().unwrap();
         assert_eq!(
             list.len(),
-            Mesh::ALL.len() + g.meshes.world.len(),
-            "the primitives and the world's static meshes (the water's)"
+            Mesh::ALL.len() + 2,
+            "the primitives and the ring's floor and wall"
         );
         assert_eq!(list[0]["vertices"], 36, "the cube's 12 triangles");
         assert_eq!(n["vertex"]["stride"], 36);

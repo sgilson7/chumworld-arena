@@ -11,7 +11,6 @@
 
 use crate::blade::Part;
 use crate::fx::{Fx, ONE};
-use crate::items::Item;
 use crate::player;
 use crate::world::World;
 
@@ -119,15 +118,10 @@ pub fn damage(speed: Fx, part: Part) -> i32 {
 
 /// Step 4, after the blades: this tick's hits and throwables' blows taken,
 /// weakness wearing off, the fallen falling.
-/// T35 (phase G): the player's most health: `PLAYER`, and what each item
-/// held adds (the heart's 20, CW-Q24).
-pub fn player_most(w: &World) -> i32 {
+/// T35 (phase G): the player's most health: `PLAYER`. (CHUMWORLD added
+/// what each item held adds; the ring has no items, R2.4.)
+pub fn player_most(_w: &World) -> i32 {
     PLAYER
-        + crate::items::Item::ALL
-            .iter()
-            .filter(|&&i| w.inventory.has(i))
-            .map(|i| i.def().adds_health)
-            .sum::<i32>()
 }
 
 /// T35: the player's bar grown to their most, kept whatever made them
@@ -158,12 +152,8 @@ pub fn step(w: &mut World) {
         .collect();
     for h in &hits {
         player::parts_mut(w, h.on as usize).1.health.take(h.speed, h.part);
-        // T39: the hammer's blow, hard enough, knocks the struck off its feet
-        if player::fighter(w, h.by as usize).held == crate::pose::Held::Hammer
-            && h.speed >= crate::fx::int(Item::Hammer.def().knock_mps)
-        {
-            crate::wounds::knock_down(w, h.on as usize);
-        }
+        // (CHUMWORLD's T39 hammer knock-down is left behind: no one in the
+        // ring holds the hammer, R2.4)
     }
     // M7: each blow marked on its part; enough takes the part off
     crate::wounds::take(w);
@@ -181,17 +171,6 @@ pub fn step(w: &mut World) {
             h.down_ticks = h.down_ticks.saturating_add(1);
         }
     }
-    mend(w);
-}
-
-/// T39: the mending vest, worn, mends a health every `mend_ticks`, up to
-/// the bar's most, while the player stands.
-fn mend(w: &mut World) {
-    let every = Item::MendingVest.def().mend_ticks.max(1) as u64;
-    let h = &w.me.health;
-    if w.inventory.equipped(Item::MendingVest) && !h.down() && h.hp < h.most && w.tick.is_multiple_of(every) {
-        w.me.health.hp += 1;
-    }
 }
 
 #[cfg(test)]
@@ -208,34 +187,6 @@ mod tests {
         assert_eq!(damage(ten, Part::Arm(1)), 12);
         assert_eq!(damage(ten, Part::Leg(0)), 14, "8.5 × 2.5 × 0.7 = 14.9");
         assert_eq!(damage(ONE, Part::Head), 0, "a blade laid on takes nothing");
-    }
-
-    /// T39: the mending vest worn mends a health every 180 ticks (3 s): 360
-    /// ticks from a tick that is a whole multiple of 180, two; not worn,
-    /// none; never past the bar's most.
-    #[test]
-    fn the_mending_vest_mends_a_health_every_three_seconds() {
-        let mut w = crate::story::opening(9);
-        crate::story::step_aside(&mut w);
-        let run = |w: &mut World, ticks: u64| {
-            let end = w.tick + ticks;
-            while w.tick < end {
-                w.step(&crate::input::Input::default());
-            }
-        };
-        // to a whole multiple of 180
-        let left = (w.tick / 180 + 1) * 180 - w.tick;
-        run(&mut w, left);
-        w.me.health.hp = 50;
-        run(&mut w, 360);
-        assert_eq!(w.me.health.hp, 50, "not worn");
-        crate::inventory::give(&mut w, Item::MendingVest, 1);
-        w.inventory.equip(Item::MendingVest).unwrap();
-        run(&mut w, 360);
-        assert_eq!(w.me.health.hp, 52);
-        w.me.health.hp = w.me.health.most;
-        run(&mut w, 360);
-        assert_eq!(w.me.health.hp, w.me.health.most, "no more than its most");
     }
 
     #[test]

@@ -167,9 +167,6 @@ pub struct Fighter {
     /// the mouse turns the view this tick (sheathed, or the right button
     /// held); otherwise it moves the hand
     pub mouse_looks: bool,
-    /// rocks and knives carried, and the throw under way (`throwables.rs`)
-    pub pouch: crate::throwables::Pouch,
-    pub throw: crate::throwables::Throw,
     /// how far the scabbard is tipped for a draw (`ONE`: fully)
     pub tilt: Fx,
     /// how far the view has eased to its duel framing (`framing`), this
@@ -204,8 +201,6 @@ impl Fighter {
             last: Input::default(),
             servo_pct: 100,
             mouse_looks: !drawn,
-            pouch: crate::throwables::Pouch::default(),
-            throw: crate::throwables::Throw::default(),
             tilt: 0,
             framing: 0,
             prev_framing: 0,
@@ -293,12 +288,10 @@ pub fn held_at(w: &World, id: usize) -> Option<V3> {
     engaged_at(w, id).or_else(|| if id == 0 { creature_hold(w) } else { None })
 }
 
-/// The dungeon's creature a drawn sword holds on, if any (T21).
-pub fn creature_hold(w: &World) -> Option<V3> {
-    crate::vine::hold(w)
-        .or_else(|| crate::shield_ant::hold(w))
-        .or_else(|| crate::attack_ant::hold(w))
-        .or_else(|| crate::fox::hold(w))
+/// The dungeon's creature a drawn sword holds on, if any (T21). The ring
+/// has none (R2.1).
+pub fn creature_hold(_w: &World) -> Option<V3> {
+    None
 }
 
 /// Whether `id` may hold on `other`: on the other side, standing, in range.
@@ -705,8 +698,6 @@ pub fn goals(w: &World, id: usize, input: &Input) -> (Sheath, Fx, Goals) {
     };
     let shell_hand = f.arm.shell.point(f.arm.frame.shoulder[1], b.facing);
     let blade = arm::blade_dir(b.facing, &f.arm.shell, f.arm.reach());
-    // M6: imbued, the player's guard holds the blade across the line orbs come down
-    let blade = crate::imbue::guard_line(w, id, b.facing, &f.arm.shell, blade);
     // M7 (T10): a cut under way aims the hand along its arc and the blade
     // along its plane (`swing.rs`)
     let cut = f
@@ -725,7 +716,9 @@ pub fn goals(w: &World, id: usize, input: &Input) -> (Sheath, Fx, Goals) {
         None => (shell_hand, blade),
     };
     let two = wpn.two_handed();
-    let winding = f.throw.winding();
+    // (CHUMWORLD's throw wound the free hand back here; the ring has no
+    // throwables, R2.3)
+    let winding = false;
     let shaken = 100 - STAGGER_WEAK_PCT * f.gait.stagger as i32 / crate::feel::STAGGER_TICKS as i32;
     // M7 (T10): a cut's wind-up gathers at part strength (`swing::strength_pct`)
     let gather = f
@@ -883,12 +876,9 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         let p = f.prev_pose.lerp(&f.pose, alpha);
         // the player wears the speedster pieces M4's inventory says (or,
         // with the test setting, the first n); the figure draws its shadow
-        let worn = match (id, w.motion.forced_pieces) {
-            (0, Some(n)) => (1u8 << n.min(crate::motion::PIECES)) - 1,
-            (0, None) => crate::items::speedster_mask(w),
-            // M7: the lookout wears the gloves until it drops them (R7.13)
-            _ => crate::camp::worn(w, id),
-        };
+        // (CHUMWORLD dressed the player in the speedster pieces from the
+        // inventory and the lookout from the camp; the ring has neither, R2.4)
+        let worn = 0;
         let dress = crate::models::Dress { worn, variant: 0 };
         // M7 (P4): through wounds, which draw what is still on the body
         crate::wounds::figure(w, id, &p, dress, look, out);
@@ -1011,7 +1001,6 @@ fn sticks(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         };
         bar(out, guard, p.tip, width, shade(rgb(blade), 110), ink);
     }
-    crate::throwables::draw_sticks(w, alpha, look, out);
 }
 
 /// A thin solid from `a` to `b`, `width` across, inked.
@@ -1207,38 +1196,26 @@ pub fn spawn(w: &mut World, kind: Kind) {
     w.foes.push(foe);
 }
 
-/// Where a test duel is staged: 30 m south of the start (`DUEL_SOUTH`), on
-/// M2's level ground in the village, 17 m from the nearest house and 35 m
-/// from the well (R3.52).
+/// Where a test duel is staged. CHUMWORLD moved the player 30 m south of
+/// its start (`DUEL_SOUTH`), to level ground in its village; the ring's
+/// start is already on level ground, so it stays (R2.2).
 pub fn duel_spot() -> V3 {
-    crate::world::START.add(v3(0, 0, DUEL_SOUTH))
+    crate::world::START
 }
 
 /// The duel cleared: every foe gone, the player whole, sheathed, nothing in
 /// the air (what the player carries is the inventory's).
 pub fn reset(w: &mut World) {
     w.foes.clear();
-    let held = crate::items::held(w);
-    w.me = Fighter::new(Kind::Player, held, 0, w.player.pos, w.player.facing, false);
+    w.me = Fighter::new(
+        Kind::Player,
+        Held::ShortSword,
+        0,
+        w.player.pos,
+        w.player.facing,
+        false,
+    );
     w.blades = crate::blade::State::default();
-    w.throwables.flying.clear();
-    w.throwables.landed.clear();
-    w.throwables.resting.clear();
-}
-
-/// The player's sword hand given what the inventory now holds (T23: the
-/// person equipped the sword and still held the short one in the world):
-/// a fresh fighter where they stand, sheathed, with their health, wounds
-/// and all as they were. Nothing changes if the hand already holds it.
-pub fn rearm(w: &mut World) {
-    let held = crate::items::held(w);
-    if w.me.held == held {
-        return;
-    }
-    let health = w.me.health;
-    let me = &w.me;
-    w.me = Fighter::new(me.kind, held, me.team, w.player.pos, w.player.facing, false);
-    w.me.health = health;
 }
 
 /// Ticks of the speed a point moves at, metres a second (the HUD and tests
@@ -1357,20 +1334,8 @@ mod tests {
         act(&mut w, "spawn", "bandit").unwrap();
         let f = &w.foes[0];
         assert_eq!(f.fighter.kind, Kind::Bandit);
-        // 30 m south of the start, clear of the test field's lantern (2.2 m
-        // west and 4.5 m north of it): the player 34.6 m from it, the foe at
-        // least 28.6
-        let lantern = crate::world::START.add(v3(-ONE * 22 / 10, 0, -ONE * 45 / 10));
-        assert!(
-            w.player.pos.dist(lantern) > fx::int(34),
-            "{}",
-            w.player.pos.dist(lantern)
-        );
-        assert!(
-            f.body.pos.dist(lantern) > fx::int(28),
-            "{}",
-            f.body.pos.dist(lantern)
-        );
+        // (CHUMWORLD moved the duel 30 m south, clear of its test field's
+        // lantern; the ring's start is clear, R2.2)
         let d = f.body.pos.sub(w.player.pos);
         assert!((d.len() - fx::int(6)).abs() <= 2, "{}", d.len());
         assert!(
@@ -1407,25 +1372,6 @@ mod tests {
         act(&mut w, "reset", "").unwrap();
         assert!(w.foes.is_empty());
         assert_eq!(w.me.health.hp, w.me.health.most);
-    }
-
-    #[test]
-    fn health_reaches_the_hud_bars_through_m4_s_doors() {
-        let mut w = World::new(1);
-        act(&mut w, "spawn", "orc").unwrap();
-        assert_eq!(crate::ui::foe(&w), None, "sheathed, no foe is held on");
-        for _ in 0..DRAW_TICKS + 1 {
-            w.step(&press(DRAW));
-        }
-        w.me.health = Health::new(80);
-        w.me.health.hp = 64;
-        let h = crate::ui::health(&w);
-        assert_eq!((h.now, h.most), (64, 80));
-        w.foes[0].fighter.health.hp = 90;
-        let (who, g) = crate::ui::foe(&w).expect("drawn, the orc is held on");
-        assert_eq!((who.as_str(), g.now, g.most), ("orc", 90, 140));
-        w.me.health.hp = -9;
-        assert_eq!(crate::ui::health(&w).now, 0, "never below none");
     }
 
     /// CW-18: the sheathed sword, its scabbard and the figure share no

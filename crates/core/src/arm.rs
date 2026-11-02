@@ -1320,7 +1320,7 @@ pub fn move_shell(w: &mut World, id: usize, inp: &Input) {
     if !looks && !taken {
         // the player's hand moves at the reader's setting (M4's mouse
         // sensitivity, percent); a pilot's at its own
-        let pct = if id == 0 { w.ui.settings.hand_pct } else { 100 };
+        let pct = if id == 0 { w.settings.hand_pct } else { 100 };
         let (shell, over) = f.arm.shell.moved(
             Mouse {
                 dx: (inp.dx as i64 * pct as i64 / 100) as i32,

@@ -72,15 +72,12 @@ pub fn uniform_values(s: &SkySpec) -> Vec<i32> {
     out
 }
 
-/// Every uniform the scene's programs take, the look's, the sky's, then
-/// the scatter's bands (M7, `scatter::uniform_values`).
+/// Every uniform the scene's program takes: the look's, then the sky's.
+/// (CHUMWORLD added its scatter's bands and its wind's waves; the ring has
+/// no grass or wind, R2.6.)
 pub fn all_uniforms(look: &crate::look::Look) -> Vec<i32> {
     let mut u = look.uniforms();
     u.extend(uniform_values(&SkySpec::shipped()));
-    let land =
-        crate::terrain::LandSpec::parse(include_str!("../../../data/land.json")).expect("data/land.json");
-    u.extend(crate::scatter::uniform_values(&land.scatter));
-    u.extend(crate::wind::uniform_values(&crate::wind::Spec::shipped()));
     u
 }
 
@@ -110,11 +107,7 @@ mod tests {
 
     #[test]
     fn the_shaders_make_the_haze_whole_at_the_edge() {
-        for src in [
-            include_str!("../../../data/shaders/scene.frag"),
-            include_str!("../../../data/shaders/water.frag"),
-        ] {
-            assert!(src.contains("f = max(f, smoothstep(uHazeEdge.x, uHazeEdge.y, d));"));
-        }
+        let src = include_str!("../../../data/shaders/scene.frag");
+        assert!(src.contains("f = max(f, smoothstep(uHazeEdge.x, uHazeEdge.y, d));"));
     }
 }

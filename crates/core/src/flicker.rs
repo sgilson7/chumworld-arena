@@ -679,66 +679,32 @@ mod tests {
         assert_eq!(i[0].pass, Pass::Solid);
     }
 
-    /// The world as the page receives it near the start (the static array,
-    /// and the terrain, props and water the detail levels draw round each
-    /// eye), seen from anywhere a camera can be near there: no two surfaces
-    /// in one plane. A tile and its children handing over through the
-    /// dither (fades t and t − ONE) draw no pixel twice, so they are no fight.
+    /// The ring as the page receives it (the static array: its floor and
+    /// wall), seen from anywhere a camera can be in it: no two surfaces in
+    /// one plane. (CHUMWORLD scanned its terrain, props and water here.)
     #[test]
     fn the_static_scene_draws_no_two_surfaces_in_one_plane() {
-        let mut g = crate::game::tests::game();
-        let start = crate::world::START;
+        let g = crate::game::tests::game();
         let mut eyes = Vec::new();
-        for dx in [-60, 0, 60] {
-            for dz in [-60, 0, 60] {
-                let mut e = start.add(v3(int(dx), 0, int(dz)));
-                e.y = g.world.ground(e.x, e.z) + int(2);
-                eyes.push(e);
+        for dx in [-15, 0, 15] {
+            for dz in [-15, 0, 15] {
+                eyes.push(v3(int(dx), int(2), int(dz)));
             }
         }
-        // each eye's frame on its own: what one picture draws
-        for &e in &[eyes[0], eyes[4], eyes[8]] {
-            let mut insts = instances(&g.scene);
-            let mut shapes = crate::render::Shapes::default();
-            let (world, look) = (g.world.clone(), g.look.clone());
-            g.detail.frame(&world, &look, e, &mut shapes);
-            for s in shapes.list {
-                insts.push(Inst {
-                    mesh: s.mesh,
-                    at: s.at,
-                    rgb: s.rgb,
-                    value: s.value,
-                    pass: s.pass,
-                });
-            }
-            let table = g.detail.scan_table(&g.meshes);
-            let tris: usize = insts
-                .iter()
-                .map(|i| table.vertices(i.mesh).len() / (3 * prim::VERTEX_VALUES))
-                .sum();
-            assert!(
-                tris > 100_000,
-                "the scan reads the terrain's triangles, {tris} in all"
-            );
-            let seen = Seen {
-                bottom: -int(100),
-                eyes: eyes.clone(),
-                far: render::FAR,
-            };
-            let complementary = |a: &Inst, b: &Inst| {
-                a.pass == Pass::Dither && b.pass == Pass::Dither && (a.value - b.value).abs() == ONE
-            };
-            let f: Vec<Fight> = fights(&insts, &table, &seen)
-                .into_iter()
-                .filter(|x| !complementary(&insts[x.a], &insts[x.b]))
-                .collect();
-            let report: Vec<String> = f.iter().take(8).map(|x| describe(&insts, x)).collect();
-            assert!(
-                f.is_empty(),
-                "from {e:?}, {} pairs fight:\n{}",
-                f.len(),
-                report.join("\n")
-            );
-        }
+        let insts = instances(&g.scene);
+        let tris: usize = insts
+            .iter()
+            .map(|i| g.meshes.vertices(i.mesh).len() / (3 * prim::VERTEX_VALUES))
+            .sum();
+        // the floor's 336 triangles and the wall's 288
+        assert_eq!(tris, 336 + 288, "the scan reads the ring's triangles");
+        let seen = Seen {
+            bottom: -int(1),
+            eyes,
+            far: render::FAR,
+        };
+        let f: Vec<Fight> = fights(&insts, &g.meshes, &seen);
+        let report: Vec<String> = f.iter().take(8).map(|x| describe(&insts, x)).collect();
+        assert!(f.is_empty(), "{} pairs fight:\n{}", f.len(), report.join("\n"));
     }
 }

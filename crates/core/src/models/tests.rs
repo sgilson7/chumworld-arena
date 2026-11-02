@@ -1,20 +1,15 @@
 //! The models' tests: that a figure sits on its pose's joints and a held
 //! item on its grip and tip, that every model draws in the file's colours,
 //! that no two parts of any model share a plane and every mark stands off
-//! its surface (CW-18), that a prop bakes to one mesh reused, and that the
-//! lineup comes and goes.
+//! its surface (CW-18). (CHUMWORLD's tests of its props, pickups, donkey
+//! and lineup are left behind with them, R2.6.)
 
 use super::figure::model as figure_model;
-use super::held::{model as held_model, pickup_model};
-use super::props::{bake, donkey_model, model as prop_model};
+use super::held::model as held_model;
 use super::*;
 use crate::flicker::{self, Inst, Seen};
 use crate::fx::int;
 use crate::pose::{build, LEFT, RIGHT};
-
-fn look() -> Look {
-    crate::look::tests::look()
-}
 
 /// A unit mesh's two ends along its up axis, placed.
 fn ends(p: &Part) -> (V3, V3) {
@@ -29,7 +24,15 @@ fn near(a: V3, b: V3, tol: Fx) -> bool {
 /// Every figure the lineup shows, and the player wearing every piece.
 fn every_figure() -> Vec<(Kind, Dress, Model)> {
     let mut out = Vec::new();
-    let mut list = lineup::cast();
+    // every kind as CHUMWORLD's lineup cast it, each villager's look too
+    let mut list: Vec<(Kind, Dress)> = KINDS
+        .iter()
+        .filter(|k| **k != Kind::Villager)
+        .map(|k| (*k, Dress::default()))
+        .collect();
+    for v in 0..VILLAGER_VARIANTS {
+        list.push((Kind::Villager, Dress { worn: 0, variant: v }));
+    }
     list.push((
         Kind::Player,
         Dress {
@@ -48,38 +51,7 @@ fn every_figure() -> Vec<(Kind, Dress, Model)> {
 }
 
 fn every_other_model() -> Vec<(String, Model)> {
-    let mut out: Vec<(String, Model)> = Prop::ALL
-        .iter()
-        .map(|p| (format!("{p:?}"), prop_model(*p)))
-        .collect();
-    for p in Pickup::ALL {
-        out.push((format!("{p:?}"), pickup_model(p)));
-    }
-    out.push(("donkey".into(), donkey_model(fx::QUARTER_TURN / 2)));
-    // M7 forest (T19): each animal standing, mid-stride, grazing and lying
-    // down, and the camp's flag in a calm, a gust and its ripple
-    for b in Beast::ALL {
-        for (phase, graze, lie) in [
-            (0, 0, 0),
-            (fx::QUARTER_TURN / 2, ONE / 2, 0),
-            (fx::QUARTER_TURN, ONE, 0),
-            (0, 0, ONE),
-            (0, 0, ONE / 2),
-        ] {
-            out.push((
-                format!("{b:?} {phase} {graze} {lie}"),
-                super::beast_model(b, phase, graze, lie),
-            ));
-        }
-    }
-    for (gust, phase) in [
-        (0, 0),
-        (ONE, fx::deg(90)),
-        (-ONE, fx::deg(200)),
-        (ONE / 3, fx::deg(300)),
-    ] {
-        out.push((format!("flag {gust} {phase}"), crate::forest::cloth(gust, phase)));
-    }
+    let mut out: Vec<(String, Model)> = Vec::new();
     for item in [
         Held::ShortSword,
         Held::Sword,
@@ -348,7 +320,7 @@ fn eyes_round(centre: V3, d: Fx) -> Vec<V3> {
 
 fn scan(name: &str, m: &Model, centre: V3, far: Fx) -> Vec<String> {
     let i = insts(m);
-    let table = MeshTable::default();
+    let table = crate::prim::MeshTable::default();
     let mut bad = Vec::new();
     // two parts in one plane, from anywhere; then planes too near for the
     // depth buffer from `far - 8 m` round the model, the farthest it is drawn
@@ -383,117 +355,6 @@ fn no_two_parts_of_any_figure_share_a_plane() {
         bad.extend(scan(&name, &m, v3(int(10), 0, int(20)), FIGURE_FAR));
     }
     assert!(bad.is_empty(), "{} fights:\n{}", bad.len(), bad.join("\n"));
-}
-
-/// The same for every prop, pickup, the donkey and every held item, the
-/// props seen out to `PROP_FAR`.
-#[test]
-fn no_two_parts_of_any_prop_share_a_plane() {
-    let mut bad = Vec::new();
-    let props: Vec<String> = Prop::ALL.iter().map(|p| format!("{p:?}")).collect();
-    for (name, m) in every_other_model() {
-        // a prop is drawn to `PROP_FAR`; a pickup, the donkey and an item
-        // with the figures, to `FIGURE_FAR`
-        let far = if props.contains(&name) {
-            PROP_FAR
-        } else {
-            FIGURE_FAR
-        };
-        bad.extend(scan(&name, &m, V3::ZERO, render::NEAR_LAYER_FAR));
-        bad.extend(scan(&name, &m, V3::ZERO, far));
-    }
-    assert!(bad.is_empty(), "{} fights:\n{}", bad.len(), bad.join("\n"));
-}
-
-/// The scan over the static array the page receives: every prop placed
-/// by `prop` in its own group, each one mesh, and no fights between them.
-#[test]
-fn the_flicker_scan_reads_every_prop_in_the_static_array() {
-    let l = look();
-    let mut meshes = MeshTable::default();
-    let mut groups = Vec::new();
-    let mut want = 0;
-    for (i, p) in Prop::ALL.iter().enumerate() {
-        let at = v3(int(30 * i as i32), 0, int(40));
-        let mut g = Group::new("prop", at, prop_radius(*p));
-        prop(*p, at, fx::deg(15 * i as i32), &l, &mut meshes, &mut g);
-        groups.push(g);
-        want += bake(&prop_model(*p)).body.len() / (3 * VERTEX_VALUES);
-    }
-    let scene = render::Scene::build(&groups, V3::ZERO, 1);
-    let i = flicker::instances(&scene);
-    let tris: usize = i
-        .iter()
-        .filter(|x| x.pass == render::Pass::Solid && x.value == 0 && !meshes.vertices(x.mesh).is_empty())
-        .map(|x| meshes.vertices(x.mesh).len() / (3 * VERTEX_VALUES))
-        .sum();
-    assert!(
-        tris >= want,
-        "the scan reads {tris} of the props' {want} triangles"
-    );
-    let seen = Seen {
-        bottom: 0,
-        eyes: eyes_round(v3(int(200), 0, int(40)), int(60)),
-        far: render::FAR,
-    };
-    let f = flicker::fights(&i, &meshes, &seen);
-    assert!(
-        f.is_empty(),
-        "{:?}",
-        f.iter().map(|x| flicker::describe(&i, x)).collect::<Vec<_>>()
-    );
-}
-
-/// A prop is one mesh for its kind and one for its outline, added to the
-/// table once and reused by every later placement.
-#[test]
-fn a_prop_bakes_to_one_mesh_reused_by_every_later_placement() {
-    let l = look();
-    let mut meshes = MeshTable::default();
-    let mut g = Group::new("houses", V3::ZERO, int(100));
-    prop(Prop::House, v3(int(10), 0, 0), 0, &l, &mut meshes, &mut g);
-    assert_eq!(meshes.world.len(), 2, "the house's body and outline");
-    // a house has nothing that glows: its body and its outline
-    assert_eq!(g.shapes.len(), 2);
-    prop(
-        Prop::House,
-        v3(int(30), 0, 0),
-        fx::QUARTER_TURN,
-        &l,
-        &mut meshes,
-        &mut g,
-    );
-    assert_eq!(meshes.world.len(), 2, "the second house reuses both");
-    assert_eq!(g.shapes.list[0].mesh, g.shapes.list[2].mesh);
-    prop(Prop::Campfire, V3::ZERO, 0, &l, &mut meshes, &mut g);
-    assert_eq!(meshes.world.len(), 4);
-    // the campfire's two flames are shapes of their own, unlit: the outer
-    // with a halo, the core without
-    assert_eq!(g.shapes.len(), 4 + 2 + 3);
-}
-
-/// A prop's base stands at `at` and turns by `yaw`: the house's footing is
-/// on the ground (its lowest vertex at 0), and turned a quarter left at
-/// (100, 5, 200), its front, 2.5 m ahead of its middle, is at x = 97.5.
-#[test]
-fn a_prop_s_base_sits_at_its_place_and_turns_by_its_yaw() {
-    let b = bake(&prop_model(Prop::House));
-    let lowest = b.body.chunks(VERTEX_VALUES).map(|v| v[1]).min().unwrap();
-    assert_eq!(lowest, 0);
-    let l = look();
-    let mut meshes = MeshTable::default();
-    let mut g = Group::new("house", V3::ZERO, int(10));
-    let at = v3(int(100), int(5), int(200));
-    prop(Prop::House, at, fx::QUARTER_TURN, &l, &mut meshes, &mut g);
-    let place = g.shapes.list[0].at;
-    let front = place.apply(v3(0, 0, -int(5) / 2));
-    assert!(
-        near(front, v3(int(100) - int(5) / 2, int(5), int(200)), 2),
-        "{front:?}"
-    );
-    // its radius holds every part: the barn's corner is 4.35 m out on x,
-    // 3.45 m on z, so over 5.5 m
-    assert!(prop_radius(Prop::Barn) > int(55) / 10);
 }
 
 /// Each speedster piece worn shows on its own part of the body: gloves on
@@ -538,118 +399,6 @@ fn each_speedster_piece_shows_on_its_own_part_of_the_body() {
             .iter()
             .map(|b| count(*b))
             .sum::<usize>()
-    );
-}
-
-/// The donkey's legs swing with its step: at phase 0 they hang straight
-/// down; a quarter stride on, the front left hoof is 0.82 m × sin 22° =
-/// 0.307 m back of its hip.
-#[test]
-fn the_donkey_s_legs_swing_with_its_step() {
-    let hoof_z = |phase: i32| {
-        let m = donkey_model(phase);
-        // the front left leg's hoof: the first hoof pushed
-        let legs: Vec<&Part> = m
-            .parts
-            .iter()
-            .filter(|p| p.mesh == Mesh::Cyl && p.at.c1.len() > mm(700))
-            .collect();
-        let (top, foot) = ends(legs[0]);
-        (top, foot)
-    };
-    let (top, foot) = hoof_z(0);
-    assert!(
-        (foot.z - top.z).abs() <= 16,
-        "straight down at phase 0: {}",
-        foot.z - top.z
-    );
-    let (top, foot) = hoof_z(fx::QUARTER_TURN);
-    let back = foot.z - top.z;
-    assert!((back.abs() - mm(307)).abs() <= mm(3), "{}", back * 1000 / ONE);
-}
-
-/// The lineup is off until asked for, shows every figure and prop, refuses
-/// a view it does not have by name, and goes when turned off.
-#[test]
-fn the_lineup_comes_when_asked_for_and_goes_when_turned_off() {
-    let l = look();
-    let mut w = crate::world::World::new(1);
-    let count = |w: &crate::world::World| {
-        let mut s = Shapes::default();
-        draw(w, 0, &l, &mut s);
-        s.len()
-    };
-    assert_eq!(count(&w), 0, "off in play");
-    w.act("models.lineup", "all").unwrap();
-    let all = count(&w);
-    let one: usize = every_figure()
-        .iter()
-        .take(lineup::cast().len())
-        .map(|(_, _, m)| m.instances())
-        .sum::<usize>();
-    assert!(all > one, "{all} shapes for figures of {one}");
-    assert_eq!(
-        w.act("models.lineup", "everyone"),
-        Err("The lineup has no view \"everyone\".".into())
-    );
-    assert_eq!(
-        w.act("models.lineup", "all:a bit"),
-        Err("The lineup's turn is whole degrees, such as 40, not \"a bit\".".into())
-    );
-    w.act("models.lineup", "orc:40").unwrap();
-    assert_eq!(w.lineup.turn, fx::deg(40));
-    w.act("models.lineup", "off").unwrap();
-    assert_eq!(count(&w), 0);
-    assert_eq!(
-        w.act("models.parade", "all"),
-        Err("Unknown action \"models.parade\".".into())
-    );
-}
-
-/// M7 (R9.87): a pickup floats 120 mm up and bobs 60 mm more over 120
-/// ticks: (1 − cos) / 2 of it, so 0 at the start, all 60 mm at 60 ticks;
-/// it turns once in 240 ticks, a quarter at 60; and a ring of light lies
-/// 3 cm over the ground under it.
-#[test]
-fn a_pickup_floats_bobs_and_turns_over_a_ring_of_light() {
-    assert_eq!(float(0), (mm(120), 0));
-    let (up, spin) = float(60 * ONE);
-    assert!((up - mm(180)).abs() <= 2, "{up}");
-    assert_eq!(spin, fx::QUARTER_TURN);
-    let (up, spin) = float(240 * ONE);
-    assert!((up - mm(120)).abs() <= 2 && spin == 0, "{up} {spin}");
-    let at = v3(int(10), int(2), int(10));
-    let mut s = Shapes::default();
-    pickup_at(
-        Pickup::Boots,
-        at,
-        0,
-        60 * ONE,
-        &crate::look::tests::look(),
-        &mut s,
-    );
-    let ring: Vec<_> = s.list.iter().filter(|x| x.mesh == Mesh::Torus.into()).collect();
-    assert_eq!(ring.len(), 1);
-    assert_eq!(ring[0].pass, crate::render::Pass::Glow);
-    assert_eq!(ring[0].at.t, at.add(v3(0, ONE * 3 / 100, 0)));
-    // the model hangs over the ground by the float: its lowest part's
-    // centre is higher than when lying
-    let lowest = |s: &Shapes| {
-        s.list
-            .iter()
-            .filter(|x| x.pass == crate::render::Pass::Solid)
-            .map(|x| x.at.t.y)
-            .min()
-            .unwrap()
-    };
-    let mut lying = Shapes::default();
-    pickup_model(Pickup::Boots)
-        .placed(&Affine::translate(at))
-        .emit([0; 3], &mut lying);
-    assert!(
-        lowest(&s) - lowest(&lying) >= mm(179),
-        "{}",
-        lowest(&s) - lowest(&lying)
     );
 }
 

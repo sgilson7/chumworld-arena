@@ -208,14 +208,8 @@ fn settle(w: &mut World) {
         f.arm.prev_target = f.arm.target;
         f.prev_framing = f.framing;
     }
-    for t in &mut w.throwables.flying {
-        t.prev = t.p;
-    }
-    // M7: the camera's boom, the house's hand-over and the fire's clock
-    // drawn where they stand too
-    w.boom.prev = w.boom.len;
-    w.boom.prev_cut = w.boom.cut;
-    w.story.fire_prev = w.story.fire;
+    // (CHUMWORLD also settled what was thrown, the camera's boom, the
+    // house's hand-over and the fire's clock; the ring has none, R2.3)
 }
 
 /// M7: a tick of a world frozen for a picture (`feel.freeze_spark`): nothing

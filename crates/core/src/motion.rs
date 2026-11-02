@@ -63,14 +63,10 @@ pub const STRIDE: Fx = ONE * 62 / 100;
 pub const STRIDE_PER_MPS: Fx = ONE * 9 / 100;
 pub const LIFT: Fx = ONE * 11 / 100;
 
-/// Settings that are not any one body's.
+/// Settings that are not any one body's. CHUMWORLD kept the speedster
+/// pieces forced for a test here; the ring has no speedster (R2.4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct State {
-    /// Pieces of the speedster's armour the player is taken to wear, for a
-    /// test and a screenshot (`act("motion.speedster", n)`), in place of
-    /// `items::speedster_worn`.
-    pub forced_pieces: Option<u8>,
-}
+pub struct State {}
 
 /// One body's stepping gait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -104,8 +100,6 @@ pub struct Gait {
     pub stoop: Fx,
     pub hop: u16,
     pub lift: Fx,
-    /// M7 (T14): the sprint, its build and its skid (`sprint.rs`)
-    pub sprint: crate::sprint::Sprint,
     /// T21 (phase A): off its feet, and how fast it rises (+) or falls (−),
     /// a tick (`jump.rs`)
     pub air: bool,
@@ -117,15 +111,6 @@ pub struct Gait {
     /// T37: on the ground, how fast the land under the feet carried them up
     /// last tick (a crest or a ramp's lip throws them on at it)
     pub carry: Fx,
-    /// T35 (phase G): ticks left slowed by the slowing orb (`spell.rs`):
-    /// the feet answer at the orb's share of their speed
-    pub slow: u16,
-    /// T35 (phase G2): the share faster the drawn steps to the side go this
-    /// tick, set from the song of strafing (`travel::strafe_pct`)
-    pub strafe_pct: i32,
-    /// T39: the dodge-step's speed, percent, set each tick from the
-    /// far-step boots worn (100 without them)
-    pub dodge_pct: i32,
 }
 
 /// T21: in the air a body keeps this share of its feet's grip (a sixth),
@@ -143,25 +128,22 @@ pub fn on_road(speed: Fx, share: Fx) -> Fx {
     speed + fx::mul(fx::mul(speed, ONE * ROAD_PCT / 100), share)
 }
 
-/// Grip with `n` speedster pieces: bare feet's `GRIP_BASE` times M4's
-/// share for `n` pieces (`items::speedster_grip`, 0.55ⁿ, CW-8).
-pub fn grip(n: u8) -> Fx {
-    fx::mul(GRIP_BASE, crate::items::speedster_grip(n.min(PIECES)))
+/// Grip: bare feet's `GRIP_BASE`. (CHUMWORLD took 0.55 of it for each
+/// speedster piece worn, CW-8; the ring has none, so `n` is always 0 and
+/// its share was exactly `ONE`, R2.4.)
+pub fn grip(_n: u8) -> Fx {
+    GRIP_BASE
 }
 
-/// A speed in metres a second as metres a tick, with `n` pieces: times M4's
-/// share (`items::speedster_speed`, 1 + 0.2 n, CW-8).
-pub fn per_tick(speed: Fx, n: u8) -> Fx {
-    fx::mul(speed, crate::items::speedster_speed(n.min(PIECES))) / TICKS
+/// A speed in metres a second as metres a tick. (CHUMWORLD multiplied it by
+/// 1 + 0.2 for each speedster piece first; with none that was `ONE`, R2.4.)
+pub fn per_tick(speed: Fx, _n: u8) -> Fx {
+    speed / TICKS
 }
 
-/// How many pieces the player wears: the test setting if one is forced,
-/// otherwise the inventory's (M4, `items::speedster_worn`).
-pub fn pieces(w: &World) -> u8 {
-    w.motion
-        .forced_pieces
-        .unwrap_or_else(|| crate::items::speedster_worn(w))
-        .min(PIECES)
+/// How many speedster pieces the player wears: none in the ring (R2.4).
+pub fn pieces(_w: &World) -> u8 {
+    0
 }
 
 /// `vel` moved `grip` of the way toward `want`, at least one unit a tick
@@ -193,41 +175,21 @@ pub fn wanted(input: &Input, yaw: i32, drawn: bool, n: u8) -> V3 {
     way.scale(per_tick(speed, n))
 }
 
-/// `want` with its part to the side of `yaw` made `pct` faster.
-pub fn strafed(want: V3, yaw: i32, pct: i32) -> V3 {
-    let side = right_of(yaw);
-    let along = (want.x as i64 * side.x as i64 + want.z as i64 * side.z as i64) / ONE as i64;
-    want.add(side.scale((along * pct as i64 / 100) as Fx))
-}
-
 /// One tick of every body's feet.
 pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
-    crate::sprint::step(w, input, foes); // M7 (T14): taps, the build, the end
-
     let n_player = pieces(w);
     for id in 0..player::count(w) {
         let inp = if id == 0 { *input } else { foes[id - 1] };
         let yaw = player::look_yaw(w, id);
         let n = if id == 0 { n_player } else { 0 };
         let toward = player::held_at(w, id);
+        // (the ring has no road, R2.2)
         let (ground, road) = {
             let b = player::body(w, id);
-            (
-                w.ground(b.pos.x, b.pos.z),
-                crate::places::on_road(w, b.pos.x, b.pos.z),
-            )
-        };
-        let strafe = if id == 0 { crate::travel::strafe_pct(w) } else { 0 };
-        let far = crate::items::Item::FarStepBoots;
-        let dodge = if id == 0 && w.inventory.equipped(far) {
-            far.def().dodge_pct
-        } else {
-            100
+            (w.ground(b.pos.x, b.pos.z), false)
         };
         let (b, f) = player::parts_mut(w, id);
         f.gait.road = road_share(f.gait.road, road);
-        f.gait.strafe_pct = strafe;
-        f.gait.dodge_pct = dodge;
         step_body(b, f, &inp, yaw, n, toward, ground);
     }
     separate(w);
@@ -254,11 +216,6 @@ pub fn step_body(
     } else {
         wanted(input, yaw, drawn, n)
     };
-    // T35 (phase G2): drawn, the song of strafing's share on the steps to
-    // the side alone
-    if drawn && f.gait.strafe_pct > 0 {
-        want = strafed(want, yaw, f.gait.strafe_pct);
-    }
     // sheathed, a road's share of the road's bonus (drawn, footwork holds)
     if !drawn && f.gait.road > 0 {
         let s = on_road(want.len(), f.gait.road);
@@ -284,16 +241,10 @@ pub fn step_body(
     }
     if g.dodge > 0 {
         g.dodge -= 1;
-        want = g
-            .dodge_way
-            .scale(per_tick(DODGE_SPEED, n) * g.dodge_pct.max(100) / 100);
+        want = g.dodge_way.scale(per_tick(DODGE_SPEED, n));
     }
-    // M7 (T14): sprinting, along the sprint's heading at its speed
-    want = crate::sprint::want(f, input, want, n);
     // M7 (P4): toppled, hopping on one leg or crawling with none
     want = crate::wounds::gait_want(f, want, n);
-    // T35 (phase G): slowed by the slowing orb
-    want = crate::spell::gait_want(&mut f.gait, want);
     // T21: in the air, a sixth of the grip
     let held = if f.gait.air {
         grip(n) / AIR_GRIP_DIV
@@ -301,7 +252,6 @@ pub fn step_body(
         grip(n)
     };
     b.vel = approach(b.vel, want, held);
-    b.vel = crate::sprint::skid(f, b.prev_vel, b.vel, n); // M7 (T14): no sudden stop
     if b.vel.len() <= 1 {
         b.vel = V3::ZERO;
     }
@@ -589,29 +539,10 @@ pub fn knee(hip: V3, foot: V3, a: Fx, c: Fx, fwd: V3) -> V3 {
     hip.add(u.scale(x)).add(bend.scale(h))
 }
 
-/// `act("motion.<name>", value)`: `speedster` takes the player to wear 0 to
-/// 5 pieces, for a test or a screenshot; `worn` hands it back to the
-/// inventory.
-pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
-    match name {
-        "speedster" => {
-            let n: u8 = value
-                .trim()
-                .parse()
-                .ok()
-                .filter(|n| *n <= PIECES)
-                .ok_or_else(|| {
-                    format!("The speedster pieces are a whole number from 0 to {PIECES}, not \"{value}\".")
-                })?;
-            w.motion.forced_pieces = Some(n);
-            Ok(())
-        }
-        "worn" => {
-            w.motion.forced_pieces = None;
-            Ok(())
-        }
-        _ => Err(format!("Unknown action \"motion.{name}\".")),
-    }
+/// `act("motion.<name>", value)`. CHUMWORLD's only one, `speedster`, is
+/// left behind with the speedster (R2.4).
+pub fn act(_w: &mut World, name: &str, _value: &str) -> Result<(), String> {
+    Err(format!("Unknown action \"motion.{name}\"."))
 }
 
 #[cfg(test)]
@@ -633,56 +564,6 @@ mod tests {
     }
 
     #[test]
-    fn grip_and_speed_are_pinned_for_zero_to_five_pieces() {
-        // CW-8. Grip: bare feet 65 536 / 3 = 21 845 (21 845.3 truncated),
-        // times M4's 0.55ⁿ (65 536, 36 045, 19 825, 10 904, 5 997, 3 298 of
-        // 65 536): 21 845 × 36 045 / 65 536 = 12 014.8 → 12 014; × 19 825:
-        // 6 608.2 → 6 608; × 10 904: 3 634.6 → 3 634; × 5 997: 1 998.97 →
-        // 1 998; × 3 298: 1 099.3 → 1 099.
-        assert_eq!(
-            [0, 1, 2, 3, 4, 5].map(grip),
-            [21_845, 12_014, 6_608, 3_634, 1_998, 1_099]
-        );
-        // as shares of a tick's gap: 33%, 18%, 10%, 5.5%, 3.0%, 1.7%
-        // Speed: 7 m/s is 458 752; × M4's 1 + 0.2 n (78 643, 91 750,
-        // 104 858, 117 965, 131 072 of 65 536 for 1 to 5) is 7 × each, then
-        // / 60 a tick: 7 645 (458 752 / 60), 9 175 (550 501 / 60), 10 704
-        // (642 250 / 60), 12 233 (734 006 / 60), 13 762 (825 755 / 60),
-        // 15 291 (917 504 / 60): 7, 8.4, 9.8, 11.2, 12.6 and 14 m/s.
-        assert_eq!(
-            [0, 1, 2, 3, 4, 5].map(|n| per_tick(RUN, n)),
-            [7_645, 9_175, 10_704, 12_233, 13_762, 15_291]
-        );
-        assert_eq!(grip(9), grip(5), "there are five pieces");
-    }
-
-    /// From a full run, let go: each tick keeps (1 − g) of the speed, so the
-    /// slide is v (1 − g) / g. Bare feet: 7 645 × (1 − ⅓) / ⅓ = 15 290 units,
-    /// 0.23 m. Five pieces: 15 291 × (1 − 0.016 77) / 0.016 77 = 896 500
-    /// units, 13.7 m. Truncation shortens each a little.
-    #[test]
-    fn five_speedster_pieces_slide_fourteen_metres_to_a_stop_and_bare_feet_a_hand() {
-        for (n, want, tol) in [(0u8, 15_290, 110), (5, 896_500, 896_500 / 50)] {
-            let mut b = Body::new(V3::ZERO, 0);
-            let mut f = fighter();
-            for _ in 0..1200 {
-                step_body(&mut b, &mut f, &hold(FORWARD | RUN_KEY), 0, n, None, 0);
-            }
-            assert_eq!(b.vel.z, -per_tick(RUN, n), "{n} pieces: at full speed");
-            let from = b.pos.z;
-            for _ in 0..1200 {
-                step_body(&mut b, &mut f, &Input::default(), 0, n, None, 0);
-            }
-            let slide = from - b.pos.z;
-            assert!(
-                (slide - want).abs() <= tol,
-                "{n} pieces: slid {slide}, by hand {want}"
-            );
-            assert_eq!(b.vel, V3::ZERO, "{n} pieces: stopped");
-        }
-    }
-
-    #[test]
     fn a_walk_starts_in_a_few_ticks_and_holding_w_walks_north() {
         let mut b = Body::new(V3::ZERO, 0);
         let mut f = fighter();
@@ -699,44 +580,6 @@ mod tests {
         assert_eq!(b.vel.z, -3276);
     }
 
-    /// R9.41: on a road a run is 18% faster, eased in over half a second.
-    /// 7 m/s is 7 645 a tick; 18% of ONE is 11 796 (11 796.48), so the
-    /// bonus is 7 645 × 11 796 / 65 536 = 1 376.04 → 1 376: 9 021 a tick,
-    /// 8.26 m/s. The share steps by ⌈65 536 / 30⌉ = 2 185 a tick: 15 ticks
-    /// on a road, 32 775; 30 ticks, all of it (65 550 held to 65 536).
-    #[test]
-    fn a_body_runs_faster_on_a_road_eased_in_over_half_a_second() {
-        let mut w = World::new(1);
-        w.act("story.skip", "").unwrap();
-        // on the lane north of the village, (1992, 2450) to (1996, 2640)
-        let on = |w: &mut World, x: i32, z: i32| {
-            let p = v3(fx::int(x), 0, fx::int(z));
-            w.player = Body::new(v3(p.x, w.ground(p.x, p.z), p.z), 0);
-            w.aim.yaw = 0;
-            w.me.gait.road = 0;
-        };
-        on(&mut w, 1994, 2600);
-        assert!(crate::places::on_road(&w, w.player.pos.x, w.player.pos.z));
-        for _ in 0..15 {
-            w.step(&hold(FORWARD | RUN_KEY));
-        }
-        assert_eq!(w.me.gait.road, 32_775);
-        for _ in 0..75 {
-            w.step(&hold(FORWARD | RUN_KEY));
-        }
-        assert_eq!(w.me.gait.road, ONE);
-        assert_eq!(w.player.vel, v3(0, 0, -9_021));
-        // on the meadow 100 m east of the lane: the plain run
-        on(&mut w, 2100, 2600);
-        assert!(!crate::places::on_road(&w, w.player.pos.x, w.player.pos.z));
-        for _ in 0..90 {
-            w.step(&hold(FORWARD | RUN_KEY));
-        }
-        assert_eq!(w.me.gait.road, 0);
-        assert_eq!(w.player.vel, v3(0, 0, -7_645));
-        assert_eq!(on_road(fx::int(7), 0), fx::int(7));
-    }
-
     #[test]
     fn shift_runs_only_while_the_sword_is_sheathed() {
         let n = 0;
@@ -746,9 +589,6 @@ mod tests {
             -2402,
             "drawn: footwork"
         );
-        // the speedster's 20% a piece reaches footwork too: 2.2 × 2 = 4.4
-        // m/s, 288 358 / 60 = 4 805
-        assert_eq!(wanted(&hold(FORWARD), 0, true, 5).z, -4805);
     }
 
     #[test]
@@ -774,69 +614,6 @@ mod tests {
         }
         let want = yaw_of(east.sub(b.pos));
         assert!(fx::wrap(b.facing - want).abs() <= deg(1), "{} {want}", b.facing);
-    }
-
-    /// T35 (phase G2): the song of strafing's 60% on the drawn steps to
-    /// the side alone. Footwork is 2.2 m/s, 144 179 / 60 = 2 402 a tick;
-    /// to the side with the song, 2 402 + 2 402 × 60 / 100 = 2 402 + 1 441
-    /// = 3 843 (3.5 m/s). Ahead it stays 2 402; sheathed, the walk's 3 m/s
-    /// (196 608 / 60 = 3 276) stays as it was.
-    #[test]
-    fn the_song_of_strafing_speeds_the_drawn_steps_to_the_side_alone() {
-        let settle = |keys: u32, drawn: bool, pct: i32| {
-            let mut b = Body::new(V3::ZERO, 0);
-            let mut f = fighter();
-            if drawn {
-                f.sheath = crate::player::Sheath::Drawn;
-            }
-            f.gait.strafe_pct = pct;
-            for _ in 0..120 {
-                step_body(&mut b, &mut f, &hold(keys), 0, 0, None, 0);
-            }
-            b.vel.len()
-        };
-        let near = |v: Fx, want: Fx| (v - want).abs() <= 2;
-        let right = crate::input::RIGHT;
-        assert!(near(settle(right, true, 0), 2_402), "{}", settle(right, true, 0));
-        assert!(
-            near(settle(right, true, 60), 3_843),
-            "{}",
-            settle(right, true, 60)
-        );
-        assert!(
-            near(settle(FORWARD, true, 60), 2_402),
-            "ahead: {}",
-            settle(FORWARD, true, 60)
-        );
-        assert!(
-            near(settle(right, false, 60), 3_276),
-            "sheathed: {}",
-            settle(right, false, 60)
-        );
-    }
-
-    /// T39: with the far-step boots (dodge_pct 200) the dodge-step goes at
-    /// twice its speed for as long: twice as far. 8 ticks at 6 m/s with a
-    /// third of the gap closed each tick, against 12 m/s.
-    #[test]
-    fn the_far_step_boots_send_the_dodge_step_twice_as_far() {
-        let side = |pct: i32| {
-            let mut b = Body::new(V3::ZERO, 0);
-            let mut f = fighter();
-            f.gait.dodge_pct = pct;
-            let go = Input {
-                keys: crate::input::RIGHT | crate::input::DODGE,
-                ..Input::default()
-            };
-            step_body(&mut b, &mut f, &go, 0, 0, None, 0);
-            f.last = go;
-            for _ in 0..DODGE_TICKS {
-                step_body(&mut b, &mut f, &hold(0), 0, 0, None, 0);
-            }
-            b.pos.x
-        };
-        let (plain, far) = (side(100), side(200));
-        assert!((far - 2 * plain).abs() <= ONE / 50, "{plain} and {far}");
     }
 
     #[test]
@@ -1030,18 +807,5 @@ mod tests {
             }
         }
         assert!(worst <= 200, "two bodies sank {worst} units into each other");
-    }
-
-    #[test]
-    fn the_speedster_setting_is_refused_out_of_range() {
-        let mut w = World::new(1);
-        assert_eq!(
-            act(&mut w, "speedster", "6"),
-            Err("The speedster pieces are a whole number from 0 to 5, not \"6\".".into())
-        );
-        act(&mut w, "speedster", "5").unwrap();
-        assert_eq!(pieces(&w), 5);
-        act(&mut w, "worn", "").unwrap();
-        assert_eq!(pieces(&w), 0);
     }
 }

@@ -66,7 +66,7 @@ fn drawn(w: &World) -> Vec<Shape> {
 #[test]
 fn the_flash_is_red_on_the_part_weaker_on_the_body_and_exactly_nothing_after_its_ticks() {
     let mut w = duel("orc");
-    w.ui.settings.blood = false;
+    w.settings.blood = false;
     let before = drawn(&w);
     w.act("wounds.cut", "forearm_r,10").unwrap();
     let now = drawn(&w);
@@ -190,7 +190,7 @@ fn a_part_taken_off_falls_and_comes_to_rest_exactly_within_its_bound() {
     let pc = w.wounds.pieces[0].clone();
     assert_ne!(pc.p, start, "it fell");
     for p in pc.p {
-        let g = crate::solid::surface(&w, p.x, p.z);
+        let g = w.ground(p.x, p.z);
         assert!(p.y >= g && p.y < g + ONE / 5, "on the ground: {} over {}", p.y, g);
     }
     idle(&mut w, 120);
@@ -206,7 +206,7 @@ fn the_dropped_weapon_settles_and_lies_still() {
     let f = &w.foes[0].fighter;
     assert!(f.health.limbs.loose && f.health.limbs.settled);
     let lying = (f.arm.pts[arm::POMMEL].p, f.arm.pts[arm::TIP].p);
-    let g = crate::solid::surface(&w, lying.1.x, lying.1.z);
+    let g = w.ground(lying.1.x, lying.1.z);
     assert!(lying.1.y < g + ONE / 5, "the cleaver's tip is on the ground");
     // the orc walks off; the cleaver stays
     for _ in 0..60 {
@@ -357,7 +357,7 @@ fn overlapping_marks_never_lie_at_one_height() {
 #[test]
 fn with_blood_off_nothing_of_blood_is_made_or_drawn() {
     let mut w = duel("orc");
-    w.ui.settings.blood = false;
+    w.settings.blood = false;
     w.act("wounds.cut", "torso,20").unwrap();
     w.act("wounds.take_off", "forearm_r").unwrap();
     assert!(w.wounds.drops.is_empty(), "no drop is made, not even for a tick");
@@ -378,7 +378,7 @@ fn with_blood_off_nothing_of_blood_is_made_or_drawn() {
         .iter()
         .all(|s| s.mesh != Mesh::Cyl.into() || s.pass != Pass::Dither));
     // and on again, a blow sheds it
-    w.ui.settings.blood = true;
+    w.settings.blood = true;
     w.foes[0].fighter.health.hp = 140;
     w.foes[0].fighter.health.down_ticks = 0;
     w.act("wounds.cut", "torso,20").unwrap();
@@ -414,27 +414,6 @@ fn a_recorded_duel_with_a_part_taken_off_hashes_the_same_every_run() {
     // the cut at 11 m/s takes 14 of the forearm's 22; the shin comes off
     assert!(a.1 == 1 && a.2 > 0, "pieces {}, splats {}", a.1, a.2);
     assert_eq!(a, run());
-}
-
-#[test]
-fn the_dream_wakes_the_player_with_every_part() {
-    let mut w = crate::story::opening(3);
-    idle(&mut w, crate::story::WAKE_TICKS + crate::story::RISE_TICKS + 30);
-    take_off(&mut w, 0, THIGH[0], v3(ONE / 10, 0, 0), fx::int(12));
-    take_off(&mut w, 0, FOREARM[1], v3(ONE / 10, 0, 0), fx::int(12));
-    assert_ne!(w.me.health.limbs.lost, 0);
-    take_off(&mut w, 0, HEAD, v3(ONE / 10, 0, 0), fx::int(12));
-    assert!(w.player_down(), "a head off is down");
-    let mut n = 0;
-    while !crate::story::waking(&w) {
-        w.step(&Input::default());
-        n += 1;
-        assert!(n < 2000, "the dream comes");
-    }
-    w.step(&Input::default());
-    assert_eq!(w.story.dreams, 1);
-    assert_eq!(w.me.health.limbs, Limbs::default(), "whole");
-    assert!(w.wounds.pieces.is_empty() && w.wounds.splats.is_empty());
 }
 
 #[test]
@@ -604,42 +583,4 @@ fn a_fallen_body_bleeds_a_pool_that_spreads_to_its_size_and_no_more() {
         .filter(|s| s.layer >= spec().splats.layers)
         .collect();
     assert_eq!(pools[0].r, 36_700, "and no more");
-}
-
-/// T39: a blow of the hammer at 5 m/s or more knocks the foe off its feet:
-/// it topples (falling, lying 50 ticks, getting up 30), its keys held, then
-/// stands again with both legs and the topple done; at 4 m/s, or with the
-/// sword, it keeps its feet.
-#[test]
-fn a_hard_blow_of_the_hammer_knocks_a_foe_down_and_it_gets_up_again() {
-    let blow = |held: crate::pose::Held, mps: i32| {
-        let mut w = duel("orc");
-        w.me.held = held;
-        w.blades.hits = vec![hit(1, TORSO, fx::int(mps))];
-        crate::health::step(&mut w);
-        w
-    };
-    let mut w = blow(crate::pose::Held::Hammer, 5);
-    let l = w.foes[0].fighter.health.limbs;
-    assert!(l.toppled(), "off its feet");
-    assert_eq!(l.lost, 0, "no part taken off");
-    idle(&mut w, (crate::health::FALL_TICKS + 50 + 30 + 2) as u32);
-    let l = w.foes[0].fighter.health.limbs;
-    assert!(!l.toppled() && l.topple == 0, "up again: {}", l.topple);
-    assert!(
-        !blow(crate::pose::Held::Hammer, 4).foes[0]
-            .fighter
-            .health
-            .limbs
-            .toppled(),
-        "4 m/s"
-    );
-    assert!(
-        !blow(crate::pose::Held::Sword, 9).foes[0]
-            .fighter
-            .health
-            .limbs
-            .toppled(),
-        "the sword"
-    );
 }

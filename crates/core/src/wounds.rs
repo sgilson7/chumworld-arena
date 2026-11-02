@@ -521,7 +521,7 @@ pub struct State {
 }
 
 fn blood_on(w: &World) -> bool {
-    w.ui.settings.blood
+    w.settings.blood
 }
 
 /// A seeded spread from −`ONE` to `ONE`, for the drops (splitmix64): the
@@ -656,11 +656,9 @@ pub fn take_off(w: &mut World, id: usize, s: usize, vel: V3, speed: Fx) {
     if segs == 0 || s == TORSO {
         return;
     }
-    let dress = if id == 0 {
-        (crate::items::speedster_mask(w), 0)
-    } else {
-        (0, 0)
-    };
+    // (CHUMWORLD dressed a severed part of the player in the speedster
+    // pieces worn; the ring has none, R2.4)
+    let dress = (0, 0);
     let mut piece = piece_of(kind, dress, &now, &before, s, segs);
     let kick = vel.scale(sp.pieces.kick_pct * ONE / 100);
     let rise = v3(0, cms(sp.pieces.rise_cms), 0);
@@ -835,7 +833,7 @@ pub fn steer(w: &mut World, input: &Input, foes: &[Input]) {
         };
         let ground = {
             let b = player::body(w, id);
-            crate::solid::surface(w, b.pos.x, b.pos.z)
+            w.ground(b.pos.x, b.pos.z)
         };
         let near = can_take_up(w, id);
         let (b, f) = player::parts_mut(w, id);
@@ -1270,7 +1268,7 @@ fn pools(w: &mut World) {
         }
         let p = player::fighter(w, id as usize).pose;
         let at = p.pelvis.lerp(p.chest, ONE / 3);
-        let ground = crate::solid::surface(w, at.x, at.z);
+        let ground = w.ground(at.x, at.z);
         lay(w, v3(at.x, ground, at.z), mm(sp.pool.mm), true);
     }
 }
@@ -1297,7 +1295,7 @@ fn drops(w: &mut World) {
         d.v.y -= arm::GRAVITY;
         d.p = d.p.add(d.v);
         d.age += 1;
-        let g = crate::solid::surface(w, d.p.x, d.p.z);
+        let g = w.ground(d.p.x, d.p.z);
         if d.p.y <= g {
             landed.push((v3(d.p.x, g, d.p.z), d.size));
         } else if d.age < 240 {
@@ -1376,7 +1374,7 @@ fn lay(w: &mut World, at: V3, r: Fx, pool: bool) {
         }
         return;
     }
-    let h = |x: Fx, z: Fx| crate::solid::surface(w, x, z);
+    let h = |x: Fx, z: Fx| w.ground(x, z);
     let e = r.max(ONE / 10);
     let n = v3(
         h(at.x - e, at.z) - h(at.x + e, at.z),
@@ -1418,10 +1416,7 @@ fn pieces(w: &mut World) {
             continue;
         }
         pc.age += 1;
-        let ground: Vec<Fx> =
-            pc.p.iter()
-                .map(|p| crate::solid::surface(w, p.x, p.z) + pc.r)
-                .collect();
+        let ground: Vec<Fx> = pc.p.iter().map(|p| w.ground(p.x, p.z) + pc.r).collect();
         for (k, &floor) in ground.iter().enumerate() {
             let mut v = pc.p[k].sub(pc.q[k]);
             v = v.sub(v.scale(ps.air_pct * ONE / 100));
@@ -1998,7 +1993,7 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
             Ok(())
         }
         "blood" => {
-            w.ui.settings.blood = match value.trim() {
+            w.settings.blood = match value.trim() {
                 "on" | "true" => true,
                 "off" | "false" => false,
                 other => return Err(format!("Blood is on or off, not \"{other}\".")),

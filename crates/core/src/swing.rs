@@ -201,7 +201,7 @@ pub fn trail(a: &mut crate::arm::Arm) {
 /// Every fighter's trail, as thin glowing quads from one tick's blade to
 /// the next, brightest at the newest; nothing with the Swing cue off.
 pub fn draw_trails(w: &World, look: &Look, out: &mut Shapes) {
-    if !w.ui.settings.cue {
+    if !w.settings.cue {
         return;
     }
     let colour = rgb(look.palette.lamp);
@@ -618,7 +618,7 @@ pub fn shell_at(s: &crate::arm::Shell, yaw: i32, shoulder: V3, hand: V3, arm: Fx
 /// travel so far, once past `CUE_PX`), or the cut winding up.
 pub fn cue(w: &World) -> Option<(Way, i32, Band)> {
     let f = &w.me;
-    if !w.ui.settings.cue || f.sheath != Sheath::Drawn || f.health.down() || f.mouse_looks {
+    if !w.settings.cue || f.sheath != Sheath::Drawn || f.health.down() || f.mouse_looks {
         return None;
     }
     let sw = f.arm.swing;
@@ -1060,7 +1060,7 @@ mod tests {
         };
         for on in [true, false] {
             let mut w = ready(Held::ShortSword);
-            w.ui.settings.cue = on;
+            w.settings.cue = on;
             let before = shapes(&w);
             assert!(!line(&w).shown);
             w.step(&Input {
@@ -1100,7 +1100,7 @@ mod tests {
         };
         for on in [true, false] {
             let mut w = ready(Held::ShortSword);
-            w.ui.settings.cue = on;
+            w.settings.cue = on;
             let before = glows(&w);
             let (mut most, mut drawn) = (0, 0);
             let mut t = 0;

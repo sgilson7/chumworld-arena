@@ -55,8 +55,6 @@ pub struct KindSpec {
     /// how far the pilot moves its mouse a tick, pixels, and in a swing
     pub hand_px: i32,
     pub strike_px: i32,
-    pub rocks: u8,
-    pub knives: u8,
     /// the band it keeps to in a duel, centimetres outside its own reach
     /// (`reach`): nearer, it steps back; farther, it steps in
     pub keep_cm: [i32; 2],
@@ -288,10 +286,6 @@ pub fn foe(book: &Book, kind: Kind, at: V3, yaw: i32, salt: u64) -> Foe {
     f.arm.take_in_hand(&frame);
     f.pose = player::pose_from(&Body::new(at, yaw), &f);
     f.prev_pose = f.pose;
-    f.pouch = crate::throwables::Pouch {
-        rocks: spec.rocks,
-        knives: spec.knives,
-    };
     Foe {
         body: Body::new(at, yaw),
         fighter: f,
@@ -575,7 +569,8 @@ fn holds(c: &Cond, v: &View, rng: &mut Rng) -> bool {
         Cond::GapBelow(c) => v.gap_cm() < *c,
         Cond::BeyondReach(c) => v.gap_cm() > v.reach_cm() + *c,
         Cond::WithinReach(c) => v.gap_cm() < v.reach_cm() + *c,
-        Cond::HasThrowable => v.f.pouch.any() && v.f.throw.recover == 0 && !v.f.throw.winding(),
+        // the ring has no throwables: no pilot carries one (R2.3)
+        Cond::HasThrowable => false,
         Cond::TipNearHead(c) => v.they.tip.dist(v.me.head) < cm(*c),
         Cond::SwingComing(cps) => {
             let speed = v.they.tip_vel.len() as i64 * 60 * 100 / ONE as i64;
