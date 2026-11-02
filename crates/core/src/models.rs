@@ -55,6 +55,12 @@ use crate::render::{self, Pass, Shape, Shapes};
 
 mod figure;
 mod held;
+mod knight;
+
+pub use knight::{
+    model as knight_model, plate as knight_plate, scheme as knight_scheme, Knight, Layer, Role, Scheme,
+    SLOTS as SCHEME_SLOTS,
+};
 
 pub use figure::{rest_pose, Dress, BOOTS, CIRCLET, GLOVES, HOOD, JACKET, SPEEDSTER_ALL, TROUSERS};
 pub use held::{grip_to_tip, kind_held};
@@ -64,7 +70,7 @@ pub use figure::model as figure_model;
 pub use held::model as held_model;
 
 /// Every kind of figure, in the lineup's order.
-pub const KINDS: [Kind; 9] = [
+pub const KINDS: [Kind; 11] = [
     Kind::Player,
     Kind::Orc,
     Kind::Bandit,
@@ -74,6 +80,8 @@ pub const KINDS: [Kind; 9] = [
     Kind::Merchant,
     Kind::Trainer,
     Kind::Villager,
+    Kind::KnightA,
+    Kind::KnightB,
 ];
 
 /// How many looks a villager has (`Dress::variant`).
@@ -112,6 +120,9 @@ struct TableFile {
     ink_item_mm: i32,
     ink_prop_mm: i32,
     colours: BTreeMap<String, [i32; 3]>,
+    /// M3: each knight's named colour scheme (`knight::Scheme`)
+    #[serde(default)]
+    schemes: BTreeMap<String, BTreeMap<String, [i32; 3]>>,
 }
 
 /// `data/models.json`, read once.
@@ -122,6 +133,7 @@ pub struct Table {
     pub ink_item: Fx,
     pub ink_prop: Fx,
     colours: BTreeMap<String, Rgb>,
+    schemes: BTreeMap<String, BTreeMap<String, Rgb>>,
 }
 
 /// What a colour the file does not have is drawn in, so a gap shows on
@@ -138,12 +150,34 @@ impl Table {
             ink_item: mm(f.ink_item_mm),
             ink_prop: mm(f.ink_prop_mm),
             colours: f.colours.into_iter().map(|(k, c)| (k, rgb(c))).collect(),
+            schemes: f
+                .schemes
+                .into_iter()
+                .map(|(k, s)| (k, s.into_iter().map(|(n, c)| (n, rgb(c))).collect()))
+                .collect(),
         })
     }
 
     /// A colour by name.
     pub fn c(&self, name: &str) -> Rgb {
         self.colours.get(name).copied().unwrap_or(MISSING)
+    }
+
+    /// M3: a slot (`main`, `second`, …) of the colour scheme `scheme`.
+    pub fn slot(&self, scheme: &str, slot: &str) -> Rgb {
+        self.schemes
+            .get(scheme)
+            .and_then(|s| s.get(slot))
+            .copied()
+            .unwrap_or(MISSING)
+    }
+
+    /// M3: every scheme's slots, by name, as 0–255 colours, for the tests.
+    pub fn scheme_names(&self) -> Vec<(String, String)> {
+        self.schemes
+            .iter()
+            .flat_map(|(k, s)| s.keys().map(move |n| (k.clone(), n.clone())))
+            .collect()
     }
 }
 

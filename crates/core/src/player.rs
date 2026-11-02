@@ -205,6 +205,8 @@ impl Fighter {
             framing: 0,
             prev_framing: 0,
         };
+        // M3: a knight comes in its whole plate (`plate.rs`)
+        f.health.limbs.plate = crate::plate::full(kind);
         f.pose = pose_from(&body, &f);
         f.prev_pose = f.pose;
         f
@@ -578,6 +580,7 @@ impl Scabbard {
 fn mouth(item: Held) -> Fx {
     match item {
         Held::Sword => ONE * 138 / 1000,
+        Held::Longsword => ONE * 158 / 1000,
         Held::Cleaver => ONE * 150 / 1000,
         _ => ONE * 106 / 1000,
     }
@@ -872,6 +875,10 @@ pub fn finish(w: &mut World, input: &Input, foes: &[Input]) {
 /// doors), its shadow, and for the player the hand's target while drawn.
 pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
     for id in 0..count(w) {
+        // M3 hook: a picture of a foe leaves the player out (`wounds.hide_me`)
+        if id == 0 && w.wounds.hide_me {
+            continue;
+        }
         let f = fighter(w, id);
         let p = f.prev_pose.lerp(&f.pose, alpha);
         // the player wears the speedster pieces M4's inventory says (or,
@@ -885,7 +892,7 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         if f.held != Held::Nothing && !w.sticks {
             crate::models::held(f.held, p.grip, p.tip, look, out);
         }
-        if matches!(f.held, Held::ShortSword | Held::Sword) && !w.sticks {
+        if matches!(f.held, Held::ShortSword | Held::Sword | Held::Longsword) && !w.sticks {
             let b = body(w, id);
             let at = Body {
                 pos: b.feet(alpha),
@@ -925,7 +932,7 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
 /// with room.
 pub fn scabbard_size(item: Held) -> (i32, i32) {
     match item {
-        Held::Sword => (74, 32),
+        Held::Sword | Held::Longsword => (74, 32),
         _ => (66, 30),
     }
 }
@@ -1048,6 +1055,65 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
         }
         "reset" => {
             reset(w);
+            Ok(())
+        }
+        // M3: the player made anew as this kind, holding its own weapon,
+        // sheathed where they stand (`knight_a`, `knight_b`; the hook the
+        // duel's start uses to put the player in plate)
+        "me" => {
+            let kind = crate::pilot::kind_named(value.trim())
+                .filter(|k| crate::plate::armoured(*k))
+                .ok_or_else(|| format!("The player is a knight_a or a knight_b, not \"{value}\"."))?;
+            w.me = Fighter::new(
+                kind,
+                crate::models::kind_held(kind),
+                0,
+                w.player.pos,
+                w.player.facing,
+                false,
+            );
+            Ok(())
+        }
+        // M3: every foe moved this many centimetres to the right of the
+        // player's line of sight (negative: left), keeping its facing:
+        // staging a picture clear of the player's own figure
+        "aside" => {
+            let cm: i32 = value
+                .trim()
+                .parse()
+                .ok()
+                .filter(|c| (-1000..=1000).contains(c))
+                .ok_or_else(|| format!("Aside is whole centimetres from -1000 to 1000, not \"{value}\"."))?;
+            let way = right_of(w.aim.yaw).scale(cm * ONE / 100);
+            for f in &mut w.foes {
+                let at = f.body.pos.add(way);
+                let yaw = f.body.facing;
+                f.body = Body::new(at, yaw);
+                let frame = frame_of(&f.body, &f.fighter.build(), &f.fighter.gait, 0, at.y);
+                f.fighter.arm.carry(&frame);
+                f.fighter.arm.frame = frame;
+            }
+            Ok(())
+        }
+        // M3: every foe turned this many degrees from facing the player
+        // (90: its right side to them, 180: its back): staging a picture
+        "turn" => {
+            let d: i32 = value
+                .trim()
+                .parse()
+                .ok()
+                .filter(|d| (-180..=180).contains(d))
+                .ok_or_else(|| format!("A turn is whole degrees from -180 to 180, not \"{value}\"."))?;
+            let feet = w.player.pos;
+            for f in &mut w.foes {
+                let yaw = fx::wrap(yaw_of(feet.sub(f.body.pos)) + deg(d));
+                let at = f.body.pos;
+                f.body = Body::new(at, yaw);
+                f.fighter.look_yaw = yaw;
+                let frame = frame_of(&f.body, &f.fighter.build(), &f.fighter.gait, 0, at.y);
+                f.fighter.arm.carry(&frame);
+                f.fighter.arm.frame = frame;
+            }
             Ok(())
         }
         "sticks" => {

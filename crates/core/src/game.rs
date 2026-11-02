@@ -41,9 +41,11 @@ impl Screen {
     }
 }
 
-/// The foe Practice puts in the ring: CHUMWORLD's bandit for now (PLAN.md
-/// M0; M2 gives the computer's knight its own pilot).
-pub const PRACTICE_FOE: &str = "bandit";
+/// The foe Practice puts in the ring: M3's hook (CA-Q13: A), the computer
+/// fights as Knight B (`knight_b`, on the leader's tree until M2 gives the
+/// computer's knight its own pilot), and the player is Knight A.
+pub const PRACTICE_FOE: &str = "knight_b";
+pub const PRACTICE_ME: &str = "knight_a";
 /// The most pixels the drawing buffer may hold (2560 × 1600); a larger
 /// screen draws at a lower resolution, scaled up by the browser.
 pub const MAX_PIXELS: i64 = 2560 * 1600;
@@ -261,6 +263,8 @@ impl Game {
                 if self.world.foes.is_empty() {
                     // the foe stands ahead along the opening heading
                     self.world.aim.yaw = crate::world::START_YAW;
+                    // M3 hook: the player in Knight A's plate
+                    crate::player::act(&mut self.world, "me", PRACTICE_ME).expect("a knight");
                     crate::player::act(&mut self.world, "spawn", PRACTICE_FOE)
                         .expect("the practice foe is in the pilots' book");
                 }
@@ -354,7 +358,8 @@ pub(crate) mod tests {
         g.act("screen.show", "duel").unwrap();
         assert_eq!(g.screen, Screen::Duel);
         assert_eq!(g.world.foes.len(), 1, "Practice puts one foe in the ring");
-        assert_eq!(g.world.foes[0].fighter.kind, crate::pose::Kind::Bandit);
+        assert_eq!(g.world.foes[0].fighter.kind, crate::pose::Kind::KnightB);
+        assert_eq!(g.world.me.kind, crate::pose::Kind::KnightA);
         assert_eq!(
             g.act("screen.show", "nowhere"),
             Err("There is no screen \"nowhere\".".into())

@@ -212,6 +212,8 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "bandit" => Some(Kind::Bandit),
         "leader" => Some(Kind::Leader),
         "ant_king" => Some(Kind::AntKing),
+        "knight_a" => Some(Kind::KnightA),
+        "knight_b" => Some(Kind::KnightB),
         _ => None,
     }
 }
@@ -227,6 +229,8 @@ fn key_of(k: Kind) -> &'static str {
         Kind::Orc => "orc",
         Kind::Leader => "leader",
         Kind::AntKing => "ant_king",
+        Kind::KnightA => "knight_a",
+        Kind::KnightB => "knight_b",
         _ => "bandit",
     }
 }
@@ -235,6 +239,7 @@ fn held_named(s: &str) -> Held {
     match s {
         "cleaver" => Held::Cleaver,
         "sword" => Held::Sword,
+        "longsword" => Held::Longsword,
         _ => Held::ShortSword,
     }
 }
@@ -277,6 +282,7 @@ pub fn foe(book: &Book, kind: Kind, at: V3, yaw: i32, salt: u64) -> Foe {
     let spec = &book.kinds[key_of(kind)];
     let mut f = Fighter::new(kind, held_named(&spec.held), 1, at, yaw, true);
     f.health = crate::health::Health::new(spec.health);
+    f.health.limbs.plate = crate::plate::full(kind);
     f.servo_pct = spec.servo_pct;
     // drawn at its own guard
     let frame = f.arm.frame;

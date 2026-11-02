@@ -92,7 +92,12 @@ impl Health {
     /// A blow: health taken by speed and where it landed; an arm hit is
     /// weakened. Returns what was taken.
     pub fn take(&mut self, speed: Fx, part: Part) -> i32 {
-        let dmg = damage(speed, part);
+        self.take_through(speed, part, 100)
+    }
+
+    /// M3: the same, with `pct` of the damage going through (`plate.rs`).
+    pub fn take_through(&mut self, speed: Fx, part: Part, pct: i32) -> i32 {
+        let dmg = damage_through(speed, part, pct);
         if dmg > 0 && !self.down() {
             self.hp -= dmg;
             if let Part::Arm(s) = part {
@@ -106,14 +111,20 @@ impl Health {
 /// Health a blow at `speed` (metres a second) takes on `part`: (speed −
 /// 1.5) × 2.5, times the part's share, rounded down; nothing below 1.5 m/s.
 pub fn damage(speed: Fx, part: Part) -> i32 {
+    damage_through(speed, part, 100)
+}
+
+/// M3: `pct` of `damage` going through plate (`plate.rs`), rounded down
+/// once at the end: (speed − 1.5) × 2.5 × the part's share × `pct`.
+pub fn damage_through(speed: Fx, part: Part, pct: i32) -> i32 {
     let over = (speed - MIN_HIT).max(0) as i64;
-    let pct = match part {
+    let share = match part {
         Part::Head => HEAD_PCT,
         Part::Torso => TORSO_PCT,
         Part::Arm(_) => ARM_PCT,
         Part::Leg(_) => LEG_PCT,
     } as i64;
-    (over * PER_MPS_PCT as i64 * pct / 10_000 / ONE as i64) as i32
+    (over * PER_MPS_PCT as i64 * share * pct.max(0) as i64 / 1_000_000 / ONE as i64) as i32
 }
 
 /// Step 4, after the blades: this tick's hits and throwables' blows taken,
@@ -146,12 +157,21 @@ pub fn fill(w: &mut World) {
 
 pub fn step(w: &mut World) {
     grow(w);
-    let hits = w.blades.hits.clone();
     let up: Vec<bool> = (0..player::count(w))
         .map(|id| !player::fighter(w, id).health.down())
         .collect();
+    // M3: each blow met plate or not first (`plate.rs`)
+    for k in 0..w.blades.hits.len() {
+        let mut h = w.blades.hits[k];
+        crate::plate::land(w, &mut h);
+        w.blades.hits[k] = h;
+    }
+    let hits = w.blades.hits.clone();
     for h in &hits {
-        player::parts_mut(w, h.on as usize).1.health.take(h.speed, h.part);
+        player::parts_mut(w, h.on as usize)
+            .1
+            .health
+            .take_through(h.speed, h.part, h.through_pct);
         // (CHUMWORLD's T39 hammer knock-down is left behind: no one in the
         // ring holds the hammer, R2.4)
     }

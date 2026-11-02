@@ -35,6 +35,9 @@ fn hit(on: u8, seg: usize, speed: Fx) -> Hit {
         speed,
         at: V3::ZERO,
         vel: v3(ONE / 10, 0, 0),
+        from: V3::ZERO,
+        through_pct: 100,
+        plated: false,
     }
 }
 

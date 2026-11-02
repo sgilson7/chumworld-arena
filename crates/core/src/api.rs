@@ -324,17 +324,18 @@ mod tests {
         assert_eq!(bars[0]["who"], "You");
         assert_eq!(bars[0]["text"], "100 / 100");
         assert_eq!(bars[0]["share"], 10_000);
-        assert_eq!(bars[1]["who"], "Bandit");
-        // the bandit's 90 of 90 (data/pilots.json)
-        assert_eq!(bars[1]["text"], "90 / 90");
+        // M3: Practice's foe is Knight B (`game::PRACTICE_FOE`)
+        assert_eq!(bars[1]["who"], "The ivory crown");
+        // the knight's 100 of 100 (data/pilots.json)
+        assert_eq!(bars[1]["text"], "100 / 100");
         g.world.foes[0].fighter.health.hp = 30;
         let u = json(&ok(&ui(&g)));
-        // 30 of 90 is 33.33%: 3 333 hundredths of a percent
-        assert_eq!(u["ok"]["bars"][1]["share"], 3_333);
-        assert_eq!(u["ok"]["bars"][1]["text"], "30 / 90");
+        // 30 of 100 is 30%: 3 000 hundredths of a percent
+        assert_eq!(u["ok"]["bars"][1]["share"], 3_000);
+        assert_eq!(u["ok"]["bars"][1]["text"], "30 / 100");
         g.world.foes[0].fighter.health.hp = -12;
         let u = json(&ok(&ui(&g)));
-        assert_eq!(u["ok"]["bars"][1]["text"], "0 / 90", "never below none");
+        assert_eq!(u["ok"]["bars"][1]["text"], "0 / 100", "never below none");
         assert_eq!(u["ok"]["bars"][1]["share"], 0);
     }
 

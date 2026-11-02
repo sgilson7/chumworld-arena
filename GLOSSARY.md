@@ -32,6 +32,12 @@ A foe the computer fights with a short sword, through the same input a player gi
 
 Not: bot, enemy AI, NPC
 
+### Black helm
+
+The knight in blackened plate, a bucket helm and wide shoulders, with a torn cloak behind: the player's knight in Practice. A working label until the person names it.
+
+Not: Black Knight, black knight
+
 ### Chop
 
 A cut straight down from above the head: hold the left button and move the mouse down.
@@ -66,11 +72,23 @@ One fight between two fighters in the arena, each moving only through the keys a
 
 Not: match, bout, deathmatch
 
+### Gap
+
+An opening in plate where a blow lands whole: the armpit, the visor's slit and the back of the knee.
+
+Not: weak spot, chink
+
 ### Health
 
 How much harm a body can take. A blade takes more the faster it moves when it hits. You start with {health.player}.
 
 Not: HP, hit points
+
+### Ivory crown
+
+The knight in pale plate with gilt, a crown of spikes and a skirt of plate burnt at the hem: the computer's knight in Practice. A working label until the person names it.
+
+Not: Ivory King, Burnt Ivory King
 
 ### Ladder
 
@@ -84,6 +102,12 @@ A cut across from one side to the other with the blade held flat: hold the left 
 
 Not: horizontal slash
 
+### Mail
+
+The rings of steel under plate. A part whose plate has broken off shows its mail, and a blow there lands whole.
+
+Not: chainmail, chain mail
+
 ### Parry
 
 Turning a blow aside with your own blade: the blades meet and neither reaches a body. It is the arm and blade meeting, not a button.
@@ -92,7 +116,7 @@ Not: deflect
 
 ### Plate
 
-The armour a knight wears: shaped steel over the body, with gaps at the joints.
+The armour a knight wears: shaped steel over the body, with gaps at the joints. It takes most of a cut and a little of a thrust, wears with each blow it takes, and breaks off once battered enough. A part in plate is never cut off.
 
 Not: platemail, plate mail
 

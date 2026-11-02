@@ -24,6 +24,11 @@ pub enum Kind {
     Villager,
     /// T21 (phase F): the Ant King, shrunk for its duel (`king.rs`)
     AntKing,
+    /// M3 (CA-Q13: A): the two knights in plate, on one build
+    /// (`models/knight.rs`, `plate.rs`): A, the black tower, and B, the
+    /// ivory crown (working labels)
+    KnightA,
+    KnightB,
 }
 
 /// What a hand holds: picks the weapon's model and, in M1, its blade length.
@@ -41,6 +46,8 @@ pub enum Held {
     Shears,
     /// T39: the armourer's hammer, heavy and two-handed
     Hammer,
+    /// M3 (CA-Q12: A): the knights' two-handed longsword, a 95 cm blade
+    Longsword,
 }
 
 /// Every joint of one figure this tick. `prev`/`now` pairs are interpolated
@@ -149,6 +156,9 @@ fn size(kind: Kind) -> (i32, i32) {
         Kind::Trainer => (172, 100),
         Kind::Villager => (165, 100),
         Kind::AntKing => (230, 150),
+        // M3 (R5.1): both knights one build, an adult a little over the
+        // player's height and broad in plate
+        Kind::KnightA | Kind::KnightB => (185, 110),
     }
 }
 
@@ -197,6 +207,8 @@ mod tests {
             Kind::Trainer,
             Kind::Villager,
             Kind::AntKing,
+            Kind::KnightA,
+            Kind::KnightB,
         ] {
             let b = build(k);
             let pct = b.head as i64 * 100 / b.height as i64;

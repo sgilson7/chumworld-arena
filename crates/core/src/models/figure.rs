@@ -228,6 +228,17 @@ fn clothes(kind: Kind, variant: u8, t: &Table) -> Clothes {
             shin: c("trainer_boot"),
             shoe: c("trainer_boot"),
         },
+        // M3: the knights are built in `knight.rs`; this is never drawn
+        Kind::KnightA | Kind::KnightB => Clothes {
+            skin: c("eye"),
+            shirt: c("eye"),
+            sleeve: c("eye"),
+            forearm: c("eye"),
+            hand: c("eye"),
+            legs: c("eye"),
+            shin: c("eye"),
+            shoe: c("eye"),
+        },
         Kind::Villager => {
             let v = variant % VILLAGER_VARIANTS;
             let shirt = c([
@@ -262,6 +273,10 @@ fn head_radii(kind: Kind) -> (i32, i32, i32) {
 
 /// The model of a kind on a pose, dressed.
 pub fn model(kind: Kind, pose: &Pose, dress: Dress) -> Model {
+    // M3: the knights in whole plate (`knight.rs`)
+    if crate::plate::armoured(kind) {
+        return super::knight::model(kind, pose, 0).model();
+    }
     let t = table();
     let b = build(kind);
     let fwd = facing(pose.facing, 0);
@@ -532,6 +547,7 @@ fn outfit(
         Kind::AntKing => ant_king(f),
         Kind::Merchant => merchant(f, hooded, hrv, head, torso),
         Kind::Trainer => trainer(f, hooded, hrv, head, torso),
+        Kind::KnightA | Kind::KnightB => {}
         Kind::Villager => villager(
             f,
             dress.variant % VILLAGER_VARIANTS,
@@ -1112,7 +1128,7 @@ pub fn rest_pose(kind: Kind, feet: V3, yaw: i32) -> Pose {
     let reach = held::grip_to_tip(item);
     let two_hands = matches!(
         item,
-        Held::ShortSword | Held::Sword | Held::Cleaver | Held::Hammer
+        Held::ShortSword | Held::Sword | Held::Longsword | Held::Cleaver | Held::Hammer
     );
     let (grip, dir, hand) = if two_hands {
         let grip = at(chest, sc(40), -sc(330), sc(300));

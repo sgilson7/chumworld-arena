@@ -29,6 +29,7 @@ pub mod models;
 pub mod motion;
 pub mod page;
 pub mod pilot;
+pub mod plate;
 pub mod player;
 pub mod pose;
 pub mod prim;
