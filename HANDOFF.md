@@ -28,10 +28,10 @@ Where the design journal is, its link if it is published, and its newest entry.
 
 ## Open for the person
 
-- R3.10 (open until the coordinator's M1 journal entry): a chop's wind-up lifts the sword forearm across the eye for a few frames (`../chumworld-arena-journal/img/build/m1/chop-wind-up-arm.jpg`): accept it, cull the forearm near the eye, or move the eye back.
+- R3.10 (person; journal `#2026-11-02-m1`; default: cull the forearm near the eye): a chop's wind-up lifts the sword forearm across the eye for a few frames (`../chumworld-arena-journal/img/build/m1/chop-wind-up-arm.jpg`): accept it, cull the forearm near the eye, or move the eye back.
 - R1.2: the game's name and the repository name. The agent chose `sgilson7/chumworld-arena` and the display name "Chumworld Arena" because CA-Q2's note named neither.
 - R2.14 (open, for the M0 journal entry): the ring's look (M2's `data/ring.json`; M0's `ring_*` colours in `data/models.json` were dropped in the M3 merge, R4.15) and the darker page frame are the agent's; the look is the person's to judge from the shots (`../chumworld-arena-journal/img/build/m0/`, `m2/`).
-- M3 (open, for the coordinator's M3 journal entry, then *person*; shots in `../chumworld-arena-journal/img/build/m3/`):
+- M3 (person; journal `#2026-11-02-m3`; shots in `../chumworld-arena-journal/img/build/m3/`):
   - R5.4: how long plate lasts (each plate breaks on the third 10 m/s cut in one place).
   - R5.5: the gaps' size (armpit, visor slit, back of the knee).
   - R5.8: Knight B's ivory darkened and its tabard turned from red to oxblood, to stand clear of the spark and blood colours.
@@ -55,4 +55,4 @@ By system, from `SECOND-ORDER.md`, with the rule each one produced.
 
 ## The next action
 
-M4: the Chivalry layer (PLAN.md): stamina, feints, combos, ripostes and the kick. The coordinator's M3 journal entry puts R5.4, R5.5, R5.8, R5.9, R5.10, R5.13 and R3.10 to the person and flips them to *person*.
+M4: the Chivalry layer (PLAN.md): stamina, feints, combos, ripostes and the kick.
