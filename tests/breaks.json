@@ -2088,8 +2088,8 @@
   {
     "name": "M3 plate: no plate for an unarmoured kind",
     "file": "crates/core/src/plate.rs",
-    "find": "    if armoured(kind) {\n        INTEGRITY",
-    "replace": "    if true {\n        INTEGRITY",
+    "find": "        _ => 0,\n    }\n}",
+    "replace": "        _ => (1 << PARTS) - 1,\n    }\n}",
     "test": "a_kind_without_plate_takes_chumworld_s_blow_unchanged"
   },
   {
@@ -2371,5 +2371,124 @@
     "find": "      \"accent\": [\n        170,\n        146,\n        70\n      ],",
     "replace": "      \"accent\": [\n        201,\n        180,\n        106\n      ],",
     "test": "the_ladder_schemes_stand_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M6 costume C: one huge left pauldron",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let size = v3(k.w(440 - 20 * i), k.s(120 - 8 * i), k.w(350 - 30 * i));",
+    "replace": "let size = v3(k.w(140 - 20 * i), k.s(120 - 8 * i), k.w(350 - 30 * i));",
+    "test": "the_veteran_keeps_one_huge_left_pauldron_in_every_pose"
+  },
+  {
+    "name": "M6 costume C: a T-shaped face",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "v3(k.s(56), a - b, k.s(30)),",
+    "replace": "v3(k.s(156), a - b, k.s(30)),",
+    "test": "the_veteran_s_helm_has_a_t_shaped_face"
+  },
+  {
+    "name": "M6 costume C: bare upper arms in skin",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let (lu, cu) = skin_or_mail(k, UPPER_ARM[s], skin);",
+    "replace": "let (lu, cu) = skin_or_mail(k, UPPER_ARM[s], k.sc.frame);",
+    "test": "the_veteran_s_upper_arms_are_bare_skin"
+  },
+  {
+    "name": "M6 costume C: no faces of two colours in one plane",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let below = ankle.sub(V3::UP.scale(k.s(24)));",
+    "replace": "let below = ankle;",
+    "test": "no_face_of_the_veteran_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume C: under the triangle cap",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "    for i in 0..3 {\n        let at = k.off(sh, -(130 + 40 * i), -40 - 80 * i, 0);",
+    "replace": "    for i in 0..300 {\n        let at = k.off(sh, -(130 + 40 * i), -40 - 80 * i, 0);",
+    "test": "the_veteran_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume C: the eyes where the visor gap is",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 40);",
+    "test": "the_veteran_s_eyes_are_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume C: colours clear of the highlights",
+    "file": "data/models.json",
+    "find": "      \"accent\": [\n        72,\n        34,\n        30\n      ],",
+    "replace": "      \"accent\": [\n        150,\n        34,\n        30\n      ],",
+    "test": "the_veteran_s_colours_stand_clear_of_the_highlights"
+  },
+  {
+    "name": "M6 plate C: the veteran's plate where the sheet puts it",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Veteran => {",
+    "replace": "        Kind::Veteran if false => {",
+    "test": "the_veteran_wears_plate_on_his_helm_left_arm_and_forearms_only"
+  },
+  {
+    "name": "M6 plate C: a bare arm severs, a pauldroned one does not",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Veteran => {",
+    "replace": "        Kind::Veteran if false => {",
+    "test": "the_veteran_s_bare_arm_is_cut_off_and_his_pauldroned_arm_is_not"
+  },
+  {
+    "name": "M6 costume B: the plume over the helm",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "let p1 = p0.add(k.up.scale(k.s(170))).add(k.back.scale(k.s(80)));",
+    "replace": "let p1 = p0.add(k.up.scale(k.s(0))).add(k.back.scale(k.s(80)));",
+    "test": "the_banneret_keeps_his_plume_and_cape_in_every_pose"
+  },
+  {
+    "name": "M6 costume B: the cape swings back behind the legs",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        tan = tan.max(need);",
+    "replace": "        let _ = need;",
+    "test": "the_banneret_s_cape_never_passes_through_his_legs"
+  },
+  {
+    "name": "M6 costume B: the cape hangs straight at rest",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "const CAPE_REST_TAN: Fx = ONE / 10;",
+    "replace": "const CAPE_REST_TAN: Fx = ONE / 2;",
+    "test": "the_banneret_s_cape_hangs_straight_when_he_stands"
+  },
+  {
+    "name": "M6 costume B: no faces of two colours in one plane",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "k.fwd.scale(depth + k.s(10))",
+    "replace": "k.fwd.scale(depth)",
+    "test": "no_face_of_the_banneret_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume B: under the triangle cap",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        k.push(seg, Layer::Plate, Role::Trim, Mesh::Cube, at, rgb);",
+    "replace": "        k.push(seg, Layer::Plate, Role::Trim, Mesh::Sphere, at, rgb);",
+    "test": "the_banneret_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume B: every part plated, mail when bare",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        if k.plated(SHIN[s]) {",
+    "replace": "        if false {",
+    "test": "every_part_of_the_banneret_is_plated_and_shows_mail_when_bare"
+  },
+  {
+    "name": "M6 costume B: the slit where the visor gap is",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 40);",
+    "test": "the_banneret_s_slit_is_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume B: colours clear of the highlights",
+    "file": "data/models.json",
+    "find": "      \"plume\": [\n        74,\n        30,\n        40\n      ]",
+    "replace": "      \"plume\": [\n        150,\n        30,\n        40\n      ]",
+    "test": "the_banneret_s_colours_stand_clear_of_the_highlights"
   }
 ]

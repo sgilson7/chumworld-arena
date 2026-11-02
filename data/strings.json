@@ -38,6 +38,8 @@
   "who_squire": "The squire",
   "who_sellsword": "The sellsword",
   "who_hedge": "The hedge knight",
+  "who_veteran": "The veteran",
+  "who_banneret": "The banneret",
   "wound_take_up": "X · Take up your sword in your other hand",
   "swing_level_left": "← Level cut",
   "swing_level_right": "Level cut →",

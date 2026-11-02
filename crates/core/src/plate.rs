@@ -78,27 +78,40 @@ pub const VISOR_MM: (i32, i32) = (8, 32);
 pub const SIDE_COS: Fx = ONE / 2;
 pub const VISOR_COS: Fx = ONE * 766 / 1000;
 
-/// A kind that wears plate.
+/// A kind that wears plate on some part (`covered`).
 pub fn armoured(kind: Kind) -> bool {
-    matches!(kind, Kind::KnightA | Kind::KnightB) || covered(kind) != 0
+    covered(kind) != 0
 }
 
-/// M6 (R7.104): the parts a kind wears plate on by design, a bit each
-/// (`wounds::bit`): every part for a knight; for the ladder's lighter
-/// opponents only what the concept sheet draws in steel. Padding, cloth
-/// and mail take no blow off (mail is treated as cloth, R7.102), so a part
-/// in them is bare: it takes a blow whole and can be cut off.
+/// The parts a kind wears plate on by design, a bit each (`wounds::bit`):
+/// the one table of plate coverage, keyed by kind (R5.25). Every part for a
+/// knight; for the ladder's opponents what each concept sheet draws in
+/// steel. Padding, cloth, leather and mail take no blow off (mail is
+/// treated as cloth, R7.102, R7.203), so a part in them is bare: it takes a
+/// blow whole and can be cut off.
 pub fn covered(kind: Kind) -> u16 {
     let b = wounds::bit;
     match kind {
         Kind::KnightA | Kind::KnightB => (1 << PARTS) - 1,
-        // the kettle hat
+        // M6 (R7.104): the kettle hat
         Kind::Squire => b(HEAD),
         // the sallet and bevor, the brigandine, both vambraces, and the
         // right upper arm under the one pauldron
         Kind::Sellsword => b(HEAD) | b(TORSO) | b(FOREARM[LEFT]) | b(FOREARM[RIGHT]) | b(UPPER_ARM[RIGHT]),
         // half plate: everything but the shins
         Kind::Hedge => ((1 << PARTS) - 1) & !b(SHIN[LEFT]) & !b(SHIN[RIGHT]),
+        // M6 (R7.202): the pit veteran on his helm, his left upper arm
+        // (under the great pauldron) and both forearms (the vambraces), and
+        // nowhere else: his right upper arm is bare skin, his torso leather
+        // over a mail skirt and his legs cloth
+        Kind::Veteran => {
+            wounds::bit(HEAD)
+                | wounds::bit(UPPER_ARM[LEFT])
+                | wounds::bit(FOREARM[LEFT])
+                | wounds::bit(FOREARM[RIGHT])
+        }
+        // the banneret on all ten, as a knight
+        Kind::Banneret => (1 << PARTS) - 1,
         _ => 0,
     }
 }

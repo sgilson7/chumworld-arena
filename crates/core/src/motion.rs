@@ -354,6 +354,9 @@ pub fn mass(kind: Kind) -> i32 {
         Kind::Squire => 80,
         Kind::Sellsword => 90,
         Kind::Hedge => 100,
+        // M6 (R7.201): a big man in leather and a little plate; a knight
+        Kind::Veteran => 95,
+        Kind::Banneret => 108,
     }
 }
 

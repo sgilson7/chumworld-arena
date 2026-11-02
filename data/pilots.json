@@ -181,6 +181,46 @@
         "rising": 15,
         "thrust": 15
       }
+    },
+    "veteran": {
+      "held": "longsword",
+      "health": 100,
+      "reaction_ticks": 10,
+      "servo_pct": 100,
+      "hand_px": 40,
+      "strike_px": 110,
+      "keep_cm": [
+        5,
+        35
+      ],
+      "tree": "leader",
+      "cuts": {
+        "level": 25,
+        "backhand": 20,
+        "chop": 25,
+        "rising": 15,
+        "thrust": 15
+      }
+    },
+    "banneret": {
+      "held": "longsword",
+      "health": 100,
+      "reaction_ticks": 10,
+      "servo_pct": 100,
+      "hand_px": 40,
+      "strike_px": 110,
+      "keep_cm": [
+        5,
+        35
+      ],
+      "tree": "leader",
+      "cuts": {
+        "level": 25,
+        "backhand": 20,
+        "chop": 25,
+        "rising": 15,
+        "thrust": 15
+      }
     }
   },
   "trees": {

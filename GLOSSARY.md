@@ -38,6 +38,12 @@ A foe the computer fights with a short sword, through the same input a player gi
 
 Not: bot, enemy AI, NPC
 
+### Banneret
+
+The ladder's opponent at rung B: fluted plate from head to foot, a rounded helm with a plume, a blue tabard with a gilt band and a cape behind. A working label until the person names it.
+
+Not: Lord, paladin
+
 ### Black helm
 
 The knight in blackened plate, a bucket helm and wide shoulders, with a torn cloak behind: the player's knight in Practice unless the save chooses the other. A working label until the person names it.
@@ -217,6 +223,12 @@ Not: TDM
 A straight stab ahead: hold the left button and turn the wheel away from you.
 
 Not: lunge, poke
+
+### Veteran
+
+The ladder's opponent at rung C, the sheet's "pit veteran": bare upper arms, one huge pauldron on the left shoulder, a leather coat over a mail skirt and an open helm with a T-shaped face. Only his helm, the pauldron's arm and his forearms wear plate. A working label until the person names it.
+
+Not: gladiator, berserker
 
 ### Walk
 
