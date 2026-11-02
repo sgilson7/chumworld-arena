@@ -54,8 +54,40 @@ pub struct HudItem {
     pub shown: bool,
 }
 
+/// How the player's mouse and view work (M1, CA-Q6: A).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Control {
+    /// CHUMWORLD's, as ported (d9cb5b5): the camera over the right
+    /// shoulder; drawn, the mouse moves the sword hand and the view holds on
+    /// the nearest foe, and the right button looks. The port's proof,
+    /// `port_keeps_chumworld_duel`, runs on this path (R3.1).
+    Shoulder,
+    /// The eye in the helmet (`player::eye`): the mouse turns the view and
+    /// the body, the reach shell and the guard ride with the view, the
+    /// right button frees the hand (the view then holds still), and a held
+    /// left button reads a cut's gesture. Nothing turns the view for the
+    /// player unless `AimHelp::SoftPull` is set. The game's own (`game.rs`).
+    FirstPerson,
+}
+
+/// Help keeping the foe in view (T5, CA-Q16: C and the person's note).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AimHelp {
+    /// none: the view turns only by the mouse (the default)
+    None,
+    /// a gentle turn of the view's heading while the foe held on is near
+    /// the view's edge (`player::soft_pull`)
+    SoftPull,
+}
+
+/// The field of view a reader may set, degrees across the view (CA-Q15: B).
+pub const FOV_MIN: i32 = 100;
+pub const FOV_MAX: i32 = 110;
+pub const FOV_DEFAULT: i32 = 105;
+
 /// The reader's settings the combat reads. CHUMWORLD kept them in its menus
-/// (`ui::Settings`); the defaults are its defaults.
+/// (`ui::Settings`); the defaults are its defaults, and M1's control is
+/// CHUMWORLD's until the game sets the first-person one (`game.rs`, R3.1).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     /// the sword hand's speed under the mouse, percent
@@ -64,6 +96,14 @@ pub struct Settings {
     pub cue: bool,
     /// blood is shown (`wounds.rs`)
     pub blood: bool,
+    /// how the mouse and the view work (M1)
+    pub control: Control,
+    /// help keeping the foe in view (M1, T5)
+    pub aim_help: AimHelp,
+    /// the field of view across the view, degrees, `FOV_MIN` to `FOV_MAX`
+    pub fov: i32,
+    /// moving the mouse up looks down (first person only)
+    pub invert_pitch: bool,
 }
 
 impl Default for Settings {
@@ -72,6 +112,10 @@ impl Default for Settings {
             hand_pct: 100,
             cue: true,
             blood: true,
+            control: Control::Shoulder,
+            aim_help: AimHelp::None,
+            fov: FOV_DEFAULT,
+            invert_pitch: false,
         }
     }
 }
@@ -99,6 +143,13 @@ pub struct World {
     /// blood in flight and on the ground, parts taken off, the cues
     pub wounds: crate::wounds::State,
     pub settings: Settings,
+    /// M1: first person, the sword hand's pitch on its shell less the
+    /// view's own pitch from its opening (`player::ride_guard`), so the
+    /// guard rides up and down with the view
+    pub guard_pitch: i32,
+    /// M2: the rounds of a duel, when the duel is fought in rounds
+    /// (`rounds.rs`); none on the port's path
+    pub rounds: Option<crate::rounds::Rounds>,
 }
 
 impl World {
@@ -126,7 +177,14 @@ impl World {
             feel: crate::feel::State::default(),
             wounds: crate::wounds::State::default(),
             settings: Settings::default(),
+            guard_pitch: crate::arm::GUARD_PITCH,
+            rounds: None,
         }
+    }
+
+    /// Whether the player sees from the helmet (M1).
+    pub fn first_person(&self) -> bool {
+        self.settings.control == Control::FirstPerson
     }
 
     /// The ground's height at (x, z): the ring's floor is flat at 0
@@ -143,6 +201,9 @@ impl World {
             return;
         }
         self.tick += 1;
+        // (M2: between rounds, and once a duel is over, the player's record
+        // is set aside)
+        let input = &crate::rounds::input(self, input);
         // 1. a hard blow holds the world still for a few ticks
         if self.feel.stop > 0 {
             crate::feel::hold(self, input);
@@ -160,9 +221,12 @@ impl World {
         crate::motion::step(self, input, &inputs);
         keep_in(self);
         // 5. wounds tick (a dropped weapon settles or is taken up), arms,
-        // blades, health, the feel of the blow
+        // blades, health, the feel of the blow (M1: in first person the
+        // guard rides with the view first)
         crate::wounds::steer(self, input, &inputs);
+        let ridden = crate::player::ride_guard(self);
         crate::arm::step(self, input, &inputs);
+        crate::player::keep_guard(self, ridden);
         crate::blade::step(self);
         crate::health::step(self);
         crate::feel::step(self);
@@ -171,6 +235,8 @@ impl World {
         crate::wounds::step(self);
         crate::player::finish(self, input, &inputs);
         crate::pilot::remember(self);
+        // M2: a round's clock, sudden death, a fall ending the round
+        crate::rounds::step(self);
     }
 
     /// What moves, drawn `alpha` of the way from the last tick to this one.
@@ -195,6 +261,7 @@ impl World {
             Some(("motion", rest)) => crate::motion::act(self, rest, value),
             Some(("feel", rest)) => crate::feel::act(self, rest, value),
             Some(("wounds", rest)) => crate::wounds::act(self, rest, value),
+            Some(("rounds", rest)) => crate::rounds::act(self, rest, value),
             _ => Err(format!("Unknown action \"{name}\".")),
         }
     }
@@ -211,10 +278,21 @@ impl World {
     pub fn camera(&self, alpha: Fx, pending: Mouse, back: Fx) -> crate::render::Camera {
         // drawn, the mouse moves the hand, not the view
         let aim = if self.me.mouse_looks {
-            self.aim.turned(pending)
+            let flip = self.first_person() && self.settings.invert_pitch;
+            self.aim.turned(Mouse {
+                dy: if flip { -pending.dy } else { pending.dy },
+                ..pending
+            })
         } else {
             self.aim
         };
+        if self.first_person() {
+            // M1: the eye in the helmet, knocked by a hard blow as the
+            // shoulder camera is; the game sets the field of view by the
+            // reader's setting and the screen's shape (`game.rs`)
+            let eye = crate::player::eye(self, alpha, aim).add(crate::feel::knock_at(self, alpha));
+            return camera::eye_view(eye, aim, camera::FOV);
+        }
         let feet = self.player.feet(alpha);
         let mut cam = camera::view_from(feet, aim, back, |x, z| self.ground(x, z));
         // a hard blow knocks the view a little; held on a foe, the view

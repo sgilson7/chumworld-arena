@@ -340,16 +340,114 @@ pub fn look_mouse(w: &mut World, input: &Input) -> Mouse {
         };
         parts_mut(w, id).1.engaged = next;
     }
-    let looks = !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down();
+    let looks = if w.first_person() {
+        // M1 (CA-Q6: A): the mouse turns the view unless the right button
+        // frees the hand or the left gathers a cut's gesture; a cut once
+        // committed leaves the mouse to the view, and turning drags the cut
+        let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();
+        !w.me.drawn() || w.me.health.down() || !(input.button(input::HOLD_LOOK) || gathering)
+    } else {
+        !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down()
+    };
     w.me.mouse_looks = looks;
     if looks {
-        Mouse {
-            dx: input.dx,
-            dy: input.dy,
-            wheel: input.wheel,
-        }
+        view_mouse(w, input)
     } else {
         Mouse::default()
+    }
+}
+
+/// The movement that turns the view: the record's, its up and down turned
+/// over in first person when the reader inverts the pitch.
+pub fn view_mouse(w: &World, input: &Input) -> Mouse {
+    let flip = w.first_person() && w.settings.invert_pitch;
+    Mouse {
+        dx: input.dx,
+        dy: if flip { -input.dy } else { input.dy },
+        wheel: input.wheel,
+    }
+}
+
+/// M1: where the eye sits, in the helmet: this far ahead of the head's
+/// middle along the view's heading, and this far above it.
+pub const EYE_FORWARD: Fx = ONE * 9 / 100;
+pub const EYE_UP: Fx = ONE * 3 / 100;
+/// M1: in first person, the player's own figure is not drawn within this
+/// of the head's middle (the head, the helmet), so the view is not inside it.
+pub const HEAD_CULL: Fx = ONE * 17 / 100;
+
+/// The eye in first person, `alpha` of the way from the last tick to this,
+/// for a view facing `aim`: in the head as the body carries it, so a blow
+/// that rocks the body rocks the view.
+pub fn eye(w: &World, alpha: Fx, aim: crate::camera::Aim) -> V3 {
+    let head = w.me.prev_pose.lerp(&w.me.pose, alpha).head;
+    head.add(facing(aim.yaw, 0).scale(EYE_FORWARD))
+        .add(v3(0, EYE_UP, 0))
+}
+
+/// M1 (T5): the soft pull turns the view's heading by this share of how far
+/// the foe held on stands past `PULL_EDGE_PCT` of half the view's width,
+/// at most `PULL_MOST` a tick, and only then: in the middle of the view
+/// nothing turns it.
+pub const PULL_EDGE_PCT: i32 = 70;
+pub const PULL_SHARE: Fx = ONE / 4;
+pub const PULL_MOST: i32 = deg(2);
+
+/// The soft pull, when the reader has set it (`AimHelp::SoftPull`): drawn,
+/// holding on a foe and looking with the mouse, a foe near the view's side
+/// edge is kept in view by a small turn of the heading. The pitch is never
+/// pulled.
+pub fn soft_pull(w: &mut World) {
+    if w.settings.aim_help != crate::world::AimHelp::SoftPull
+        || !w.me.mouse_looks
+        || w.me.sheath != Sheath::Drawn
+        || w.me.health.down()
+    {
+        return;
+    }
+    let Some(k) = w.me.engaged else {
+        return;
+    };
+    let to = yaw_of(body(w, k as usize).pos.sub(w.player.pos));
+    let gap = fx::wrap(to - w.aim.yaw);
+    let edge = deg(w.settings.fov) / 2 * PULL_EDGE_PCT / 100;
+    let over = gap.abs() - edge;
+    if over <= 0 {
+        return;
+    }
+    let step = fx::mul(over, PULL_SHARE).clamp(1, PULL_MOST);
+    w.aim.yaw = fx::wrap(w.aim.yaw + gap.signum() * step);
+}
+
+/// M1: the view's pitch from the opening look (`camera::PITCH_START`): the
+/// guard rides up and down by this.
+fn view_lift(w: &World) -> i32 {
+    w.aim.pitch - crate::camera::PITCH_START
+}
+
+/// M1, before the arms move: in first person, drawn and between cuts, the
+/// sword hand's pitch on its shell rides with the view's (`guard_pitch`
+/// above it). Its side rides by itself, the shell being the body's and the
+/// body facing where the view does. Returns the pitch it set.
+pub fn ride_guard(w: &mut World) -> Option<i32> {
+    if !w.first_person() || w.me.sheath != Sheath::Drawn || w.me.health.down() || w.me.arm.swing.cut.is_some()
+    {
+        return None;
+    }
+    let pitch = (w.guard_pitch + view_lift(w)).clamp(arm::PITCH_MIN, arm::PITCH_MAX);
+    w.me.arm.shell.pitch = pitch;
+    Some(pitch)
+}
+
+/// M1, after the arms move: whatever moved the hand's pitch besides the
+/// ride (the freed hand, a cut's end) sets where the guard sits against
+/// the view from now on.
+pub fn keep_guard(w: &mut World, ridden: Option<i32>) {
+    if !w.first_person() || w.me.sheath != Sheath::Drawn {
+        return;
+    }
+    if ridden != Some(w.me.arm.shell.pitch) {
+        w.guard_pitch = w.me.arm.shell.pitch - view_lift(w);
     }
 }
 
@@ -386,6 +484,20 @@ pub fn framing(w: &World, alpha: Fx, yaw: i32) -> V3 {
 /// Still step 1: held on a foe, the view eases round to frame them unless
 /// the right button looks; every foe looks straight at whom it holds on.
 pub fn hold_on(w: &mut World) {
+    if w.first_person() {
+        // M1: nothing turns the view but the mouse, and the soft pull if set
+        w.me.prev_framing = w.me.framing;
+        w.me.framing = 0;
+        soft_pull(w);
+    } else {
+        hold_on_shoulder(w);
+    }
+    foes_look(w);
+}
+
+/// CHUMWORLD's hold, the shoulder camera's: the view eases round to the
+/// foe held on and frames the duel.
+fn hold_on_shoulder(w: &mut World) {
     let vine = if w.me.engaged.is_none() {
         creature_hold(w)
     } else {
@@ -420,6 +532,10 @@ pub fn hold_on(w: &mut World) {
         w.aim.yaw = turn(w.aim.yaw, yaw);
         w.aim.pitch = turn(w.aim.pitch, pitch);
     }
+}
+
+/// Every foe looks straight at whom it holds on.
+fn foes_look(w: &mut World) {
     for id in 1..count(w) {
         let f = fighter(w, id);
         let look = f.engaged.map(|k| {
@@ -881,7 +997,12 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         let worn = 0;
         let dress = crate::models::Dress { worn, variant: 0 };
         // M7 (P4): through wounds, which draw what is still on the body
+        let from = out.list.len();
         crate::wounds::figure(w, id, &p, dress, look, out);
+        if id == 0 && w.first_person() {
+            // M1: the head and helmet the eye sits in are not drawn
+            cull_near(&mut out.list, from, p.head, HEAD_CULL);
+        }
         if f.held != Held::Nothing && !w.sticks {
             crate::models::held(f.held, p.grip, p.tip, look, out);
         }
@@ -912,6 +1033,18 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
     crate::swing::draw_trails(w, look, out); // and every blade's trail (R9.175)
     if w.sticks {
         sticks(w, alpha, look, out);
+    }
+}
+
+/// The shapes from `from` on whose middle lies within `r` of `at` taken out.
+pub fn cull_near(list: &mut Vec<crate::render::Shape>, from: usize, at: V3, r: Fx) {
+    let mut k = from;
+    while k < list.len() {
+        if list[k].at.t.dist(at) < r {
+            list.remove(k);
+        } else {
+            k += 1;
+        }
     }
 }
 
@@ -1040,10 +1173,10 @@ pub fn hud_stamp(w: &World) -> (i32, Option<(u8, i32)>, Option<&'static str>) {
 pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
     match name {
         "spawn" => {
-            let kind = crate::pilot::kind_named(value.trim()).ok_or_else(|| {
-                format!("A test duel is with an orc, a bandit or a leader, not \"{value}\".")
+            let (kind, key) = crate::pilot::pilot_named(value.trim()).ok_or_else(|| {
+                format!("A test duel is with an orc, a bandit, a leader or a knight, not \"{value}\".")
             })?;
-            spawn(w, kind);
+            spawn_keyed(w, kind, key);
             Ok(())
         }
         "reset" => {
@@ -1173,6 +1306,11 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 /// A foe of `kind` ahead of the player, facing them, sword drawn. A second
 /// and later foe stands to one side or the other of the first.
 pub fn spawn(w: &mut World, kind: Kind) {
+    spawn_keyed(w, kind, crate::pilot::kind_name(kind));
+}
+
+/// The same, driven by the pilot book's entry `key` (M2: the knight).
+pub fn spawn_keyed(w: &mut World, kind: Kind, key: &str) {
     if w.foes.is_empty() && w.player.pos == crate::world::START {
         let mut at = duel_spot();
         at.y = w.ground(at.x, at.z);
@@ -1191,7 +1329,7 @@ pub fn spawn(w: &mut World, kind: Kind) {
     at.y = w.ground(at.x, at.z);
     let yaw = yaw_of(w.player.pos.sub(at));
     let salt = w.rng.next_u64();
-    let mut foe = crate::pilot::foe(&w.pilots.book, kind, at, yaw, salt);
+    let mut foe = crate::pilot::foe_keyed(&w.pilots.book, kind, key, at, yaw, salt);
     foe.brain.control = w.pilots.control.clone();
     w.foes.push(foe);
 }
@@ -1348,7 +1486,7 @@ mod tests {
         );
         assert_eq!(
             act(&mut w, "spawn", "dragon"),
-            Err("A test duel is with an orc, a bandit or a leader, not \"dragon\".".into())
+            Err("A test duel is with an orc, a bandit, a leader or a knight, not \"dragon\".".into())
         );
         act(&mut w, "guard", "-40,-10").unwrap();
         assert_eq!(
@@ -1553,5 +1691,230 @@ mod tests {
         let p = w.me.pose;
         assert!(p.foot[0].y >= 0 && p.foot[1].y >= 0, "feet on or over the ground");
         assert!(p.head.y > p.chest.y && p.chest.y > p.pelvis.y);
+    }
+
+    // ---- M1: first person ------------------------------------------------
+
+    /// The player alone in first person, the sword drawn and settled.
+    fn first_person() -> World {
+        let mut w = World::new(1);
+        w.settings.control = crate::world::Control::FirstPerson;
+        w.step(&press(DRAW));
+        for _ in 0..DRAW_TICKS + 10 {
+            w.step(&Input::default());
+        }
+        assert_eq!(w.me.sheath, Sheath::Drawn);
+        w
+    }
+
+    fn mouse(dx: i32, dy: i32, buttons: u32) -> Input {
+        Input {
+            dx,
+            dy,
+            buttons,
+            ..Input::default()
+        }
+    }
+
+    /// The hand's target on its shell as a heading and a pitch from the
+    /// sword shoulder.
+    fn target_dir(w: &World) -> (i32, i32) {
+        let d =
+            w.me.arm
+                .shell
+                .point(w.me.arm.frame.shoulder[1], w.player.facing)
+                .sub(w.me.arm.frame.shoulder[1]);
+        (yaw_of(d), fx::wrap(fx::atan2(d.y, d.len_xz())))
+    }
+
+    /// CA-Q6: A. Drawn, the mouse turns the view and the body with it, and
+    /// the guard rides along: 50 px right is 6° (2 184 units a 100 px, so
+    /// 1 092), and the hand's target turns by exactly as much; 50 px up
+    /// lifts the view 1 092 units and the hand's pitch on its shell with it.
+    #[test]
+    fn in_first_person_the_guard_follows_the_view_s_heading_and_pitch() {
+        let mut w = first_person();
+        let (yaw, pitch) = (w.aim.yaw, w.aim.pitch);
+        let (t_yaw, _) = target_dir(&w);
+        let hand_pitch = w.me.arm.shell.pitch;
+        assert_eq!(
+            hand_pitch,
+            arm::GUARD_PITCH,
+            "at the opening look the guard is CHUMWORLD's"
+        );
+        w.step(&mouse(5_000, 0, 0));
+        assert_eq!(w.aim.yaw, fx::wrap(yaw - 1092), "the view turns right");
+        assert_eq!(w.player.facing, w.aim.yaw, "and the body faces where it looks");
+        // (read back through `fx::atan2`, good to a quarter of a degree)
+        let (t_yaw2, _) = target_dir(&w);
+        assert!(
+            (fx::wrap(t_yaw2 - t_yaw) + 1092).abs() <= deg(1) / 2,
+            "{} {}",
+            t_yaw,
+            t_yaw2
+        );
+        w.step(&mouse(0, -5_000, 0));
+        assert_eq!(w.aim.pitch, pitch + 1092, "the view looks up");
+        assert_eq!(
+            w.me.arm.shell.pitch,
+            hand_pitch + 1092,
+            "and the guard rises with it"
+        );
+        // and back down again: the guard where it was
+        w.step(&mouse(0, 5_000, 0));
+        assert_eq!(w.me.arm.shell.pitch, hand_pitch);
+        // a quick turn of 200 px (24°, past the 6° a tick a drawn body
+        // turns by itself) and the body is round with the view at once
+        w.step(&mouse(20_000, 0, 0));
+        assert_eq!(w.player.facing, w.aim.yaw);
+        // the shoulder path leaves the view where it was drawn
+        let mut s = World::new(1);
+        s.step(&press(DRAW));
+        for _ in 0..DRAW_TICKS + 10 {
+            s.step(&Input::default());
+        }
+        let yaw = s.aim.yaw;
+        s.step(&mouse(5_000, 0, 0));
+        assert_eq!(s.aim.yaw, yaw, "CHUMWORLD's drawn mouse moves the hand");
+    }
+
+    /// The held left button reads CHUMWORLD's gesture in first person as
+    /// before: 60 px each way snaps to a level cut, a chop, a rising cut,
+    /// and a slant to a diagonal; the view holds while it is read.
+    #[test]
+    fn in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read() {
+        use crate::swing::Way;
+        for ((dx, dy), want) in [
+            ((-6_000, 0), "level"),
+            ((0, 6_000), "chop"),
+            ((0, -6_000), "rising"),
+            ((4_500, 4_500), "diagonal"),
+        ] {
+            let mut w = first_person();
+            let (yaw, pitch) = (w.aim.yaw, w.aim.pitch);
+            w.step(&mouse(dx, dy, input::SWING));
+            let way = w.me.arm.swing.cut.map(|c| c.way);
+            let got = match way {
+                Some(Way::Level(_)) => "level",
+                Some(Way::Chop) => "chop",
+                Some(Way::Rising) => "rising",
+                Some(Way::Diagonal(_)) => "diagonal",
+                _ => "none",
+            };
+            assert_eq!(got, want, "{dx},{dy}");
+            assert_eq!(
+                (w.aim.yaw, w.aim.pitch),
+                (yaw, pitch),
+                "the gesture did not turn the view"
+            );
+            // once the cut is committed, the mouse turns the view and the
+            // body, and the cut goes on with them (the shoulders drag it)
+            w.step(&mouse(5_000, 0, input::SWING));
+            assert_eq!(w.aim.yaw, fx::wrap(yaw - 1092));
+            assert_eq!(w.player.facing, w.aim.yaw);
+            assert!(w.me.arm.swing.cut.is_some(), "the cut is still under way");
+        }
+        // under 40 px nothing is chosen, and the view still holds
+        let mut w = first_person();
+        let yaw = w.aim.yaw;
+        w.step(&mouse(3_000, 0, input::SWING));
+        assert!(w.me.arm.swing.cut.is_none());
+        assert_eq!(w.aim.yaw, yaw);
+    }
+
+    /// The right button frees the hand: the mouse moves its target on the
+    /// shell at CHUMWORLD's 0.15° a pixel (50 px: 7.5°, 1 365 units) and the
+    /// view holds still.
+    #[test]
+    fn in_first_person_the_right_button_frees_the_hand_and_holds_the_view() {
+        let mut w = first_person();
+        let (yaw, pitch, side) = (w.aim.yaw, w.aim.pitch, w.me.arm.shell.side);
+        w.step(&mouse(5_000, 0, HOLD_LOOK));
+        assert_eq!((w.aim.yaw, w.aim.pitch), (yaw, pitch), "the view holds");
+        assert_eq!(w.me.arm.shell.side, side + 1365, "the hand moves right");
+        assert!(!w.me.mouse_looks);
+        // the hand raised 50 px stays raised against the view once let go
+        let lifted = w.me.arm.shell.pitch;
+        w.step(&mouse(0, -5_000, HOLD_LOOK));
+        assert_eq!(w.me.arm.shell.pitch, lifted + 1365);
+        w.step(&mouse(0, -5_000, 0));
+        assert_eq!(
+            w.me.arm.shell.pitch,
+            lifted + 1365 + 1092,
+            "and rides on from there"
+        );
+        // no foe held, pushed past the shell's side edge, the view still holds
+        let yaw = w.aim.yaw;
+        w.step(&mouse(200_000, 0, HOLD_LOOK));
+        assert_eq!(w.aim.yaw, yaw);
+    }
+
+    /// The largest bearing of the foe from the view's heading, either way,
+    /// over a scripted sidestep: 2.5 m apart, the player walks left for
+    /// three seconds (9 m at 3 m/s).
+    fn sidestep(help: crate::world::AimHelp) -> i32 {
+        let mut w = first_person();
+        w.settings.aim_help = help;
+        act(&mut w, "pilot", "still").unwrap();
+        act(&mut w, "spawn", "bandit").unwrap();
+        act(&mut w, "gap", "250").unwrap();
+        let mut most = 0;
+        for _ in 0..180 {
+            w.step(&press(input::LEFT));
+            let to = yaw_of(w.foes[0].body.pos.sub(w.player.pos));
+            most = most.max(fx::wrap(to - w.aim.yaw).abs());
+        }
+        most
+    }
+
+    /// T5: no aim help by default; with the soft pull the foe stays inside
+    /// the view's 105° (52.5° either side) through the sidestep, where
+    /// without it the foe leaves the view: 9 m aside at 2.5 m is atan 3.6,
+    /// 74°.
+    #[test]
+    fn the_soft_pull_is_off_by_default_and_keeps_the_foe_in_view_over_a_sidestep() {
+        assert_eq!(
+            crate::world::Settings::default().aim_help,
+            crate::world::AimHelp::None
+        );
+        let half = deg(crate::world::FOV_DEFAULT) / 2;
+        let off = sidestep(crate::world::AimHelp::None);
+        assert!(off > half, "without help the foe leaves the view: {off}");
+        let on = sidestep(crate::world::AimHelp::SoftPull);
+        assert!(on <= half, "the soft pull kept it in view: {on} of {half}");
+        // and gentle: it never turns more than 2° a tick, so the foe
+        // drifts past the 70% edge before it is held
+        assert!(on > half * PULL_EDGE_PCT / 100, "{on}");
+    }
+
+    /// The eye is in the head, and the head and helmet round it are not
+    /// drawn in first person; the arms and the sword are.
+    #[test]
+    fn in_first_person_the_eye_sits_in_the_head_and_the_head_is_not_drawn() {
+        let w = first_person();
+        let eye = eye(&w, ONE, w.aim);
+        assert!(eye.dist(w.me.pose.head) < ONE / 8, "{:?}", eye);
+        let look = crate::look::tests::look();
+        let mut out = Shapes::default();
+        draw(&w, ONE, &look, &mut out);
+        let near = out
+            .list
+            .iter()
+            .filter(|s| s.at.t.dist(w.me.pose.head) < HEAD_CULL)
+            .count();
+        assert_eq!(near, 0, "nothing drawn round the eye");
+        let mut sh = w.clone();
+        sh.settings.control = crate::world::Control::Shoulder;
+        let mut out2 = Shapes::default();
+        draw(&sh, ONE, &look, &mut out2);
+        let near = out2
+            .list
+            .iter()
+            .filter(|s| s.at.t.dist(w.me.pose.head) < HEAD_CULL)
+            .count();
+        assert!(near > 0, "the shoulder view draws the head");
+        // the sword is still drawn in first person: something near the tip
+        let tip = w.me.pose.tip;
+        assert!(out.list.iter().any(|s| s.at.t.dist(tip) < ONE / 2));
     }
 }

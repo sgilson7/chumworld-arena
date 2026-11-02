@@ -1331,9 +1331,10 @@ pub fn move_shell(w: &mut World, id: usize, inp: &Input) {
         );
         let free = f.engaged.is_none();
         player::parts_mut(w, id).1.arm.shell = shell;
-        if id == 0 && free && over != 0 {
+        if id == 0 && free && over != 0 && !w.first_person() {
             // pushed past the side edge, holding on no one: the view turns,
-            // and the body after it
+            // and the body after it (M1: in first person the freed hand
+            // leaves the view still)
             w.aim.yaw = fx::wrap(w.aim.yaw - over);
         }
     } else {

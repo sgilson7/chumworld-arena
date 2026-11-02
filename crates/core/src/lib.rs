@@ -35,6 +35,7 @@ pub mod prim;
 pub mod render;
 pub mod ring;
 pub mod rng;
+pub mod rounds;
 pub mod sky;
 pub mod swing;
 pub mod ticks;

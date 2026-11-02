@@ -109,6 +109,23 @@ pub fn view_from(feet: V3, look: Aim, back: Fx, ground: impl Fn(Fx, Fx) -> Fx) -
     Camera { eye, fwd, fov: FOV }
 }
 
+/// M1 (CA-Q15: B): the vertical field of view that shows `across` degrees
+/// across a view `aspect` wide for each unit high: tan(v / 2) = tan(h / 2)
+/// / aspect, so the reader's setting is the width seen at any screen shape.
+pub fn vertical_fov(across: i32, aspect: Fx) -> i32 {
+    let half = deg(across) / 2;
+    2 * fx::atan2(fx::sin(half), fx::mul(fx::cos(half), aspect.max(1)))
+}
+
+/// M1: the first-person camera, at `eye` looking along `look`.
+pub fn eye_view(eye: V3, look: Aim, fov: i32) -> Camera {
+    Camera {
+        eye,
+        fwd: facing(look.yaw, look.pitch),
+        fov,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,6 +219,23 @@ mod tests {
             |_, _| int(2),
         );
         assert_eq!(up.eye.y, int(2) + MIN_EYE_HEIGHT);
+    }
+
+    /// By hand: 105° across a 16:9 view is tan 52.5° = 1.3032, over 1.7778
+    /// is 0.7330, atan 36.24°, so 72.5° high; across a square view the same
+    /// 105° each way; 110° across 16:9 is tan 55° = 1.4281 / 1.7778 =
+    /// 0.8033, atan 38.77°, 77.5° high. (`fx::atan2` is good to a quarter
+    /// degree, so each is held to 0.6°.)
+    #[test]
+    fn the_field_of_view_across_gives_the_height_by_the_view_s_shape() {
+        let near = |got: i32, tenths: i32| (got - deg(tenths) / 10).abs() <= deg(3) / 5;
+        assert!(
+            near(vertical_fov(105, ONE * 16 / 9), 725),
+            "{}",
+            vertical_fov(105, ONE * 16 / 9)
+        );
+        assert!(near(vertical_fov(105, ONE), 1050));
+        assert!(near(vertical_fov(110, ONE * 16 / 9), 775));
     }
 
     #[test]

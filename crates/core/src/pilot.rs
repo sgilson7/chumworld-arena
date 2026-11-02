@@ -216,6 +216,17 @@ pub fn kind_named(name: &str) -> Option<Kind> {
     }
 }
 
+/// M2: a pilot by the name the act takes, with the body it drives: the
+/// kinds above under their own names, and the computer's knight, the
+/// practice foe, on the bandit's body (M3 brings the knights' own figures,
+/// CA-7) with its own entry in the book (`data/pilots.json`, R4.4).
+pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
+    match name {
+        "knight" => Some((Kind::Bandit, "knight")),
+        _ => kind_named(name).map(|k| (k, key_of(k))),
+    }
+}
+
 /// A foe kind's name, as the act, the book and the strings (`who_<kind>`)
 /// name it.
 pub fn kind_name(k: Kind) -> &'static str {
@@ -254,6 +265,9 @@ pub enum Control {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Brain {
     pub kind: Kind,
+    /// M2: its entry in the book (`Book::kinds`): the kind's own, or the
+    /// knight's (`pilot_named`)
+    pub key: String,
     pub control: Control,
     /// the move under way and its tick
     pub current: Option<(Move, u32)>,
@@ -274,7 +288,12 @@ pub struct Foe {
 /// A foe of `kind` at `at` facing `yaw`, sword drawn, its chance seeded
 /// from `salt`.
 pub fn foe(book: &Book, kind: Kind, at: V3, yaw: i32, salt: u64) -> Foe {
-    let spec = &book.kinds[key_of(kind)];
+    foe_keyed(book, kind, key_of(kind), at, yaw, salt)
+}
+
+/// The same, driven by the book's entry `key` (M2).
+pub fn foe_keyed(book: &Book, kind: Kind, key: &str, at: V3, yaw: i32, salt: u64) -> Foe {
+    let spec = &book.kinds[key];
     let mut f = Fighter::new(kind, held_named(&spec.held), 1, at, yaw, true);
     f.health = crate::health::Health::new(spec.health);
     f.servo_pct = spec.servo_pct;
@@ -291,6 +310,7 @@ pub fn foe(book: &Book, kind: Kind, at: V3, yaw: i32, salt: u64) -> Foe {
         fighter: f,
         brain: Brain {
             kind,
+            key: key.to_string(),
             control: Control::Tree,
             current: None,
             rng: Rng::new(salt),
@@ -441,7 +461,7 @@ pub fn decide(w: &World, id: usize) -> (Input, Brain) {
         return (Input::default(), b);
     }
     let book = &w.pilots.book;
-    let spec = &book.kinds[key_of(b.kind)];
+    let spec = &book.kinds[b.key.as_str()];
     let ring = dueller(w) != Some(id);
     let tree = &book.trees[if ring { "ring" } else { spec.tree.as_str() }];
     let me = seen_now(w, id);
@@ -544,7 +564,7 @@ impl View<'_> {
 
     /// The band I keep to, centimetres feet to feet.
     fn band(&self) -> (i32, i32) {
-        let k = self.w.pilots.book.kinds[key_of(self.w.foes[self.id - 1].brain.kind)].keep_cm;
+        let k = self.w.pilots.book.kinds[self.w.foes[self.id - 1].brain.key.as_str()].keep_cm;
         (self.reach_cm() + k[0], self.reach_cm() + k[1])
     }
 }
@@ -667,7 +687,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         fast: true,
         gesture: Some(if t == READY_TICKS { way } else { (0, 0, 0) }),
     };
-    let px = v.w.pilots.book.kinds[key_of(v.w.foes[v.id - 1].brain.kind)].strike_px * 100;
+    let px = v.w.pilots.book.kinds[v.w.foes[v.id - 1].brain.key.as_str()].strike_px * 100;
     let guard = hold(v, GUARD, dir);
     Some(match m {
         Move::Guard | Move::Cast if t <= 12 => guard,

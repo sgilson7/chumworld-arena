@@ -101,7 +101,10 @@ impl Game {
         // check (`cargo test`) fails on it
         let glossary = crate::glossary::load(glossary_md);
         let look = Look::parse(look_json)?;
-        let world = World::new(seed as u64);
+        let mut world = World::new(seed as u64);
+        // M1: the game is played from the helmet (the port's own path,
+        // `Control::Shoulder`, stays the world's default, R3.1)
+        world.settings.control = crate::world::Control::FirstPerson;
         let mut meshes = MeshTable::default();
         let groups = crate::ring::scene(&mut meshes);
         let mut g = Game {
@@ -232,7 +235,11 @@ impl Game {
         if self.screen == Screen::Start {
             return camera::view_from(feet, self.title_aim(), self.back(), ground);
         }
-        self.world.camera(self.alpha, self.pending.peek(), self.back())
+        let mut cam = self.world.camera(self.alpha, self.pending.peek(), self.back());
+        if self.world.first_person() {
+            cam.fov = camera::vertical_fov(self.world.settings.fov, self.aspect);
+        }
+        cam
     }
 
     /// Builds the frame the page draws next.

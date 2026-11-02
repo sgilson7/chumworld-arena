@@ -1727,5 +1727,159 @@
     "find": "        bars: if g.screen == Screen::Start {",
     "replace": "        bars: if g.screen == Screen::Paused {",
     "test": "the_start_screen_shows_the_title_the_controls_and_a_practice_button_that_takes_the_pointer"
+  },
+  {
+    "name": "M1: the guard rides with the view's pitch",
+    "file": "crates/core/src/player.rs",
+    "find": "    w.me.arm.shell.pitch = pitch;\n    Some(pitch)",
+    "replace": "    Some(pitch)",
+    "test": "in_first_person_the_guard_follows_the_view_s_heading_and_pitch"
+  },
+  {
+    "name": "M1: the body faces where the view does",
+    "file": "crates/core/src/motion.rs",
+    "find": "            b.facing = yaw;",
+    "replace": "            let _ = yaw;",
+    "test": "in_first_person_the_guard_follows_the_view_s_heading_and_pitch"
+  },
+  {
+    "name": "M1: a held left button gathers a gesture and holds the view",
+    "file": "crates/core/src/player.rs",
+    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
+    "replace": "let gathering = false;",
+    "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
+  },
+  {
+    "name": "M1: a committed cut leaves the mouse to the view",
+    "file": "crates/core/src/player.rs",
+    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
+    "replace": "let gathering = input.button(input::SWING);",
+    "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
+  },
+  {
+    "name": "M1: the right button frees the hand",
+    "file": "crates/core/src/player.rs",
+    "find": "!(input.button(input::HOLD_LOOK) || gathering)",
+    "replace": "!gathering",
+    "test": "in_first_person_the_right_button_frees_the_hand_and_holds_the_view"
+  },
+  {
+    "name": "M1: the freed hand at the shell's edge leaves the view still",
+    "file": "crates/core/src/arm.rs",
+    "find": "if id == 0 && free && over != 0 && !w.first_person() {",
+    "replace": "if id == 0 && free && over != 0 {",
+    "test": "in_first_person_the_right_button_frees_the_hand_and_holds_the_view"
+  },
+  {
+    "name": "M1: the soft pull turns the view",
+    "file": "crates/core/src/player.rs",
+    "find": "    w.aim.yaw = fx::wrap(w.aim.yaw + gap.signum() * step);",
+    "replace": "    let _ = step;",
+    "test": "the_soft_pull_is_off_by_default_and_keeps_the_foe_in_view_over_a_sidestep"
+  },
+  {
+    "name": "M1: the soft pull is off by default",
+    "file": "crates/core/src/world.rs",
+    "find": "            aim_help: AimHelp::None,\n            fov: FOV_DEFAULT,",
+    "replace": "            aim_help: AimHelp::SoftPull,\n            fov: FOV_DEFAULT,",
+    "test": "the_soft_pull_is_off_by_default_and_keeps_the_foe_in_view_over_a_sidestep"
+  },
+  {
+    "name": "M1: the head is not drawn round the eye",
+    "file": "crates/core/src/player.rs",
+    "find": "            cull_near(&mut out.list, from, p.head, HEAD_CULL);",
+    "replace": "",
+    "test": "in_first_person_the_eye_sits_in_the_head_and_the_head_is_not_drawn"
+  },
+  {
+    "name": "M1: the field of view's height follows the view's shape",
+    "file": "crates/core/src/camera.rs",
+    "find": "fx::mul(fx::cos(half), aspect.max(1))",
+    "replace": "fx::cos(half)",
+    "test": "the_field_of_view_across_gives_the_height_by_the_view_s_shape"
+  },
+  {
+    "name": "M1: the eye layer draws what is near the eye",
+    "file": "crates/core/src/render.rs",
+    "find": "        to.dot(self.fwd) >= -radius && to.len().saturating_sub(radius) < EYE_LAYER_FAR",
+    "replace": "        to.dot(self.fwd) >= -radius && to.len().saturating_sub(radius) < 0",
+    "test": "what_lies_within_three_metres_of_the_eye_is_drawn_again_in_the_eye_layer"
+  },
+  {
+    "name": "M2: the opening marks are both reaches and 4 m apart",
+    "file": "crates/core/src/rounds.rs",
+    "find": "pub const OPENING_SPACE: Fx = fx::int(4);",
+    "replace": "pub const OPENING_SPACE: Fx = fx::int(3);",
+    "test": "a_round_opens_with_the_fighters_two_reaches_and_four_metres_apart_across_the_middle"
+  },
+  {
+    "name": "M2: a fall wins the round for the other side",
+    "file": "crates/core/src/rounds.rs",
+    "find": "            r.wins[1 - who as usize] += 1;",
+    "replace": "            r.wins[who as usize] += 1;",
+    "test": "a_fall_wins_the_round_for_the_other_side_and_the_next_round_opens_after_the_beat"
+  },
+  {
+    "name": "M2: the next round stands both again",
+    "file": "crates/core/src/rounds.rs",
+    "find": "                w.rounds = Some(r);\n                opening(w);\n                return;",
+    "replace": "                w.rounds = Some(r);\n                return;",
+    "test": "a_fall_wins_the_round_for_the_other_side_and_the_next_round_opens_after_the_beat"
+  },
+  {
+    "name": "M2: two rounds win the duel",
+    "file": "crates/core/src/rounds.rs",
+    "find": "pub const TO_WIN: u8 = 2;",
+    "replace": "pub const TO_WIN: u8 = 3;",
+    "test": "two_rounds_won_end_the_duel"
+  },
+  {
+    "name": "M2: the player's record is set aside once the duel is over",
+    "file": "crates/core/src/rounds.rs",
+    "find": "        Some(r) if r.phase != Phase::Fight => Input::default(),",
+    "replace": "        Some(r) if r.phase == Phase::Fight && false => Input::default(),",
+    "test": "two_rounds_won_end_the_duel"
+  },
+  {
+    "name": "M2: both falling at once replays the round",
+    "file": "crates/core/src/rounds.rs",
+    "find": "                if r.fall != Some(Fall::Both) {",
+    "replace": "                if true {",
+    "test": "both_falling_at_once_replays_the_round"
+  },
+  {
+    "name": "M2: sudden death waits 90 s",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    if r.ticks > SUDDEN_TICKS {",
+    "replace": "    if r.ticks > 0 {",
+    "test": "after_ninety_seconds_standing_outside_the_inner_ring_costs_five_health_a_second"
+  },
+  {
+    "name": "M2: the sand takes 5 health a second",
+    "file": "crates/core/src/rounds.rs",
+    "find": "pub const SAND_TICKS: u32 = 12;",
+    "replace": "pub const SAND_TICKS: u32 = 10;",
+    "test": "after_ninety_seconds_standing_outside_the_inner_ring_costs_five_health_a_second"
+  },
+  {
+    "name": "M2: the inner ring is safe in sudden death",
+    "file": "crates/core/src/rounds.rs",
+    "find": "            let out = fx::length(at.x, at.z) > SAFE_RADIUS;",
+    "replace": "            let out = true;",
+    "test": "after_ninety_seconds_standing_outside_the_inner_ring_costs_five_health_a_second"
+  },
+  {
+    "name": "M2: a fall on the sand names the sand",
+    "file": "crates/core/src/rounds.rs",
+    "find": "                r.last_blow[id] = Some(Blow::Sand);",
+    "replace": "",
+    "test": "a_fall_on_the_sand_in_sudden_death_names_the_sand"
+  },
+  {
+    "name": "M2: the seconds before sudden death round up",
+    "file": "crates/core/src/rounds.rs",
+    "find": ".div_ceil(tps)",
+    "replace": " / tps",
+    "test": "the_seconds_before_sudden_death_count_down_by_whole_seconds"
   }
 ]

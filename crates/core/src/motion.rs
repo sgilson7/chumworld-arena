@@ -188,9 +188,14 @@ pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
             let b = player::body(w, id);
             (w.ground(b.pos.x, b.pos.z), false)
         };
+        let fp = id == 0 && w.first_person();
         let (b, f) = player::parts_mut(w, id);
         f.gait.road = road_share(f.gait.road, road);
         step_body(b, f, &inp, yaw, n, toward, ground);
+        // M1: in first person the body faces where the view does
+        if fp && !f.health.down() {
+            b.facing = yaw;
+        }
     }
     separate(w);
 }

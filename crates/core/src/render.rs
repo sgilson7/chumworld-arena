@@ -83,17 +83,23 @@ impl Pass {
 pub enum Layer {
     Far = 0,
     Near = 1,
+    /// M1 (R3.4): what lies within `EYE_LAYER_FAR` of the eye, drawn last
+    /// with its own near plane, so the player's own arms, sword and legs are
+    /// whole in first person while the near layer keeps CHUMWORLD's planes
+    Eye = 2,
 }
 
 impl Layer {
-    /// Draw order: far first, then the depth buffer is cleared for the near.
-    pub const ORDER: [Layer; 2] = [Layer::Far, Layer::Near];
+    /// Draw order: far first, then the depth buffer is cleared for the
+    /// near, then again for the eye's.
+    pub const ORDER: [Layer; 3] = [Layer::Far, Layer::Near, Layer::Eye];
 
     /// The layer's near and far planes.
     pub fn planes(self) -> (Fx, Fx) {
         match self {
             Layer::Far => (FAR_LAYER_NEAR, FAR),
             Layer::Near => (NEAR, NEAR_LAYER_FAR),
+            Layer::Eye => (EYE_NEAR, EYE_LAYER_FAR),
         }
     }
 
@@ -113,6 +119,10 @@ impl Layer {
 /// camera sits 2.6 m behind the head, so nothing the player looks at comes
 /// nearer.
 pub const NEAR: Fx = ONE * 2 / 5;
+/// M1 (R3.4): the eye layer's planes, 5 cm to 3 m. At 3 m its depth step is
+/// 3 × 2.95 / (0.05 × 2²⁴) = 0.01 mm, finer than the near layer's anywhere.
+pub const EYE_NEAR: Fx = ONE / 20;
+pub const EYE_LAYER_FAR: Fx = fx::int(3);
 /// The near layer's far plane.
 pub const NEAR_LAYER_FAR: Fx = fx::int(128);
 /// The far layer's near plane: 16 m inside the near layer's far plane, the
@@ -477,6 +487,13 @@ impl Camera {
         (near, far)
     }
 
+    /// M1: whether a sphere reaches the eye layer: not wholly behind the
+    /// camera, and some of it within `EYE_LAYER_FAR`.
+    pub fn eye_layer(&self, centre: V3, radius: Fx) -> bool {
+        let to = centre.sub(self.eye);
+        to.dot(self.fwd) >= -radius && to.len().saturating_sub(radius) < EYE_LAYER_FAR
+    }
+
     /// Where a world point lands on screen, as Q16 shares of the width from
     /// the left and of the height from the top; `None` behind the camera.
     pub fn screen(&self, aspect: Fx, p: V3) -> Option<(Fx, Fx)> {
@@ -499,7 +516,7 @@ pub struct Frame {
     pub draws: Vec<u32>,
 }
 
-pub const VIEW_VALUES: usize = 16 + 16 + 3;
+pub const VIEW_VALUES: usize = 16 + 16 + 16 + 3;
 
 impl Frame {
     /// Builds the frame: for each layer, for each pass, the static groups'
@@ -513,20 +530,24 @@ impl Frame {
         let e = cam.eye.sub(origin);
         view.extend([e.x, e.y, e.z]);
 
-        let groups: Vec<(bool, bool)> = scene
+        let groups: Vec<(bool, bool, bool)> = scene
             .groups
             .iter()
-            .map(|g| cam.layers(g.centre, g.radius))
+            .map(|g| {
+                let (n, f) = cam.layers(g.centre, g.radius);
+                (n, f, cam.eye_layer(g.centre, g.radius))
+            })
             .collect();
         // each moving shape's layers, the sky's always the far one alone
-        let reach: Vec<(bool, bool)> = moving
+        let reach: Vec<(bool, bool, bool)> = moving
             .list
             .iter()
             .map(|s| {
                 if s.pass == Pass::Sky {
-                    (false, true)
+                    (false, true, false)
                 } else {
-                    cam.layers(s.at.t, s.at.reach())
+                    let (n, f) = cam.layers(s.at.t, s.at.reach());
+                    (n, f, cam.eye_layer(s.at.t, s.at.reach()))
                 }
             })
             .collect();
@@ -534,7 +555,11 @@ impl Frame {
         let mut instances = Vec::new();
         let mut draws = Vec::new();
         for layer in Layer::ORDER {
-            let pick = |r: &(bool, bool)| if layer == Layer::Near { r.0 } else { r.1 };
+            let pick = |r: &(bool, bool, bool)| match layer {
+                Layer::Near => r.0,
+                Layer::Far => r.1,
+                Layer::Eye => r.2,
+            };
             let mine = moving
                 .list
                 .iter()
@@ -781,6 +806,28 @@ mod tests {
             (false, false),
             "past the far plane"
         );
+    }
+
+    /// M1 (R3.4): a hand 0.3 m from the eye is drawn in the eye layer as
+    /// well as the near one, which cuts it at 0.4 m; a foe 5 m off is not.
+    #[test]
+    fn what_lies_within_three_metres_of_the_eye_is_drawn_again_in_the_eye_layer() {
+        let c = cam();
+        let ahead = |cm: i32| c.eye.add(c.fwd.scale(cm * ONE / 100));
+        assert!(c.eye_layer(ahead(30), ONE / 20));
+        assert!(!c.eye_layer(ahead(500), ONE / 2));
+        assert!(!c.eye_layer(c.eye.sub(c.fwd.scale(ONE)), ONE / 10), "behind");
+        let mut s = Shapes::default();
+        s.solid(
+            Mesh::Cube,
+            Affine::translate(ahead(30)).then(&Affine::scale(v3(ONE / 20, ONE / 20, ONE / 20))),
+            [ONE; 3],
+            0,
+        );
+        let f = Frame::build(&Scene::default(), &s, &c, ONE);
+        let layers: Vec<u32> = f.draws.chunks(DRAW_VALUES).map(|d| d[5]).collect();
+        assert_eq!(layers, vec![Layer::Near as u32, Layer::Eye as u32]);
+        assert_eq!(f.view.len(), VIEW_VALUES);
     }
 
     #[test]

@@ -283,11 +283,8 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 pub fn hold(w: &mut World, input: &Input) {
     w.feel.stop -= 1;
     if w.me.mouse_looks {
-        w.aim = w.aim.turned(crate::input::Mouse {
-            dx: input.dx,
-            dy: input.dy,
-            wheel: input.wheel,
-        });
+        // (M1: first person may turn the pitch over, `player::view_mouse`)
+        w.aim = w.aim.turned(crate::player::view_mouse(w, input));
     }
     crate::arm::move_shell(w, 0, input);
     settle(w);

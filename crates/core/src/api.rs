@@ -261,7 +261,7 @@ pub fn numbers() -> String {
         // the look's uniforms, then the sky's (`sky.rs`)
         "uniforms": look::UNIFORMS.iter().chain(crate::sky::UNIFORMS).map(|(n, call, len)| serde_json::json!([n, call, len, call.contains("Matrix")])).collect::<Vec<_>>(),
         // the view values: each layer's matrix by layer number, then the eye
-        "view": { "layers": [[0, 16], [16, 32]], "eye": [32, 35] },
+        "view": { "layers": [[0, 16], [16, 32], [32, 48]], "eye": [48, 51] },
         // a bar's share is hundredths of a percent; the page divides by this
         // to set a width as a share of one
         "bar_whole": 10_000,
