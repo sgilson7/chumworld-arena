@@ -526,6 +526,11 @@ mod tests {
 
         let before = (host.tick, host.frontier, host.world.clone());
         for junk in [
+            // a tick long confirmed, whose record has since been forgotten
+            Msg::Input {
+                tick: 0,
+                input: keys(1),
+            },
             Msg::Input {
                 tick: DELAY,
                 input: keys(1),

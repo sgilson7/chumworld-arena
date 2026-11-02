@@ -374,6 +374,16 @@ mod tests {
             assert!((x - y).abs() <= 4, "host {h:?}, guest {g:?}");
         }
         assert_ne!(host.me.arm.shell, w0.me.arm.shell, "the cut moved the hand");
+        // and looking up, each knight's guard rides up with its own view
+        let up = Input {
+            dy: -3_000,
+            ..Input::default()
+        };
+        let host = run(&[[up, Input::default()], [Input::default(); SEATS]]);
+        let guest = run(&[[Input::default(), up], [Input::default(); SEATS]]);
+        let (h, g) = (host.me.arm.shell.pitch, guest.foes[0].fighter.arm.shell.pitch);
+        assert!(h > w0.me.arm.shell.pitch, "the host's guard rose");
+        assert!((h - g).abs() <= 4, "host {h}, guest {g}");
     }
 
     /// Turned round for the guest's page, the guest's knight is the player

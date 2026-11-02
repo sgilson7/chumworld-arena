@@ -59,7 +59,7 @@ By system, from `SECOND-ORDER.md`, with the rule each one produced.
 
 2026-11-02, M3 merged into main (M1, M2 and M3 together): `./scripts/check.sh` ends `BROWSER CHECK PASSED in chromium, firefox, webkit` and `BUILDER CHECK PASSED`; `./scripts/count-tests.sh` prints `287 passed, 0 failed, 1 ignored`; `python3 scripts/break_tests.py` catches 326 of 326 (325 on the first full run; the rotted M1 cull row repointed, R5.23); `port_keeps_chumworld_duel` passes with its test data unedited. The M3 branch's own line above held before its last commit's `println!` (R5.21).
 
-2026-11-02, M5 (branch `m5-online`, in the worktree `wt-m5`): steps 1 to 7 and 9 of `./scripts/check.sh` run one by one (step 8 looks for `../wt-m5-journal`; `python3 scripts/journal_check.py /Users/samgilson/Documents/ChumworldArena/chumworld-arena` run in its place); results in the commit's report. `tests/browser/online.py chromium firefox webkit`: ONLINE CHECK PASSED in all three. `port_keeps_chumworld_duel` passes with its data unedited.
+2026-11-02, M5 (branch `m5-online`, in the worktree `wt-m5`): steps 1 to 7 and 9 of `./scripts/check.sh` run one by one (step 8 looks for `../wt-m5-journal`; `python3 scripts/journal_check.py /Users/samgilson/Documents/ChumworldArena/chumworld-arena` run in its place); results in the commit's report. `tests/browser/online.py chromium firefox webkit`: ONLINE CHECK PASSED in all three. `port_keeps_chumworld_duel` passes with its data unedited. `python3 scripts/break_tests.py`: 358 of 360, the two misses repaired and caught alone (R8.19).
 
 ## The next action
 
