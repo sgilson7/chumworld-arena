@@ -64,4 +64,5 @@ These stay with the person and go in `BRIEF.md` or `PLAN.md`:
 
 | Default | Changed to | Reason | Recorded in |
 | --- | --- | --- | --- |
-| | | | |
+| D2 (how the core meets "no floats, clocks or randomness") | Carried from CHUMWORLD (commit d9cb5b5, its D2 row): Builder's realtime kit as CHUMWORLD copied and changed it, `crates/core/src/fx.rs` (`fx::sin` exact to Q16 in place of Bhaskara's approximation, helpers added), `rng.rs`, `ticks.rs` (`Clock::alpha`, `last`, `rest`; the example `World` moved into the tests) and `web/input.js` (the wheel). The kit changes no default; the files differ from the kit's as CHUMWORLD's do | a game with a fixed 60 Hz tick, pointer lock and a 3D camera, and the combat copied from CHUMWORLD unchanged (CA-2) | `SECOND-ORDER.md` R2.13; `LICENSES.md`; CHUMWORLD's R2.1, R2.2 |
+| D3 (shaders hold no number but 0 and 1) | Unchanged; met as CHUMWORLD met it, by sending every constant, the pass identities (flags of 0 and 1) and the dither table (a `mat4`) as uniforms | an array size counts as a number in the scan | `SECOND-ORDER.md` R2.13; CHUMWORLD's R2.7 |

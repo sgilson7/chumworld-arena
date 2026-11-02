@@ -1,0 +1,98 @@
+//! Parity trace for Chumworld Arena's M0 (CA-2): written in a scratch copy
+//! of CHUMWORLD at d9cb5b5, never committed. A scripted duel on the level
+//! ground of the test duel's spot, the bandit driven by its own pilot from
+//! the world's seed, one line of integers per tick.
+use tool_core::input::{self, Input};
+use tool_core::player;
+use tool_core::world::World;
+
+pub const SEED: u64 = 11;
+
+/// The player's record for tick `t`: draw, step in, then cuts. (Neither
+/// fighter goes down in it: down, CHUMWORLD's story takes the player's keys
+/// away, `story::filter`, which the ring does not.)
+pub fn script(t: u32) -> Input {
+    let mut i = Input::default();
+    if t == 0 {
+        i.keys = input::DRAW;
+    }
+    if (40..70).contains(&t) || (450..470).contains(&t) {
+        i.keys |= input::FORWARD;
+    }
+    if (500..520).contains(&t) {
+        i.keys |= input::LEFT;
+    }
+    // the hand wanders a little between cuts
+    if (30..60).contains(&t) {
+        i.dx = 300;
+        i.dy = -150;
+    }
+    // (start, dx, dy, wheel): level, chop, backhand, thrust, rising, level, chop
+    let cuts = [
+        (80, -6000, 0, 0),
+        (140, 0, 6000, 0),
+        (200, 6000, 0, 0),
+        (260, 0, 0, -100),
+        (320, 0, -6000, 0),
+        (380, -6000, 0, 0),
+        (540, 0, 6000, 0),
+    ];
+    for (start, dx, dy, wheel) in cuts {
+        if t == start {
+            i.dx = dx;
+            i.dy = dy;
+            i.wheel = wheel;
+        }
+        if (start..start + 40).contains(&t) {
+            i.buttons |= input::SWING;
+        }
+    }
+    i
+}
+
+pub const TICKS: u32 = 600;
+
+#[test]
+#[ignore]
+fn write_parity_trace() {
+    let mut w = World::new(SEED);
+    w.act("duel.spawn", "bandit").unwrap();
+    // the ring's bandit carries no rocks (Chumworld Arena R2.3): its pouch
+    // emptied here, as a bandit spawned with rocks 0 in data/pilots.json
+    w.foes[0].fighter.pouch = Default::default();
+    let origin = w.player.pos;
+    let mut rows = Vec::new();
+    for t in 0..TICKS {
+        w.step(&script(t));
+        assert_eq!(w.foes.len(), 1, "one foe at tick {t}");
+        let mut row = vec![w.tick as i64, w.feel.stop as i64, w.aim.yaw as i64, w.aim.pitch as i64];
+        for id in 0..player::count(&w) {
+            let b = player::body(&w, id);
+            let f = player::fighter(&w, id);
+            // the ring's answers hold here: level ground at 0, no road, no sprint
+            assert_eq!(w.ground(b.pos.x, b.pos.z), 0, "tick {t}");
+            assert_eq!(tool_core::solid::surface(&w, b.pos.x, b.pos.z), 0, "tick {t}");
+            assert!(!tool_core::places::on_road(&w, b.pos.x, b.pos.z), "tick {t}");
+            assert!(!f.gait.sprint.on && !f.gait.sprint.skid, "tick {t}");
+            row.push(f.health.hp as i64);
+            row.push(b.facing as i64);
+            for p in [b.pos].iter().chain(f.arm.pts.iter().map(|q| &q.p)) {
+                row.push((p.x - origin.x) as i64);
+                row.push(p.y as i64);
+                row.push((p.z - origin.z) as i64);
+            }
+        }
+        rows.push(row);
+    }
+    let text = serde_json::json!({
+        "_note": "CHUMWORLD d9cb5b5, crates/core/tests/parity_trace.rs in a scratch copy: World::new(11), duel.spawn bandit, its pouch emptied (the ring has no rocks), the player's scripted record (see port_keeps_chumworld_duel). Each row: tick, hit-stop, aim yaw, aim pitch, then for the player and the bandit: health, facing, feet xyz, and the arm's six points xyz (elbows, hands, pommel, tip), Q16.16, x and z from the player's feet after the spawn.",
+        "seed": SEED,
+        "ticks": TICKS,
+        "rows": rows,
+    });
+    let out = std::env::var("PARITY_OUT").unwrap();
+    std::fs::write(out, text.to_string()).unwrap();
+    assert!(!w.player_down() && !w.foes[0].fighter.health.down());
+    let hp: Vec<_> = (0..2).map(|id| player::fighter(&w, id).health.hp).collect();
+    println!("final health {hp:?}, hits seen");
+}

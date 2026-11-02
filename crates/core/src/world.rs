@@ -420,14 +420,101 @@ mod tests {
         assert_eq!(w.player.vel, v3(ONE / 60, 0, 0));
     }
 
-    /// The hash reads values, not names.
+    /// R2.19: the hash reads values, not names. Two structs alike but for
+    /// their field names hash the same; a value changed, or two values
+    /// swapped, hash otherwise; a variant's name is a value.
     #[test]
     fn the_world_s_hash_reads_its_values_not_its_field_names() {
+        // the same type before and after its fields were renamed
+        mod before {
+            #[derive(Debug)]
+            #[allow(dead_code)]
+            pub struct S {
+                pub hp: i32,
+                pub pos: (i32, i32),
+                pub mode: Option<u8>,
+            }
+        }
+        mod after {
+            #[derive(Debug)]
+            #[allow(dead_code)]
+            pub struct S {
+                pub health: i32,
+                pub at: (i32, i32),
+                pub state: Option<u8>,
+            }
+        }
+        use after::S as B;
+        use before::S as A;
+        #[derive(Debug)]
+        #[allow(dead_code)]
+        enum M {
+            Round(u8),
+            Rest(u8),
+        }
+        let a = format!(
+            "{:?}",
+            A {
+                hp: 5,
+                pos: (1, 2),
+                mode: Some(3)
+            }
+        );
+        let b = format!(
+            "{:?}",
+            B {
+                health: 5,
+                at: (1, 2),
+                state: Some(3)
+            }
+        );
+        assert_ne!(a, b);
+        assert_eq!(value_hash(&a), value_hash(&b), "renamed fields");
+        let swapped = format!(
+            "{:?}",
+            A {
+                hp: 5,
+                pos: (2, 1),
+                mode: Some(3)
+            }
+        );
+        assert_ne!(value_hash(&a), value_hash(&swapped));
+        let more = format!(
+            "{:?}",
+            A {
+                hp: 59,
+                pos: (1, 2),
+                mode: Some(3)
+            }
+        );
+        assert_ne!(
+            value_hash(&more),
+            value_hash(&format!(
+                "{:?}",
+                A {
+                    hp: 51,
+                    pos: (1, 2),
+                    mode: Some(3)
+                }
+            ))
+        );
+        let none = format!(
+            "{:?}",
+            A {
+                hp: 5,
+                pos: (1, 2),
+                mode: None
+            }
+        );
+        assert_ne!(value_hash(&a), value_hash(&none));
+        assert_ne!(
+            value_hash(&format!("{:?}", M::Round(1))),
+            value_hash(&format!("{:?}", M::Rest(1)))
+        );
         // FNV-1a of "5" alone, by hand: (0xcbf29ce484222325 ^ 0x35) * 0x100000001b3
         let one = (0xcbf2_9ce4_8422_2325u64 ^ 0x35).wrapping_mul(0x0100_0000_01b3);
         assert_eq!(value_hash("hp: 5"), one);
-        assert_eq!(value_hash("health: 5"), one);
-        assert_ne!(value_hash("hp: 6"), one);
+        // the world itself: the same world hashes the same, a step changes it
         let w = World::new(7);
         assert_eq!(w.hash(), World::new(7).hash());
     }

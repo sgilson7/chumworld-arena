@@ -370,7 +370,8 @@ pub(crate) mod tests {
     #[test]
     fn practice_stands_the_foe_six_metres_ahead_across_the_middle() {
         let mut g = game();
-        frames(&mut g, 40, 0, 0);
+        // ten seconds of the start screen: its camera has drifted 20°
+        frames(&mut g, 600, 0, 0);
         g.act("screen.show", "duel").unwrap();
         let (p, f) = (g.world.player.pos, g.world.foes[0].body.pos);
         let gap = p.dist(f);
@@ -408,9 +409,26 @@ pub(crate) mod tests {
         // ten seconds paused with W held
         frames(&mut g, 600, FORWARD, 500);
         assert_eq!(g.world, held);
+        // D tapped and let go inside a frame shorter than a tick, still paused
+        g.advance(now(&g) + TICK_US / 3, crate::input::RIGHT, 0, 0, 0);
         g.act("screen.show", "duel").unwrap();
         g.advance(now(&g) + TICK_US, FORWARD, 0, 0, 0);
         assert_eq!(g.world.tick, tick + 1, "one frame of the duel runs one tick");
+        // the tap stayed in the pause: the body still moves straight ahead
+        let sideways = g.world.player.vel.dot(crate::geom::right_of(g.world.aim.yaw));
+        assert!(
+            sideways.abs() <= 4,
+            "a key tapped while paused reached play: {sideways}"
+        );
+        // time paused short of a tick is forgotten too: a pause of six
+        // tenths of a tick (on the third left over from the tap above, so
+        // it ends 0.93 into a tick), then half a tick of the duel, runs nothing
+        g.act("key.escape", "").unwrap();
+        g.advance(now(&g) + TICK_US * 6 / 10, FORWARD, 0, 0, 0);
+        g.act("screen.show", "duel").unwrap();
+        let tick = g.world.tick;
+        g.advance(now(&g) + TICK_US / 2, FORWARD, 0, 0, 0);
+        assert_eq!(g.world.tick, tick, "the paused part of a tick ran on resuming");
     }
 
     #[test]

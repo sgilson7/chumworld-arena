@@ -4,7 +4,7 @@ Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh sessi
 
 ## What this is
 
-Five sentences at most: what the tool does, for whom, and where it lives.
+M0 of a first-person sword duel for the browser: CHUMWORLD's combat (d9cb5b5) cut down to one flat stone ring and two fighters, the player and a bandit on CHUMWORLD's pilot, still in CHUMWORLD's third-person camera. A start screen with Practice, the duel with each fighter's health, and pause. `port_keeps_chumworld_duel` holds the port to CHUMWORLD's numbers.
 
 ## Rules that hold it up
 
@@ -28,7 +28,8 @@ Where the design journal is, its link if it is published, and its newest entry.
 
 ## Open for the person
 
-Every `SECOND-ORDER.md` row with status *person*, by number, with what the person has to decide or supply. `scripts/notebook_check.py` fails while one is missing.
+- R1.2: the game's name and the repository name. The agent chose `sgilson7/chumworld-arena` and the display name "Chumworld Arena" because CA-Q2's note named neither.
+- R2.14 (open, for the M0 journal entry): the ring's plain stone colours (`data/models.json`, `ring_*`) and the darker page frame are the agent's; the look is the person's to judge from the M0 shots (`../chumworld-arena-journal/img/build/m0/`).
 
 ## Mistakes so far
 
@@ -36,10 +37,8 @@ By system, from `SECOND-ORDER.md`, with the rule each one produced.
 
 ## What passed
 
-The last lines of `./scripts/check.sh` and `./scripts/count-tests.sh`, with the date and commit.
+2026-11-02, M0: `./scripts/check.sh` ends `BROWSER CHECK PASSED in chromium, firefox, webkit` and `BUILDER CHECK PASSED`; `./scripts/count-tests.sh` prints `237 passed, 0 failed, 1 ignored`.
 
 ## The next action
 
-One action.
-
-- R1.2: the game's name and the repository name. The agent chose `sgilson7/chumworld-arena` and the display name "Chumworld Arena" because CA-Q2's note named neither.
+M1: first person (PLAN.md).

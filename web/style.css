@@ -1,24 +1,81 @@
+/* The page's frame round the duel: the loading state, the panels the core
+   describes (start, pause), each fighter's health, the lines over the duel,
+   and messages. Stone, iron and soot, a little grittier than CHUMWORLD's
+   warm haze (BRIEF.md, Style). */
 :root {
-  --ink: #1d232a;
-  --paper: #ffffff;
-  --muted: #5a646e;
-  --accent: #9b1c1c;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #e8eaed; --paper: #15181c; --muted: #a9b1ba; --accent: #f08c8c; }
+  --ink: #e9e3d8;
+  --ink-soft: #b3aa9b;
+  --stone: #2a2724;
+  --stone-edge: #4a443d;
+  --glass: rgba(26, 24, 22, 0.88);
+  --accent: #a8322a;
+  --accent-deep: #6e1d18;
+  --you: #c9b27a;
+  --foe: #b04a3c;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 * { box-sizing: border-box; }
 /* A display rule elsewhere must not show what the page hid. */
 [hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
-  margin: 0;
-  background: var(--paper);
+  background: #1b1916;
   color: var(--ink);
-  font: 1rem/1.5 system-ui, sans-serif;
+  font: 16px/1.45 Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
 }
-main { max-width: 44rem; margin: 0 auto; padding: 2rem 1rem; }
-h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
-#message:not(:empty) { color: var(--accent); }
-section { margin: 0 0 1rem; }
-button { font: inherit; padding: 0.3rem 0.8rem; margin: 0 0.5rem 0.5rem 0; }
-[data-term] { text-decoration: underline dotted; cursor: help; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #1b1916; }
+body[data-ready="false"] #view { visibility: hidden; }
+#loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; letter-spacing: 0.08em; color: var(--ink-soft); }
+
+#overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.55) 100%); }
+body[data-screen="start"] #overlay { align-items: flex-end; justify-content: flex-start; padding: 0 0 8vh 6vw; background: linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%); }
+.panel { min-width: 320px; max-width: 440px; max-height: calc(100vh - 32px); overflow: auto; padding: 28px 32px 24px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); box-shadow: var(--shadow); }
+.panel h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: 0.06em; }
+#start h1 { font-size: 44px; letter-spacing: 0.1em; text-transform: uppercase; }
+.panel h2 { margin: 20px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.panel p { margin: 0 0 14px; color: var(--ink-soft); }
+.panel button { display: block; width: 100%; padding: 13px 22px; border: 1px solid var(--accent-deep); border-radius: 4px; background: var(--accent); color: #f6efe2; font: inherit; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; box-shadow: 0 3px 0 var(--accent-deep); }
+.panel button:hover { filter: brightness(1.1); }
+.panel button:focus-visible { outline: 2px solid var(--you); outline-offset: 3px; }
+table.controls { width: 100%; border-collapse: collapse; }
+table.controls td { padding: 4px 0; vertical-align: middle; font-size: 14px; }
+table.controls td:first-child { width: 46%; }
+kbd { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 3px; background: var(--stone); border: 1px solid var(--stone-edge); font: inherit; font-size: 13px; font-weight: 700; text-align: center; }
+
+/* Each fighter's health: its name, its numbers in words, and a bar whose
+   length is the share left (a <progress> the core fills). The player's sits
+   bottom left, the foe's top right; a stripe on the foe's bar tells them
+   apart besides the colour (BRIEF.md, Accessibility). */
+#bars { position: fixed; inset: 0; pointer-events: none; }
+body:not([data-screen="duel"]) #bars { display: none; }
+.bar { position: fixed; width: min(360px, 40vw); padding: 8px 12px 10px; background: rgba(15, 14, 12, 0.6); border: 1px solid var(--stone-edge); border-radius: 4px; }
+#bar-you { left: 24px; bottom: 24px; }
+.bar:not(#bar-you) { right: 24px; top: 24px; }
+.bar header { display: flex; justify-content: space-between; font-size: 14px; letter-spacing: 0.06em; margin-bottom: 6px; }
+.bar progress { appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 12px; border: 1px solid #000; background: #120f0d; }
+.bar progress::-webkit-progress-bar { background: #120f0d; }
+.bar progress::-webkit-progress-value { background: var(--you); }
+.bar progress::-moz-progress-bar { background: var(--you); }
+.bar:not(#bar-you) progress::-webkit-progress-value { background: repeating-linear-gradient(135deg, var(--foe) 0 8px, #8a372d 8px 12px); }
+.bar:not(#bar-you) progress::-moz-progress-bar { background: repeating-linear-gradient(135deg, var(--foe) 0 8px, #8a372d 8px 12px); }
+
+#hud { position: fixed; inset: auto 0 5vh 0; display: flex; justify-content: center; pointer-events: none; }
+.hud-item { margin: 0; padding: 7px 16px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); color: var(--ink); font-size: 15px; letter-spacing: 0.04em; opacity: 0; transition: opacity 1.2s ease; }
+.hud-item.shown { opacity: 1; }
+body:not([data-screen="duel"]) #hud { display: none; }
+/* the swing cue's word, small and faint below the middle of the view */
+#hud-swing { position: fixed; top: 61vh; left: 50%; transform: translateX(-50%); font-size: 13px; padding: 4px 12px; background: rgba(0, 0, 0, 0.35); transition: opacity 0.15s ease; }
+#hud-swing.shown { opacity: 0.85; }
+#hud-swing:empty { display: none; }
+#hud-wound { position: fixed; bottom: calc(5vh + 48px); left: 50%; transform: translateX(-50%); }
+
+#message:empty { display: none; }
+#message { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 520px; margin: 0; padding: 24px 28px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); box-shadow: var(--shadow); }
+[data-term] { text-decoration: underline dotted rgba(233, 227, 216, 0.5); text-underline-offset: 3px; cursor: help; }
+@media (max-height: 640px) {
+  .panel { padding: 16px 20px 14px; }
+  #start h1 { font-size: 30px; }
+  table.controls td { padding: 1px 0; }
+}
