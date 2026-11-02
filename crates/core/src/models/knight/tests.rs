@@ -296,3 +296,23 @@ fn the_schemes_stand_clear_of_the_highlight_colours() {
     }
     assert_eq!(checked, 2 * 8 * 4);
 }
+
+/// The knights' one weapon (CA-Q12: A): a 95 cm blade on a 26 cm grip for
+/// both hands, drawn 130 + 28 + 950 = 1 108 mm from the grip to the tip,
+/// its heft 80 between the sword's 75 and the short sword's 100 (R5.2).
+#[test]
+fn the_longsword_is_two_handed_with_a_95_cm_blade() {
+    use crate::pose::Held;
+    assert_eq!(kind_held(Kind::KnightA), Held::Longsword);
+    assert_eq!(kind_held(Kind::KnightB), Held::Longsword);
+    assert_eq!(grip_to_tip(Held::Longsword), mm(1108));
+    let w = crate::arm::weapon(Held::Longsword);
+    assert!(w.two_handed());
+    assert_eq!(w.hilt, 26 * ONE / 100);
+    assert_eq!(w.heft_pct, 80);
+    let (sword, short) = (
+        crate::arm::weapon(Held::Sword),
+        crate::arm::weapon(Held::ShortSword),
+    );
+    assert!(sword.heft_pct < w.heft_pct && w.heft_pct < short.heft_pct);
+}

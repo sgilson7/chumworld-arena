@@ -30,6 +30,13 @@ Where the design journal is, its link if it is published, and its newest entry.
 
 - R1.2: the game's name and the repository name. The agent chose `sgilson7/chumworld-arena` and the display name "Chumworld Arena" because CA-Q2's note named neither.
 - R2.14 (open, for the M0 journal entry): the ring's plain stone colours (`data/models.json`, `ring_*`) and the darker page frame are the agent's; the look is the person's to judge from the M0 shots (`../chumworld-arena-journal/img/build/m0/`).
+- M3 (open, for the coordinator's M3 journal entry, then *person*; shots in `../chumworld-arena-journal/img/build/m3/`):
+  - R5.4: how long plate lasts (each plate breaks on the third 10 m/s cut in one place).
+  - R5.5: the gaps' size (armpit, visor slit, back of the knee).
+  - R5.8: Knight B's ivory darkened and its tabard turned from red to oxblood, to stand clear of the spark and blood colours.
+  - R5.9: the knights' working labels on screen, "The black helm" and "The ivory crown" ("tower" is ruled out by the Ladder entry).
+  - R5.10: B's skirt steps out lame by lame instead of flaring.
+  - R5.13: the player in plate no longer gets CHUMWORLD's player toughness against severing.
 
 ## Mistakes so far
 

@@ -90,6 +90,21 @@ fn a_knight_comes_in_whole_plate_and_anyone_else_in_none() {
     assert_eq!(bare(&[0; PARTS]), 0b11_1111_1111);
 }
 
+/// The blades' own blows go the same way: a hit the blades found meets
+/// plate in `health::step` before health is taken.
+#[test]
+fn a_blow_the_blades_find_meets_plate_before_health_is_taken() {
+    let mut w = duel();
+    let (_, _, right) = ways(&w);
+    let h = blow(&w, TORSO, 50, right, false);
+    w.blades.hits.push(h);
+    crate::health::step(&mut w);
+    assert_eq!(foe(&w).health.hp, 100 - 12);
+    assert_eq!(foe(&w).health.limbs.plate[TORSO], 45 - 28);
+    assert!(w.blades.hits[0].plated);
+    assert_eq!(w.blades.hits[0].through_pct, 30);
+}
+
 #[test]
 fn a_cut_on_plate_does_thirty_percent_and_wears_it() {
     let mut w = duel();
@@ -111,6 +126,14 @@ fn a_thrust_on_plate_does_eighty_percent() {
     // 40 × 80% = 32 through; the plate takes 8
     assert_eq!(foe(&w).health.hp, 100 - 32);
     assert_eq!(foe(&w).health.limbs.plate[TORSO], 45 - 8);
+    // at 10 m/s the share is taken before rounding: 8.5 × 2.5 × 80% = 17.0
+    // through, where 80% of the rounded 21 would be 16.8 → 16
+    let mut w = duel();
+    let mut h = blow(&w, TORSO, 50, fwd, true);
+    h.speed = int(10);
+    wounds::stage(&mut w, h);
+    assert_eq!(foe(&w).health.hp, 100 - 17);
+    assert_eq!(foe(&w).health.limbs.plate[TORSO], 45 - (21 - 17));
 }
 
 #[test]
