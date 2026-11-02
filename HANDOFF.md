@@ -41,3 +41,5 @@ The last lines of `./scripts/check.sh` and `./scripts/count-tests.sh`, with the 
 ## The next action
 
 One action.
+
+- R1.2: the game's name and the repository name. The agent chose `sgilson7/chumworld-arena` and the display name "Chumworld Arena" because CA-Q2's note named neither.

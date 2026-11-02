@@ -27,7 +27,7 @@ Draft conditions for the MVP, to be settled with the person through the journal'
 
 - The game's name, and the names of knights, arenas and opponents (agent-generated lists are worklist rows).
 - How far the combat departs from CHUMWORLD's (feel is the person's judgement from play).
-- Whether the game keeps anything between visits (D17 forbids browser storage unless this brief allows it).
+- Whether the game keeps anything between visits. Answered 2026-11-02 (CA-Q4: C): one save in the browser for settings and the knight's look from the MVP on, and the ladder's progress from M6; the same save can be written to and read from a JSON file. It holds game state only, nothing about the person.
 - The look; whether a picture matches the named inspirations is the person's judgement. No asset, likeness or name from Dark Souls, Chivalry or Armored Core is copied; they are read for silhouette, mood and proportion only.
 - Any third-party asset, sound or likeness.
 - When and where the game is published.
@@ -46,7 +46,11 @@ Terms from the description: *duel*, *arm* (the simulated arm), *arena*, *plate* 
 
 ## Autonomy
 
-Not yet granted. The plan is not approved in advance: the agent writes the journal's opening pages and `PLAN.md`, then stops for the person. The agent may not loosen a Builder requirement or a boundary test, and may not add a server, an account, analytics or any off-origin request beyond the declared online feature. The agent does not create a repository, push or publish until the person grants it here in their own words.
+The person's grant, word for word (2026-11-02), after answering CA-Q1 to CA-Q16 in the journal (CA-Q2: B, publish):
+
+> alright ive answered all the questions, continue and build the mvp, dont stop till the mvp is deployed, i give explicit approval to deploy, then once its deployed get the ladder built with a unique costume per enemy, then deploy that too
+
+The plan is approved in advance. The agent may create the public repository `sgilson7/chumworld-arena`, push to it, and publish it to GitHub Pages at `https://sgilson7.github.io/chumworld-arena/` with `./scripts/publish.sh` once `./scripts/check.sh` passes: first the MVP (M0–M5), then the ladder (M6) with a unique costume for each opponent. The repository name is the agent's choice, since the person named none (R1.2). Where this brief is silent, the agent decides, records the decision in `SECOND-ORDER.md`, and continues. The agent may not loosen a Builder requirement or a boundary test, and may not add a server, an account, analytics or any off-origin request beyond the declared online feature (Builder's online kit, loaded only on Host or Join). The page may keep one save in the browser (settings, the knight's look, and from M6 the ladder's progress), and write and read the same save as a JSON file (CA-Q4: C). The work may be split among subagents bound by this project's `CLAUDE.md`; the main agent coordinates, reviews and keeps the journal.
 
 ## Journal
 

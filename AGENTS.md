@@ -31,7 +31,20 @@
 
 ## Rules agreed for this project
 
-None yet. When the person answers the opening entry's questions, add each rule that applies to every later session here, with its journal ID.
+Agreed 2026-11-02 in the journal (Builder page, `#opening`, and the Game page, `#2026-11-02-for-you`; answers in the published journal's store).
+
+- CA-1. Every combat rule lives in the core, in Q16.16 integers; the page draws instances and reads input.
+- CA-2. CHUMWORLD's combat is copied in at commit d9cb5b5 before it is changed (CA-Q1: A). Each change to one of its numbers is a `SECOND-ORDER.md` row naming the old value.
+- CA-3. The computer's knight moves only through the same input record a player makes.
+- CA-4. Nothing off the origin loads until Host or Join; every relay is in `web/net/config.js` and the CSP and nowhere else (`online_fence.rs`).
+- CA-5. Online play is rollback (CA-Q10: A), with the kit's lockstep tests kept as the reference rollback must agree with; a checksum mismatch is reported.
+- CA-6. A duel's core tick stays under 2 ms for two fighters with rollback room; probe readings go in `MEASUREMENTS.md`.
+- CA-7. Each knight and each ladder opponent's costume is built from primitives in code through Ape Race's costume flow (concept sheet, model, tests for silhouette, z-fighting and a triangle cap, shots, review entry). Knights A and B are approved as drawn (CA-Q13: A). Costume models go to background agents in their own worktrees once the plate contract is fixed (CA-Q3: A).
+- CA-8. No name, likeness, asset or line from Dark Souls, Chivalry or Armored Core in the game (`GLOSSARY.md` Not: lines, `copy.rs`).
+- CA-9. Every visible change, divergence and deploy gets a journal entry with pictures of the running build.
+- CA-10. Feel is the person's judgement from play. The person asked for no stops until the MVP is deployed, so the play stops after M1 and M4 are replaced by journal entries with shots for later review (R1.3).
+- CA-11. Publishing is granted in `BRIEF.md`'s Autonomy paragraph for the MVP and the ladder.
+- Design answers: the mouse turns view and body, the guard rides with the view, right button frees the hand, a held left button reads a gesture (CA-Q6: A); stamina, feints, combos, ripostes and a kick (CA-Q7: B); plate cuts 70% of a cut and 20% of a thrust, gaps take full damage, battered plate falls off, limbs sever only bare (CA-Q8: A); unlocks change looks only (CA-Q9: A); a real stone ring (CA-Q11: A); one two-handed longsword for both knights (CA-Q12: A); best of three, sudden death after 90 s inside the inner 12 m (CA-Q14: A); 100–110° field of view and no visor edge (CA-Q15: B); no aim help by default, with a soft pull as a setting (CA-Q16: C and the person's note); one browser save for settings and look from the MVP, the ladder from M6, plus a JSON file (CA-Q4: C).
 
 ## Stopping
 
