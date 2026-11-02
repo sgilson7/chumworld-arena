@@ -2280,5 +2280,313 @@
     "find": "            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));",
     "replace": "            cull_near(&mut out.list, from, p.head, HEAD_CULL);",
     "test": "neither_knight_s_helm_is_drawn_across_its_own_eye"
+  },
+  {
+    "name": "M4: a cut costs stamina by its way",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    c.pay(cut_cost(cut.way));",
+    "replace": "    c.pay(0);",
+    "test": "each_cut_costs_stamina_by_its_way_when_it_is_chosen"
+  },
+  {
+    "name": "M4: stamina waits half a second before it comes back",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "if c.rest >= s.regen_wait_ticks {",
+    "replace": "if c.rest >= 1 {",
+    "test": "stamina_comes_back_fifteen_a_second_after_half_a_second_and_not_while_cutting"
+  },
+  {
+    "name": "M4: no stamina comes back while a cut is under way",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "let busy = f.arm.swing.cut.is_some() || f.chiv.kick > 0;",
+    "replace": "let busy = f.chiv.kick > 0;",
+    "test": "stamina_comes_back_fifteen_a_second_after_half_a_second_and_not_while_cutting"
+  },
+  {
+    "name": "M4: winded arms work at part strength",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    if on && f.chiv.winded {",
+    "replace": "    if false {",
+    "test": "winded_at_none_the_arms_work_at_part_strength_until_stamina_is_back_to_twenty_five"
+  },
+  {
+    "name": "M4: winded lasts until stamina is back to 25",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "} else if c.winded && c.stamina >= s.winded_until * PART {",
+    "replace": "} else if c.winded && c.stamina > 0 {",
+    "test": "winded_at_none_the_arms_work_at_part_strength_until_stamina_is_back_to_twenty_five"
+  },
+  {
+    "name": "M4: a winded cut's motor turns slower",
+    "file": "crates/core/src/player.rs",
+    "find": "            t.most = t.most * winded / 100;",
+    "replace": "            t.most = t.most * 100 / 100;",
+    "test": "a_winded_chop_comes_slower_than_a_fresh_one"
+  },
+  {
+    "name": "M4: a parry costs the parrier and opens a riposte",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "            if striking(w, them) && !striking(w, me) {",
+    "replace": "            if false {",
+    "test": "a_blade_met_while_not_striking_is_a_parry_that_costs_the_parrier_and_opens_a_riposte"
+  },
+  {
+    "name": "M4: a feint breaks the cut off",
+    "file": "crates/core/src/swing.rs",
+    "find": "        crate::chivalry::feint(&mut chiv);\n        sw.cut = None;",
+    "replace": "        crate::chivalry::feint(&mut chiv);",
+    "test": "the_right_button_in_a_cut_s_wind_up_feints_back_to_guard_for_fifteen"
+  },
+  {
+    "name": "M4: a feint needs its stamina",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        && f.chiv.stamina >= s.feint_cost * PART",
+    "replace": "        && true",
+    "test": "the_right_button_in_a_cut_s_wind_up_feints_back_to_guard_for_fifteen"
+  },
+  {
+    "name": "M4: a feint only in the wind-up's first ticks",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        && cut.t <= s.feint_ticks",
+    "replace": "        && cut.t <= 60",
+    "test": "the_right_button_in_a_cut_s_wind_up_feints_back_to_guard_for_fifteen"
+  },
+  {
+    "name": "M4: a feint returns the hand to the guard",
+    "file": "crates/core/src/swing.rs",
+    "find": "            ..crate::arm::Shell::guard(arm)",
+    "replace": "            ..a.shell",
+    "test": "the_right_button_in_a_cut_s_wind_up_feints_back_to_guard_for_fifteen"
+  },
+  {
+    "name": "M4: a cut that met no blade opens the follow-up window",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        c.follow = spec().follow_up_window_ticks;",
+    "replace": "        c.follow = 0;",
+    "test": "a_cut_begun_in_the_follow_up_window_winds_up_in_eight_ticks_three_in_a_row"
+  },
+  {
+    "name": "M4: a follow-up's wind-up is shorter",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        cut.wind_ticks = s.follow_up_wind_ticks;\n",
+    "replace": "",
+    "test": "a_cut_begun_in_the_follow_up_window_winds_up_in_eight_ticks_three_in_a_row"
+  },
+  {
+    "name": "M4: a run of follow-ups is three",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    } else if c.follow > 0 && c.run < s.follow_ups {",
+    "replace": "    } else if c.follow > 0 {",
+    "test": "a_cut_begun_in_the_follow_up_window_winds_up_in_eight_ticks_three_in_a_row"
+  },
+  {
+    "name": "M4: the wind-up ends by the cut's own tick cap",
+    "file": "crates/core/src/swing.rs",
+    "find": "if blade_at(&c, yaw, tip.sub(hand)) >= start || c.t >= c.wind_ticks {",
+    "replace": "if blade_at(&c, yaw, tip.sub(hand)) >= start || c.t >= WIND_TICKS {",
+    "test": "a_cut_begun_in_the_follow_up_window_winds_up_in_eight_ticks_three_in_a_row"
+  },
+  {
+    "name": "M4: a riposte drives harder",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        cut.strength_pct = s.riposte_strength_pct;\n",
+    "replace": "",
+    "test": "a_cut_begun_in_the_riposte_window_winds_up_in_six_ticks_and_drives_at_125"
+  },
+  {
+    "name": "M4: a cut's strength share reaches the arm",
+    "file": "crates/core/src/swing.rs",
+    "find": "        WIND_PCT * cut.strength_pct / 100",
+    "replace": "        WIND_PCT",
+    "test": "a_cut_begun_in_the_riposte_window_winds_up_in_six_ticks_and_drives_at_125"
+  },
+  {
+    "name": "M4: a riposte presses on against a blade",
+    "file": "crates/core/src/swing.rs",
+    "find": "let pressing = blocked && !landed && c.press > 0 && c.phase != Phase::WindUp;",
+    "replace": "let pressing = false;",
+    "test": "a_riposte_presses_on_against_a_blade_for_six_ticks_and_a_plain_cut_is_spent_on_it"
+  },
+  {
+    "name": "M4: a kick staggers",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    f.gait.stagger = f.gait.stagger.max(s.kick_stagger_ticks);\n",
+    "replace": "",
+    "test": "a_kick_in_reach_staggers_the_foe_breaks_its_cut_and_pushes_its_guard_aside"
+  },
+  {
+    "name": "M4: a kick pushes the guard aside",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    let aside = deg(s.kick_aside_deg);",
+    "replace": "    let aside = 0;",
+    "test": "a_kick_in_reach_staggers_the_foe_breaks_its_cut_and_pushes_its_guard_aside"
+  },
+  {
+    "name": "M4: a kick breaks the foe's cut off",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    f.arm.swing.cut = None;\n    f.arm.swing.gesture = (0, 0, 0);\n    let aside",
+    "replace": "    let aside",
+    "test": "a_kick_in_reach_staggers_the_foe_breaks_its_cut_and_pushes_its_guard_aside"
+  },
+  {
+    "name": "M4: a kick costs 20",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        c.pay(s.kick_cost);",
+    "replace": "        c.pay(0);",
+    "test": "a_kick_in_reach_staggers_the_foe_breaks_its_cut_and_pushes_its_guard_aside"
+  },
+  {
+    "name": "M4: a kick reaches only so far",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "(gap <= reach && (gap == 0 ||",
+    "replace": "(gap <= reach * 3 && (gap == 0 ||",
+    "test": "a_kick_out_of_reach_misses_and_one_without_twenty_stamina_is_not_made"
+  },
+  {
+    "name": "M4: a kick needs its stamina",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        && f.chiv.stamina >= s.kick_cost * PART;",
+    "replace": "        && true;",
+    "test": "a_kick_out_of_reach_misses_and_one_without_twenty_stamina_is_not_made"
+  },
+  {
+    "name": "M4: a kick raises the leg",
+    "file": "crates/core/src/player.rs",
+    "find": "    crate::chivalry::kick_leg(b, f, &mut foot);\n",
+    "replace": "",
+    "test": "a_kick_raises_the_leg_ahead_out_in_front_at_its_hit_tick"
+  },
+  {
+    "name": "M4: the layer's step is off on the port's path",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    if !on(w) {\n        return;\n    }\n    let s = spec();\n    // a blade meeting",
+    "replace": "    let s = spec();\n    // a blade meeting",
+    "test": "the_layer_is_off_on_the_port_s_path"
+  },
+  {
+    "name": "M4: a cut's cost is off on the port's path",
+    "file": "crates/core/src/swing.rs",
+    "find": "            if on {\n                // M4: paid for",
+    "replace": "            if true {\n                // M4: paid for",
+    "test": "the_layer_is_off_on_the_port_s_path"
+  },
+  {
+    "name": "M4: Practice turns the layer on",
+    "file": "crates/core/src/game.rs",
+    "find": "        w.settings.chivalry = true; // M4 (R6.1)",
+    "replace": "        w.settings.chivalry = false;",
+    "test": "practice_turns_the_layer_on_and_each_bar_shows_stamina_in_words_and_winded_by_name"
+  },
+  {
+    "name": "M4: a winded bar says so in words",
+    "file": "crates/core/src/api.rs",
+    "find": "    if c.winded {\n        text = fill(",
+    "replace": "    if false {\n        text = fill(",
+    "test": "practice_turns_the_layer_on_and_each_bar_shows_stamina_in_words_and_winded_by_name"
+  },
+  {
+    "name": "M4: the controls name the kick",
+    "file": "crates/core/src/api.rs",
+    "find": "            row(\"key_kick\", \"control_kick\"),\n",
+    "replace": "",
+    "test": "the_controls_name_the_feint_and_the_kick_and_f_is_the_kick"
+  },
+  {
+    "name": "M4: the HUD holds a move for 45 ticks",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "Some((e, age)) if age < s.event_ticks => Some((e, age + 1)),",
+    "replace": "Some((e, age)) if age < 9 => Some((e, age + 1)),",
+    "test": "the_hud_names_the_player_s_last_move_for_three_quarters_of_a_second"
+  },
+  {
+    "name": "M4: the knight's tree is its own",
+    "file": "data/pilots.json",
+    "find": "\"keep_cm\": [5, 35], \"tree\": \"knight\", \"cuts\"",
+    "replace": "\"keep_cm\": [5, 35], \"tree\": \"leader\", \"cuts\"",
+    "test": "the_knight_ripostes_after_its_blade_parries"
+  },
+  {
+    "name": "M4: the knight ripostes after a parry",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::JustParried => v.f.chiv.riposte > 0,",
+    "replace": "        Cond::JustParried => false,",
+    "test": "the_knight_ripostes_after_its_blade_parries"
+  },
+  {
+    "name": "M4: the knight rests when its stamina runs low",
+    "file": "data/pilots.json",
+    "find": "{\"if\": [{\"stamina_below\": 25}], \"do\": \"back_off\"}",
+    "replace": "{\"if\": [{\"stamina_below\": 0}], \"do\": \"back_off\"}",
+    "test": "the_knight_rests_when_its_stamina_runs_low"
+  },
+  {
+    "name": "M4: the knight reads its stamina",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::StaminaBelow(pct) => v.f.chiv.pct() < *pct,",
+    "replace": "        Cond::StaminaBelow(pct) => *pct < 0,",
+    "test": "the_knight_rests_when_its_stamina_runs_low"
+  },
+  {
+    "name": "M4: the knight kicks a guard held back",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::FoeTurtles(ticks) => v.they.idle >= *ticks,",
+    "replace": "        Cond::FoeTurtles(ticks) => v.they.idle > *ticks,",
+    "test": "the_knight_kicks_a_guard_held_back_at_close_range"
+  },
+  {
+    "name": "M4: the knight's kick rule",
+    "file": "data/pilots.json",
+    "find": "{\"if\": [{\"foe_turtles\": 90}",
+    "replace": "{\"if\": [{\"foe_turtles\": 900}",
+    "test": "the_knight_kicks_a_guard_held_back_at_close_range"
+  },
+  {
+    "name": "M4: the knight's kick is F",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            plain(GUARD, if t == 0 { input::KICK } else { 0 })",
+    "replace": "            plain(GUARD, 0)",
+    "test": "the_knight_kicks_a_guard_held_back_at_close_range"
+  },
+  {
+    "name": "M4: the knight feints with the right button",
+    "file": "crates/core/src/pilot.rs",
+    "find": "                t if t == at => Plan {\n                    feint: true,",
+    "replace": "                t if t == at => Plan {\n                    feint: false,",
+    "test": "the_knight_feints_through_its_record_and_the_feint_holds_in_the_world"
+  },
+  {
+    "name": "M4: a pilot's feint reaches its record",
+    "file": "crates/core/src/pilot.rs",
+    "find": "(if p.feint { input::HOLD_LOOK } else { 0 })",
+    "replace": "(if p.feint { 0 } else { 0 })",
+    "test": "the_knight_feints_through_its_record_and_the_feint_holds_in_the_world"
+  },
+  {
+    "name": "M4 R3.10: the sword forearm near the eye is not drawn",
+    "file": "crates/core/src/player.rs",
+    "find": "            cull_forearm(\n                &mut out.list,\n                from,\n                eye,\n                p.elbow[pose::RIGHT],\n                p.hand[pose::RIGHT],\n            );\n",
+    "replace": "            let _ = eye;\n",
+    "test": "the_sword_forearm_is_not_drawn_across_the_eye_in_a_chop_s_wind_up"
+  },
+  {
+    "name": "M4 R3.10: the forearm cull reaches 32 cm",
+    "file": "crates/core/src/player.rs",
+    "find": "pub const FOREARM_NEAR: Fx = ONE * 32 / 100;",
+    "replace": "pub const FOREARM_NEAR: Fx = ONE * 20 / 100;",
+    "test": "the_sword_forearm_is_not_drawn_across_the_eye_in_a_chop_s_wind_up"
+  },
+  {
+    "name": "M4 R6.17: the other arm near the eye is not drawn either",
+    "file": "crates/core/src/player.rs",
+    "find": "                cull_forearm(&mut out.list, from, eye, a, b);\n",
+    "replace": "                let _ = (a, b);\n",
+    "test": "kicked_the_player_s_own_arms_are_not_drawn_across_the_eye"
+  },
+  {
+    "name": "M4: a staged move starts every foe on it",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "                f.brain.current = Some((m, 0));\n",
+    "replace": "",
+    "test": "a_staged_move_starts_every_foe_on_it_and_a_bad_one_is_refused"
   }
 ]

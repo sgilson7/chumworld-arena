@@ -104,6 +104,9 @@ pub struct Settings {
     pub fov: i32,
     /// moving the mouse up looks down (first person only)
     pub invert_pitch: bool,
+    /// M4: stamina, feints, follow-ups, ripostes and the kick
+    /// (`chivalry.rs`); off on the port's path, on in the game (R6.1)
+    pub chivalry: bool,
 }
 
 impl Default for Settings {
@@ -116,6 +119,7 @@ impl Default for Settings {
             aim_help: AimHelp::None,
             fov: FOV_DEFAULT,
             invert_pitch: false,
+            chivalry: false,
         }
     }
 }
@@ -234,6 +238,7 @@ impl World {
         crate::blade::step(self);
         crate::health::step(self);
         crate::feel::step(self);
+        crate::chivalry::step(self, input, &inputs); // M4
         crate::blade::settle(self); // after the blow's stagger
                                     // 6. blood flies and lands, parts taken off fall and rest
         crate::wounds::step(self);
@@ -256,6 +261,8 @@ impl World {
         crate::swing::hud(self, strings, out);
         // taking up a dropped weapon in the other hand
         crate::wounds::hud(self, strings, out);
+        // M4: a feint, a follow-up, a riposte, a kick
+        crate::chivalry::hud(self, strings, out);
     }
 
     /// A setting or flag named `module.name`.
@@ -266,6 +273,7 @@ impl World {
             Some(("feel", rest)) => crate::feel::act(self, rest, value),
             Some(("wounds", rest)) => crate::wounds::act(self, rest, value),
             Some(("rounds", rest)) => crate::rounds::act(self, rest, value),
+            Some(("chivalry", rest)) => crate::chivalry::act(self, rest, value),
             _ => Err(format!("Unknown action \"{name}\".")),
         }
     }

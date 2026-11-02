@@ -78,11 +78,23 @@ One fight between two fighters in the arena, each moving only through the keys a
 
 Not: match, bout, deathmatch
 
+### Feint
+
+Breaking off a cut before it falls: press the right button while the sword still draws back for the cut. It costs {chivalry.feint_cost} stamina and brings the sword back to your guard.
+
+Not: fake, bluff
+
 ### Field of view
 
 How wide you see from inside the helmet, in degrees across the screen, from {fov.min} to {fov.max}.
 
 Not: FOV, zoom
+
+### Follow-up
+
+A cut begun just as your last one ends, whether it landed or missed: it draws back faster. Up to {chivalry.follow_ups} follow in a row; a cut a blade stops ends the run.
+
+Not: combo, combination
 
 ### Gap
 
@@ -119,6 +131,12 @@ Not: Ivory King, Burnt Ivory King
 Entering a duel another browser has opened online.
 
 Not: connect, matchmaking
+
+### Kick
+
+A push with the foot, with F, while your sword is drawn and not cutting. A foe within {chivalry.kick_reach} centimetres in front staggers back, its cut breaks off and its guard is knocked aside. It costs {chivalry.kick_cost} stamina.
+
+Not: shove, boot
 
 ### Knight
 
@@ -162,6 +180,12 @@ A duel against the computer's knight, from the menu: best of three rounds.
 
 Not: training mode, tutorial
 
+### Riposte
+
+A cut begun within {chivalry.riposte_s} seconds of your blade parrying one. It draws back faster, drives harder, and keeps pressing for a moment when a blade meets it.
+
+Not: counter, counterattack
+
 ### Rising cut
 
 A cut from low in front up over the shoulder: hold the left button and move the mouse up.
@@ -184,6 +208,12 @@ What the game keeps in this browser between visits: your settings and your knigh
 
 Not: profile, account, cloud save
 
+### Stamina
+
+What your arms and legs have left to give. Cuts, parries, feints and kicks cost it, and it comes back at {chivalry.regen} a second while you are not cutting. Each round starts you with {chivalry.stamina}.
+
+Not: energy, endurance
+
 ### Sudden death
 
 After {rounds.sudden} seconds a round enters sudden death: only the inner ring is safe, and outside it you lose {rounds.sand_rate} health a second.
@@ -205,3 +235,9 @@ Not: lunge, poke
 ### Walk
 
 Moving at {walk.speed} metres a second with W, A, S or D, relative to where you look.
+
+### Winded
+
+Out of stamina. Your arms work at {chivalry.winded_pct}% of their strength, so cuts come slow and land soft, until your stamina is back to {chivalry.winded_until}.
+
+Not: exhausted, tired

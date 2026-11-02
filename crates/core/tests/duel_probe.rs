@@ -49,6 +49,9 @@ fn script(w: &World, t: u32) -> Input {
 fn a_scripted_player_against_the_knight_runs_to_the_duel_s_result() {
     let mut w = World::new(9);
     w.settings.control = Control::FirstPerson;
+    // M4: as Practice plays it, with stamina, feints, follow-ups, ripostes
+    // and the kick (`chivalry.rs`, R6.1)
+    w.settings.chivalry = true;
     // M3: as Practice stands it, the player in Knight A's plate and the
     // computer's knight in Knight B's, both with the longsword
     w.act("duel.me", "knight_a").unwrap();
@@ -56,11 +59,20 @@ fn a_scripted_player_against_the_knight_runs_to_the_duel_s_result() {
     let most = 60 * 60 * 10; // ten minutes: far past three rounds of sudden death
     let mut t = 0;
     let mut rounds = Vec::new();
+    // M4: what the knight did with the new moves, and how often the player
+    // was winded
+    let mut knight = std::collections::BTreeMap::new();
+    let mut winded_ticks = 0;
     while t < most {
         let i = script(&w, t);
         let fighting = w.rounds.as_ref().unwrap().phase == Phase::Fight;
         w.step(&i);
         t += 1;
+        // (an event is a tick old at the end of the tick it happened in)
+        if let Some((e, 1)) = w.foes.first().and_then(|f| f.fighter.chiv.event) {
+            *knight.entry(format!("{e:?}")).or_insert(0) += 1;
+        }
+        winded_ticks += w.me.chiv.winded as u32;
         let r = w.rounds.as_ref().unwrap();
         // a fall: the fight gives way to the beat (counted once, though a
         // hard blow's hit-stop holds the beat still for a few ticks)
@@ -78,6 +90,7 @@ fn a_scripted_player_against_the_knight_runs_to_the_duel_s_result() {
         r.wins,
         r.winner()
     );
+    println!("M4: the knight's moves {knight:?}; the player winded {winded_ticks} ticks");
     assert_eq!(r.phase, Phase::Over, "the duel ended within ten minutes");
     assert!(r.winner().is_some());
     assert!((2..=5).contains(&rounds.len()), "{} rounds", rounds.len());

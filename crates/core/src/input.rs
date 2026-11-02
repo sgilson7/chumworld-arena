@@ -41,6 +41,8 @@ pub const MENU: u32 = 1 << 13;
 pub const MAP: u32 = 1 << 14;
 /// C: held, the shield raised (T21, phase E; `shield.rs`).
 pub const SHIELD: u32 = 1 << 15;
+/// F: a kick (M4, `chivalry.rs`).
+pub const KICK: u32 = 1 << 16;
 
 /// Buttons sit above the keys in the page's bit set.
 pub const BUTTON_SHIFT: u32 = 24;
@@ -75,6 +77,7 @@ pub const ACTIONS: &[(&str, u32)] = &[
     ("item_3", ITEM_3),
     ("menu", MENU),
     ("map", MAP),
+    ("kick", KICK),
     ("swing", SWING << BUTTON_SHIFT),
     ("hold_look", HOLD_LOOK << BUTTON_SHIFT),
     ("lock_on", LOCK_ON << BUTTON_SHIFT),

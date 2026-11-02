@@ -183,6 +183,7 @@ impl Game {
     fn fresh_world(&self) -> World {
         let mut w = World::new(self.seed ^ self.duels.wrapping_mul(0x9e37_79b9_7f4a_7c15));
         w.settings.control = crate::world::Control::FirstPerson;
+        w.settings.chivalry = true; // M4 (R6.1)
         apply(&mut w, &self.kept);
         w
     }
@@ -532,6 +533,7 @@ impl Game {
             ("fov.max", crate::world::FOV_MAX.to_string()),
         ];
         v.extend(crate::rounds::values());
+        v.extend(crate::chivalry::values()); // M4
         v
     }
 }

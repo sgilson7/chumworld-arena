@@ -173,6 +173,9 @@ pub struct Fighter {
     /// tick and last
     pub framing: Fx,
     pub prev_framing: Fx,
+    /// M4: stamina, the windows a cut may follow up or riposte in, a kick
+    /// (`chivalry.rs`)
+    pub chiv: crate::chivalry::Chiv,
 }
 
 impl Fighter {
@@ -204,6 +207,7 @@ impl Fighter {
             tilt: 0,
             framing: 0,
             prev_framing: 0,
+            chiv: crate::chivalry::Chiv::new(),
         };
         // M3: a knight comes in its whole plate (`plate.rs`)
         f.health.limbs.plate = crate::plate::full(kind);
@@ -753,6 +757,9 @@ pub fn pose_from(b: &Body, f: &Fighter) -> Pose {
     } else {
         flat
     };
+    // M4: a kick raises the leg ahead out in front
+    let mut foot = foot;
+    crate::chivalry::kick_leg(b, f, &mut foot);
     let fwd = facing(b.facing, 0);
     let knee = [0, 1].map(|s| crate::motion::knee(hip[s], foot[s], build.thigh, build.shin, fwd));
     let a = &f.arm;
@@ -855,7 +862,10 @@ pub fn goals(w: &World, id: usize, input: &Input) -> (Sheath, Fx, Goals) {
         .cut
         .map(|c| crate::swing::strength_pct(&c))
         .unwrap_or(100);
-    let full = [0, 1].map(|s| f.servo_pct * f.health.strength(s) / 100 * shaken / 100 * gather / 100);
+    // M4: winded, the arms work at part strength (`chivalry::strength_pct`)
+    let winded = crate::chivalry::strength_pct(crate::chivalry::on(w), f);
+    let full =
+        [0, 1].map(|s| f.servo_pct * f.health.strength(s) / 100 * shaken / 100 * gather / 100 * winded / 100);
     let mut g = Goals {
         hand: [Some(rest(0)), Some(rest(1))],
         tip: None,
@@ -878,6 +888,13 @@ pub fn goals(w: &World, id: usize, input: &Input) -> (Sheath, Fx, Goals) {
             )
         }),
     };
+    // M4: winded, a cut's motor turns at part of its top speed as well, so
+    // the cut comes slower (and, the damage going by its speed, softer)
+    if winded != 100 {
+        if let Some(t) = g.turn.as_mut() {
+            t.most = t.most * winded / 100;
+        }
+    }
     // the free hand steadies the scabbard at its mouth while the sword
     // goes in or out
     let steady = sc.throat().add(right_of(b.facing).scale(-ONE / 25));
@@ -1018,6 +1035,26 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         if id == 0 && w.eye_view {
             // M1: the head and helmet the eye sits in are not drawn
             cull_near(&mut out.list, from, p.head, head_cull(&f.build()));
+            // R3.10 (its default, M4): the sword forearm is not drawn while
+            // it passes near the eye (a chop's wind-up lifts it across)
+            let eye = eye(w, alpha, w.aim);
+            cull_forearm(
+                &mut out.list,
+                from,
+                eye,
+                p.elbow[pose::RIGHT],
+                p.hand[pose::RIGHT],
+            );
+            // and the other forearm, and each upper arm's half at the
+            // elbow, which a stagger's lean brings up past the eye (R6.17)
+            let half = |s: usize| p.shoulder[s].lerp(p.elbow[s], ONE / 2);
+            for (a, b) in [
+                (p.elbow[pose::LEFT], p.hand[pose::LEFT]),
+                (half(pose::LEFT), p.elbow[pose::LEFT]),
+                (half(pose::RIGHT), p.elbow[pose::RIGHT]),
+            ] {
+                cull_forearm(&mut out.list, from, eye, a, b);
+            }
         }
         if f.held != Held::Nothing && !w.sticks {
             crate::models::held(f.held, p.grip, p.tip, look, out);
@@ -1049,6 +1086,32 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
     crate::swing::draw_trails(w, look, out); // and every blade's trail (R9.175)
     if w.sticks {
         sticks(w, alpha, look, out);
+    }
+}
+
+/// R3.10 (its default, applied in M4): while the sword forearm, elbow to
+/// hand, passes within `FOREARM_NEAR` of the eye, the player's own shapes
+/// whose middles lie within `FOREARM_R` of it are not drawn: the forearm
+/// and gauntlet, never the sword (drawn after) nor the far arm. (32 cm: in
+/// Knight A a chop's wind-up brings the forearm's line to 26 cm of the eye,
+/// its plate's face nearer still; at the guard it is 61 cm off, R3.10.)
+pub const FOREARM_NEAR: Fx = ONE * 32 / 100;
+pub const FOREARM_R: Fx = ONE * 10 / 100;
+
+/// The shapes from `from` on lying along the forearm `elbow` to `hand`
+/// taken out, when that forearm passes near `eye` (`FOREARM_NEAR`).
+pub fn cull_forearm(list: &mut Vec<crate::render::Shape>, from: usize, eye: V3, elbow: V3, hand: V3) {
+    if arm::nearest_on(elbow, hand, eye).dist(eye) >= FOREARM_NEAR {
+        return;
+    }
+    let mut k = from;
+    while k < list.len() {
+        let at = list[k].at.t;
+        if arm::nearest_on(elbow, hand, at).dist(at) < FOREARM_R {
+            list.remove(k);
+        } else {
+            k += 1;
+        }
     }
 }
 
@@ -1170,13 +1233,23 @@ pub fn bar(out: &mut Shapes, a: V3, b: V3, width: Fx, colour: crate::look::Rgb, 
 
 /// What the duel's lines over the game show, in one value: the page reads
 /// the screen again when it changes (`game.rs`).
-pub fn hud_stamp(w: &World) -> (i32, Option<(u8, i32)>, Option<&'static str>) {
+#[allow(clippy::type_complexity)]
+pub fn hud_stamp(
+    w: &World,
+) -> (
+    i32,
+    Option<(u8, i32)>,
+    Option<&'static str>,
+    (Vec<(i32, bool)>, Option<crate::chivalry::Event>),
+) {
     let foe = w.me.engaged.filter(|&k| (k as usize) < count(w));
     (
         w.me.health.hp,
         foe.map(|k| (k, fighter(w, k as usize).health.hp)),
         // M7 (T10): the swing cue's word
         crate::swing::cue(w).map(|c| crate::swing::cue_key(c.0)),
+        // M4: stamina and the last move
+        crate::chivalry::stamp(w),
     )
 }
 

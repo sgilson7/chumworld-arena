@@ -47,7 +47,8 @@ fn tick_cost_of_a_two_fighter_duel() {
     let mut w = World::new(5);
     // M1: the game's own control, from the helmet
     w.settings.control = tool_core::world::Control::FirstPerson;
-    // M3: Practice's two knights in plate, the computer's on its own pilot
+    w.settings.chivalry = true; // M4: as Practice plays it (R6.1)
+                                // M3: Practice's two knights in plate, the computer's on its own pilot
     w.act("duel.me", "knight_a").unwrap();
     w.act("duel.spawn", "knight").unwrap();
     let mut worst = 0u128;

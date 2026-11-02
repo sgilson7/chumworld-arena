@@ -12,6 +12,7 @@
   "ShiftRight": "run",
   "Space": "dodge",
   "KeyX": "draw",
+  "KeyF": "kick",
   "Mouse0": "swing",
   "Mouse2": "hold_look",
   "Mouse1": "lock_on"

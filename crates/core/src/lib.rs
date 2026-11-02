@@ -15,6 +15,7 @@ pub mod api;
 pub mod arm;
 pub mod blade;
 pub mod camera;
+pub mod chivalry;
 pub mod feel;
 pub mod flicker;
 pub mod fx;

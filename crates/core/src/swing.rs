@@ -156,6 +156,15 @@ pub struct Cut {
     /// reached, with the tick it got there
     pub aim: i32,
     pub best: (i32, u8),
+    /// M4 (`chivalry.rs`): the most ticks its wind-up may take
+    /// (`WIND_TICKS`, less for a follow-up or a riposte), the share of the
+    /// arm's strength it drives with (100, more for a riposte), the ticks it
+    /// may press on against a blade before it is spent on it (none but a
+    /// riposte's), and what it is
+    pub wind_ticks: u8,
+    pub strength_pct: i32,
+    pub press: u8,
+    pub mark: crate::chivalry::Mark,
 }
 
 /// A fighter's swing: the travel added up while the button is held, and
@@ -352,10 +361,11 @@ pub fn wide(cut: &Cut) -> bool {
 /// The share of the arm's strength a cut drives with: the wind-up a
 /// gathering, `WIND_PCT`, the strike and the follow-through all of it.
 pub fn strength_pct(cut: &Cut) -> i32 {
+    // (M4: a riposte drives harder, `Cut::strength_pct`; 100 otherwise)
     if cut.phase == Phase::WindUp {
-        WIND_PCT
+        WIND_PCT * cut.strength_pct / 100
     } else {
-        100
+        cut.strength_pct
     }
 }
 
@@ -473,6 +483,10 @@ pub fn begin(way: Way, travel: i32, pitch: i32) -> Cut {
         age: 0,
         aim: hand_of(start + WIND),
         best: (hand_of(start + WIND), 0),
+        wind_ticks: WIND_TICKS,
+        strength_pct: 100,
+        press: 0,
+        mark: crate::chivalry::Mark::Plain,
     }
 }
 
@@ -491,6 +505,16 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
     let held = inp.button(input::SWING);
     let mut sw = f.arm.swing;
     let mut ended = false;
+    // M4 (`chivalry.rs`): the layer's share of this fighter, and a feint
+    let on = crate::chivalry::on(w);
+    let mut chiv = f.chiv;
+    let mut feinted = false;
+    if sw.cut.is_some_and(|c| crate::chivalry::feints(on, f, inp, &c)) {
+        crate::chivalry::feint(&mut chiv);
+        sw.cut = None;
+        sw.gesture = (0, 0, 0);
+        feinted = true;
+    }
     if let Some(mut c) = sw.cut {
         c.age = c.age.saturating_add(1);
         c.t = c.t.saturating_add(1);
@@ -500,7 +524,7 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
             Phase::WindUp if c.way != Way::Thrust => {
                 // the blade drawn back to the start: the strike turns it round
                 let (start, _) = extent(c.way, c.band);
-                if blade_at(&c, yaw, tip.sub(hand)) >= start || c.t >= WIND_TICKS {
+                if blade_at(&c, yaw, tip.sub(hand)) >= start || c.t >= c.wind_ticks {
                     c.phase = Phase::Strike;
                     c.t = 0;
                     c.best = (now, c.age);
@@ -508,7 +532,7 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
             }
             Phase::WindUp => {
                 let (to, _) = aim(&c, yaw, shoulder, arm);
-                if hand.dist(to) < WIND_NEAR || c.t >= WIND_TICKS {
+                if hand.dist(to) < WIND_NEAR || c.t >= c.wind_ticks {
                     c.phase = Phase::Strike;
                     c.t = 0;
                 }
@@ -545,27 +569,38 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
         // a blow landed or a block met last tick: the cut is spent on it
         // (or the blade lies on a body, or against a blade: pressed on, the
         // turn would drive it through)
-        let met = w.blades.hits.iter().any(|h| h.by as usize == id)
-            || w.blades
-                .clashes
-                .iter()
-                .any(|k| k.a as usize == id || k.b as usize == id)
+        let landed = w.blades.hits.iter().any(|h| h.by as usize == id)
             || w.blades
                 .touching
                 .iter()
-                .any(|&(by, on)| by as usize == id && on as usize != id)
+                .any(|&(by, on)| by as usize == id && on as usize != id);
+        let blocked = w
+            .blades
+            .clashes
+            .iter()
+            .any(|k| k.a as usize == id || k.b as usize == id)
             || w.blades
                 .clashing
                 .iter()
                 .any(|&(a, b)| a as usize == id || b as usize == id);
+        // M4: a riposte presses on against a blade for a few ticks
+        let pressing = blocked && !landed && c.press > 0 && c.phase != Phase::WindUp;
+        if pressing {
+            c.press -= 1;
+        }
+        let met = landed || (blocked && !pressing);
         if c.age >= MAX_TICKS || (met && c.phase != Phase::WindUp) {
             ended = true;
+        }
+        if ended && on {
+            crate::chivalry::cut_ended(&mut chiv, blocked);
         }
         sw.cut = if ended { None } else { Some(c) };
         if ended {
             sw.gesture = (0, 0, 0);
         }
-    } else if held {
+    } else if held && !(on && chiv.kick > 0) {
+        // (M4: no cut is chosen while a kick is under way)
         let g = sw.gesture;
         sw.gesture = (
             g.0.saturating_add(inp.dx),
@@ -574,7 +609,12 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
         );
         let g = sw.gesture;
         if let Some((way, travel)) = choose(g.0, g.1, g.2) {
-            sw.cut = Some(begin(way, travel, pitch));
+            let mut c = begin(way, travel, pitch);
+            if on {
+                // M4: paid for, and a follow-up or a riposte quickened
+                crate::chivalry::begin_cut(&mut chiv, &mut c);
+            }
+            sw.cut = Some(c);
             sw.gesture = (0, 0, 0);
         }
     } else {
@@ -586,14 +626,22 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
         .cut
         .is_some_and(|c| c.way == Way::Thrust && c.phase != Phase::WindUp);
     f.gait.lunge = fx::approach(f.gait.lunge, if lunging { ONE } else { 0 }, LUNGE_STEP);
+    f.chiv = chiv;
     let a = &mut f.arm;
     a.swing = sw;
+    if feinted {
+        // M4: a feint brings the hand back to the guard
+        a.shell = crate::arm::Shell {
+            rest: a.shell.rest,
+            ..crate::arm::Shell::guard(arm)
+        };
+    }
     if ended {
         // the hand's target on the shell is where the cut left the hand,
         // so the mouse goes on from there
         a.shell = shell_at(&a.shell, yaw, shoulder, hand, arm);
     }
-    held || sw.cut.is_some() || ended
+    held || sw.cut.is_some() || ended || feinted
 }
 
 /// The shell's target at `hand`, held to the shell's edges.

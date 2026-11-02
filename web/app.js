@@ -163,7 +163,35 @@ async function main() {
     node.querySelector("progress").value = b.share;
     node.querySelector("progress").setAttribute("aria-label", `${b.who} ${b.label} ${b.text}`);
     node.dataset.share = String(b.share);
+    stamina(node, b);
     return node;
+  }
+
+  // M4: the fighter's stamina under its health, while the core sends it: a
+  // thinner notched bar, its words, and a hatched bar and the word when
+  // winded (BRIEF.md, Accessibility).
+  function stamina(node, b) {
+    let box = node.querySelector(".stamina");
+    if (!b.stamina) {
+      if (box) box.remove();
+      return;
+    }
+    if (!box) {
+      box = make("div", undefined, "stamina");
+      const head = make("header");
+      head.append(make("span", "", "label"), make("span", "", "text"));
+      const meter = make("progress");
+      meter.max = N.bar_whole;
+      box.append(head, meter);
+      node.append(box);
+    }
+    const m = b.stamina;
+    box.querySelector(".label").textContent = m.label;
+    box.querySelector(".text").textContent = m.text;
+    box.querySelector("progress").value = m.share;
+    box.querySelector("progress").setAttribute("aria-label", `${b.who} ${m.label} ${m.text}`);
+    box.classList.toggle("winded", m.winded);
+    node.dataset.stamina = String(m.share);
   }
 
   // Builds the screen from the core's view model.

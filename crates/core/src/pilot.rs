@@ -113,6 +113,14 @@ pub enum Cond {
     /// the arm that holds my weapon is lost, or a leg
     LostSwordArm,
     LostLeg,
+    /// M4 (`chivalry.rs`): my stamina is below, or at or above, this share
+    StaminaBelow(i32),
+    StaminaAbove(i32),
+    /// my blade parried a moment ago: a cut now is a riposte
+    JustParried,
+    /// the one I fight has begun no cut and no kick for this many ticks:
+    /// it holds its guard back
+    FoeTurtles(u16),
 }
 
 /// What a rule does: a move the pilot plays for some ticks.
@@ -146,6 +154,10 @@ pub enum Move {
     TakeUp,
     /// turn and run from the one I fight
     RunAway,
+    /// M4 (`chivalry.rs`): F, a kick
+    Kick,
+    /// a chop begun and broken off in its wind-up with the right button
+    FeintCut,
 }
 
 impl Move {
@@ -337,6 +349,8 @@ pub struct Seen {
     /// metres a tick
     pub tip_vel: V3,
     pub down: bool,
+    /// M4: ticks since it last began a cut or a kick (`chivalry::Chiv::idle`)
+    pub idle: u16,
 }
 
 /// The duel as it was, a tick at a time, the newest last.
@@ -391,6 +405,7 @@ pub fn seen_now(w: &World, id: usize) -> Seen {
         tip: tip.p,
         tip_vel: tip.vel(),
         down: f.health.down(),
+        idle: f.chiv.idle,
     }
 }
 
@@ -436,6 +451,8 @@ pub struct Plan {
     /// (right, down, wheel), sent as it is; holding the button without it
     /// sends no movement, so the cut under way plays out
     pub gesture: Option<(i32, i32, i32)>,
+    /// M4: the right button pressed this tick (a feint, in a wind-up)
+    pub feint: bool,
 }
 
 /// A foe's guard (degrees right and up, reach in percent of the arm): a
@@ -623,6 +640,10 @@ fn holds(c: &Cond, v: &View, rng: &mut Rng) -> bool {
             crate::wounds::arm_lost(l.lost, l.sword_side())
         }
         Cond::LostLeg => crate::wounds::legs_lost(v.f.health.limbs.lost) > 0,
+        Cond::StaminaBelow(pct) => v.f.chiv.pct() < *pct,
+        Cond::StaminaAbove(pct) => v.f.chiv.pct() >= *pct,
+        Cond::JustParried => v.f.chiv.riposte > 0,
+        Cond::FoeTurtles(ticks) => v.they.idle >= *ticks,
     }
 }
 
@@ -644,6 +665,7 @@ fn hold(v: &View, shell: (i32, i32, i32), dir: i32) -> Plan {
         swing: false,
         fast: false,
         gesture: None,
+        feint: false,
     }
 }
 
@@ -684,6 +706,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         swing: false,
         fast: false,
         gesture: None,
+        feint: false,
     };
     // the left button held, the mouse moved the cut's way once, then held
     // still while the cut plays out (`swing.rs`)
@@ -693,6 +716,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         swing: true,
         fast: true,
         gesture: Some(if t == READY_TICKS { way } else { (0, 0, 0) }),
+        feint: false,
     };
     let px = v.w.pilots.book.kinds[v.w.foes[v.id - 1].brain.key.as_str()].strike_px * 100;
     let guard = hold(v, GUARD, dir);
@@ -746,6 +770,25 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
                     strike(t, way, if t < READY_TICKS + 10 { lunge(v) } else { 0 })
                 }
                 t if t < READY_TICKS + CUT_TICKS + 15 => plain(GUARD, recover(v)),
+                _ => return None,
+            }
+        }
+        // M4: F once, then the guard while the leg is out
+        Move::Kick if t <= crate::chivalry::spec().kick_ticks as u32 => {
+            plain(GUARD, if t == 0 { input::KICK } else { 0 })
+        }
+        // M4: a chop readied and begun as an attack's, then broken off with
+        // the right button while it winds up, then the guard
+        Move::FeintCut => {
+            let at = READY_TICKS + crate::chivalry::spec().pilot_feint_after_ticks as u32;
+            match t {
+                t if t < READY_TICKS => plain((10, 20, 80), lunge(v)),
+                t if t < at => strike(t, (0, px, 0), 0),
+                t if t == at => Plan {
+                    feint: true,
+                    ..strike(t, (0, 0, 0), 0)
+                },
+                t if t < at + READY_TICKS + 4 => plain(GUARD, recover(v)),
                 _ => return None,
             }
         }
@@ -814,7 +857,7 @@ fn to_input(f: &Fighter, p: &Plan, spec: &KindSpec) -> Input {
     };
     Input {
         keys: p.keys,
-        buttons: if p.swing { input::SWING } else { 0 },
+        buttons: (if p.swing { input::SWING } else { 0 }) | (if p.feint { input::HOLD_LOOK } else { 0 }),
         dx,
         dy,
         wheel,
@@ -1094,6 +1137,7 @@ mod tests {
             swing: false,
             fast: false,
             gesture: None,
+            feint: false,
         };
         let i = to_input(f, &p, spec);
         // far from 60°, 60°: the most a tick, hand_px pixels each way

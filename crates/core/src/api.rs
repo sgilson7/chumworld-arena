@@ -108,6 +108,20 @@ pub struct Bar {
     pub text: String,
     /// the share left, 0 to 10 000
     pub share: i32,
+    /// M4: the fighter's stamina, while stamina is on (`chivalry.rs`)
+    pub stamina: Option<Meter>,
+}
+
+/// M4: a fighter's stamina as the page shows it: the label, the words
+/// ("62 / 100", and "Winded" at none), the share left in hundredths of a
+/// percent, and whether it is winded, which the page shows as a hatched
+/// bar besides the word (BRIEF.md, Accessibility).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Meter {
+    pub label: String,
+    pub text: String,
+    pub share: i32,
+    pub winded: bool,
 }
 
 /// Everything the page draws in HTML.
@@ -148,6 +162,9 @@ fn controls(g: &Game) -> (String, Vec<Row>) {
             row("key_swing", "control_swing"),
             row("key_reach", "control_reach"),
             row("key_dodge", "control_dodge"),
+            // M4: the feint and the kick
+            row("key_feint", "control_feint"),
+            row("key_kick", "control_kick"),
         ],
     )
 }
@@ -200,7 +217,30 @@ fn bar(g: &Game, id: usize, who: String) -> Bar {
         label: g.strings.get("health"),
         text,
         share: (now as i64 * 10_000 / most as i64).min(10_000) as i32,
+        stamina: stamina(g, id),
     }
+}
+
+/// M4: a fighter's stamina meter, while the layer is on.
+fn stamina(g: &Game, id: usize) -> Option<Meter> {
+    if !crate::chivalry::on(&g.world) {
+        return None;
+    }
+    let c = crate::player::fighter(&g.world, id).chiv;
+    let most = crate::chivalry::spec().stamina;
+    let mut text = fill(
+        &g.strings.get("stamina_of"),
+        &[("now", c.points().to_string()), ("most", most.to_string())],
+    );
+    if c.winded {
+        text = fill(&g.strings.get("stamina_winded"), &[("of", text)]);
+    }
+    Some(Meter {
+        label: g.strings.get("stamina"),
+        text,
+        share: (c.stamina as i64 * 10_000 / (most as i64 * crate::chivalry::PART as i64)).min(10_000) as i32,
+        winded: c.winded,
+    })
 }
 
 /// Each fighter's bar: the player's, then each foe's, named by its kind.

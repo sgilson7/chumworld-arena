@@ -102,5 +102,18 @@
   "result_won_text": "Rounds won: you {you}, the knight {foe}.",
   "result_lost_text": "Rounds won: the knight {foe}, you {you}.",
   "rematch": "Rematch",
-  "back_to_menu": "Back to the menu"
+  "back_to_menu": "Back to the menu",
+  "key_feint": "Right button, as a cut draws back",
+  "control_feint": "Feint",
+  "key_kick": "F",
+  "control_kick": "Kick",
+  "stamina": "Stamina",
+  "stamina_of": "{now} / {most}",
+  "stamina_winded": "{of} · Winded",
+  "move_feint": "Feint",
+  "move_follow_up": "Follow-up {n}",
+  "move_riposte": "Riposte",
+  "move_kick_lands": "Kick lands: their guard is open",
+  "move_kick_misses": "Kick misses",
+  "move_kicked": "Kicked: your guard is open"
 }
