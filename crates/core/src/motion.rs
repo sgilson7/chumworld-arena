@@ -350,6 +350,10 @@ pub fn mass(kind: Kind) -> i32 {
         Kind::Lookout => 60,
         // M3 (R5.1): a knight and some 25 kg of plate
         Kind::KnightA | Kind::KnightB => 110,
+        // M6 (R7.103): padding, a brigandine, half plate
+        Kind::Squire => 80,
+        Kind::Sellsword => 90,
+        Kind::Hedge => 100,
     }
 }
 

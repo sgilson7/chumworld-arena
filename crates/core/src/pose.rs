@@ -29,6 +29,12 @@ pub enum Kind {
     /// ivory crown (working labels)
     KnightA,
     KnightB,
+    /// M6 (R7.101): the ladder's rungs F, E and D, each in its own costume
+    /// (`models/knight/squire.rs`, `sellsword.rs`, `hedge.rs`) and wearing
+    /// plate only where `plate::covered` says (working labels)
+    Squire,
+    Sellsword,
+    Hedge,
 }
 
 /// What a hand holds: picks the weapon's model and, in M1, its blade length.
@@ -159,6 +165,10 @@ fn size(kind: Kind) -> (i32, i32) {
         // M3 (R5.1): both knights one build, an adult a little over the
         // player's height and broad in plate
         Kind::KnightA | Kind::KnightB => (185, 110),
+        // M6 (R7.103): lighter opponents are smaller men
+        Kind::Squire => (175, 100),
+        Kind::Sellsword => (180, 105),
+        Kind::Hedge => (185, 110),
     }
 }
 
@@ -209,6 +219,9 @@ mod tests {
             Kind::AntKing,
             Kind::KnightA,
             Kind::KnightB,
+            Kind::Squire,
+            Kind::Sellsword,
+            Kind::Hedge,
         ] {
             let b = build(k);
             let pct = b.head as i64 * 100 / b.height as i64;

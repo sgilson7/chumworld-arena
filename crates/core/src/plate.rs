@@ -80,17 +80,53 @@ pub const VISOR_COS: Fx = ONE * 766 / 1000;
 
 /// A kind that wears plate.
 pub fn armoured(kind: Kind) -> bool {
-    matches!(kind, Kind::KnightA | Kind::KnightB)
+    matches!(kind, Kind::KnightA | Kind::KnightB) || covered(kind) != 0
 }
 
-/// A body's plates when it comes into the ring: whole for a knight, none
-/// for anyone else.
-pub fn full(kind: Kind) -> [i32; PARTS] {
-    if armoured(kind) {
-        INTEGRITY
-    } else {
-        [0; PARTS]
+/// M6 (R7.104): the parts a kind wears plate on by design, a bit each
+/// (`wounds::bit`): every part for a knight; for the ladder's lighter
+/// opponents only what the concept sheet draws in steel. Padding, cloth
+/// and mail take no blow off (mail is treated as cloth, R7.102), so a part
+/// in them is bare: it takes a blow whole and can be cut off.
+pub fn covered(kind: Kind) -> u16 {
+    let b = wounds::bit;
+    match kind {
+        Kind::KnightA | Kind::KnightB => (1 << PARTS) - 1,
+        // the kettle hat
+        Kind::Squire => b(HEAD),
+        // the sallet and bevor, the brigandine, both vambraces, and the
+        // right upper arm under the one pauldron
+        Kind::Sellsword => b(HEAD) | b(TORSO) | b(FOREARM[LEFT]) | b(FOREARM[RIGHT]) | b(UPPER_ARM[RIGHT]),
+        // half plate: everything but the shins
+        Kind::Hedge => ((1 << PARTS) - 1) & !b(SHIN[LEFT]) & !b(SHIN[RIGHT]),
+        _ => 0,
     }
+}
+
+/// A body's plates when it comes into the ring: whole on every part its
+/// kind wears plate on (`covered`), none anywhere else.
+pub fn full(kind: Kind) -> [i32; PARTS] {
+    let c = covered(kind);
+    let mut out = [0; PARTS];
+    for (s, v) in out.iter_mut().enumerate() {
+        if c & wounds::bit(s) != 0 {
+            *v = INTEGRITY[s];
+        }
+    }
+    out
+}
+
+/// M6 (R7.105): an open helm, the squire's kettle hat over his mail hood,
+/// covers the head only above its brim, this many millimetres over the
+/// head's middle on the player (scaled): a blow meeting the head's spine
+/// lower than that comes in whole from any side (`Gap::Open`). The spine
+/// runs `blade::HEAD_TOP_MM` (70) up, so only a blow nearest its top 10 mm,
+/// from above or at the side above the brim, meets the hat.
+pub const OPEN_HELM_MM: i32 = 60;
+
+/// A kind whose helm is open below `OPEN_HELM_MM`.
+pub fn open_helm(kind: Kind) -> bool {
+    kind == Kind::Squire
 }
 
 /// The parts with no plate on them, a bit each (`wounds::bit`).
@@ -106,6 +142,8 @@ pub enum Gap {
     Armpit,
     Visor,
     Knee,
+    /// M6: below an open helm's brim (`OPEN_HELM_MM`)
+    Open,
 }
 
 /// Millimetres on the player, scaled to `kind`'s height.
@@ -153,6 +191,9 @@ pub fn gap(kind: Kind, pose: &Pose, s: usize, at: V3, from: V3) -> Option<Gap> {
         }
     } else if s == HEAD {
         let up = at.sub(c.a).dot(u);
+        if open_helm(kind) && up < scaled(kind, OPEN_HELM_MM) {
+            return Some(Gap::Open);
+        }
         let (lo, hi) = (scaled(kind, VISOR_MM.0), scaled(kind, VISOR_MM.1));
         let front = square_to(back.neg(), u);
         if (lo..=hi).contains(&up) && d.dot(front) >= VISOR_COS {
