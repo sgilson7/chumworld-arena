@@ -53,9 +53,11 @@ use crate::pose::{Held, Kind, Pose};
 use crate::prim::{Mesh, VERTEX_VALUES};
 use crate::render::{self, Pass, Shape, Shapes};
 
+mod champion;
 mod figure;
 mod held;
 mod knight;
+mod mirror;
 
 pub use knight::{
     model as knight_model, plate as knight_plate, scheme as knight_scheme, Knight, Layer, Role, Scheme,
@@ -70,7 +72,7 @@ pub use figure::model as figure_model;
 pub use held::model as held_model;
 
 /// Every kind of figure, in the lineup's order.
-pub const KINDS: [Kind; 11] = [
+pub const KINDS: [Kind; 13] = [
     Kind::Player,
     Kind::Orc,
     Kind::Bandit,
@@ -82,6 +84,8 @@ pub const KINDS: [Kind; 11] = [
     Kind::Villager,
     Kind::KnightA,
     Kind::KnightB,
+    Kind::Champion,
+    Kind::Mirror,
 ];
 
 /// How many looks a villager has (`Dress::variant`).

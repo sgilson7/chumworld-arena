@@ -29,6 +29,12 @@ pub enum Kind {
     /// ivory crown (working labels)
     KnightA,
     KnightB,
+    /// M6 (CA-7, R7.301): the ladder's rung A, the champion in broad gilt
+    /// tourney plate and a winged great helm (`models/champion.rs`)
+    Champion,
+    /// M6 (CA-7, R7.301): the ladder's rung S, the mirror in blackened
+    /// plate with bright edges and a helm with no face (`models/mirror.rs`)
+    Mirror,
 }
 
 /// What a hand holds: picks the weapon's model and, in M1, its blade length.
@@ -159,6 +165,8 @@ fn size(kind: Kind) -> (i32, i32) {
         // M3 (R5.1): both knights one build, an adult a little over the
         // player's height and broad in plate
         Kind::KnightA | Kind::KnightB => (185, 110),
+        // M6 (R7.301): the champion and the mirror on the knights' build
+        Kind::Champion | Kind::Mirror => (185, 110),
     }
 }
 
@@ -209,6 +217,8 @@ mod tests {
             Kind::AntKing,
             Kind::KnightA,
             Kind::KnightB,
+            Kind::Champion,
+            Kind::Mirror,
         ] {
             let b = build(k);
             let pct = b.head as i64 * 100 / b.height as i64;

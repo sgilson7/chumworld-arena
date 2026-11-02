@@ -1937,5 +1937,110 @@
     "find": "pub const PRACTICE_FOE: &str = \"knight_b\";",
     "replace": "pub const PRACTICE_FOE: &str = \"bandit\";",
     "test": "the_game_opens_on_the_start_screen_and_practice_goes_through_the_door"
+  },
+  {
+    "name": "M6 costume A: the champion's pauldrons broadest",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let r = v3(k.w(205), k.s(124), k.w(160));",
+    "replace": "let r = v3(k.w(60), k.s(124), k.w(160));",
+    "test": "the_champion_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's wings over its helm",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "[(340, 34, 150, 170), (230, 60, 90, 140)]",
+    "replace": "[(40, 34, 150, 170), (30, 60, 90, 140)]",
+    "test": "the_champion_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's helm band stands proud",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let band = k.s(PROUD_MM + 2);",
+    "replace": "let band = 0;",
+    "test": "no_face_of_the_champion_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume A: the champion under the triangle cap",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "                Mesh::Pyramid,",
+    "replace": "                Mesh::Sphere,",
+    "test": "the_champion_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume A: every part of the champion dressed",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "if k.plated(fa) {",
+    "replace": "if false && k.plated(fa) {",
+    "test": "the_champion_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's slit where the visor gap is",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 30);",
+    "test": "the_champion_s_slit_is_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume A: the champion's scheme clear of the highlights",
+    "file": "data/models.json",
+    "find": "\"second\": [\n        196,\n        158,\n        70",
+    "replace": "\"second\": [\n        201,\n        162,\n        74",
+    "test": "the_champion_s_scheme_stands_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M6 plate A/S: the champion and the mirror come in plate",
+    "file": "crates/core/src/plate.rs",
+    "find": "matches!(kind, Kind::Champion | Kind::Mirror)",
+    "replace": "matches!(kind, Kind::Champion)",
+    "test": "the_champion_and_the_mirror_come_in_whole_plate_with_the_longsword"
+  },
+  {
+    "name": "M6 costume S: the mirror's helm an egg",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "k.s(290)",
+    "replace": "k.s(160)",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's bright rims",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "        if on {",
+    "replace": "        if false && on {",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's pauldrons narrow",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "let r = v3(k.w(108), k.s(84), k.w(108));",
+    "replace": "let r = v3(k.w(200), k.s(84), k.w(108));",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's rims stand proud of the plate",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "let rr = r + k.proud() + k.s(PROUD_MM);",
+    "replace": "let rr = r + k.proud();",
+    "test": "no_face_of_the_mirror_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume S: the mirror under the triangle cap",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "k.push(seg, Layer::Plate, Role::Trim, Mesh::Dot, at, sc.second);",
+    "replace": "k.push(seg, Layer::Plate, Role::Trim, Mesh::Sphere, at, sc.second);",
+    "test": "the_mirror_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume S: every part of the mirror dressed",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "if k.plated(fa) {",
+    "replace": "if false && k.plated(fa) {",
+    "test": "the_mirror_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's scheme clear of the highlights",
+    "file": "data/models.json",
+    "find": "\"second\": [\n        206,\n        216,\n        230",
+    "replace": "\"second\": [\n        214,\n        219,\n        224",
+    "test": "the_mirror_s_scheme_stands_clear_of_the_highlight_colours"
   }
 ]

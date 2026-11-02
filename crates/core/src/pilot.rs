@@ -214,6 +214,8 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "ant_king" => Some(Kind::AntKing),
         "knight_a" => Some(Kind::KnightA),
         "knight_b" => Some(Kind::KnightB),
+        "champion" => Some(Kind::Champion),
+        "mirror" => Some(Kind::Mirror),
         _ => None,
     }
 }
@@ -221,7 +223,12 @@ pub fn kind_named(name: &str) -> Option<Kind> {
 /// A foe kind's name, as the act, the book and the strings (`who_<kind>`)
 /// name it.
 pub fn kind_name(k: Kind) -> &'static str {
-    key_of(k)
+    match k {
+        // M6 (R7.303): named as themselves, piloted on Knight B's entry
+        Kind::Champion => "champion",
+        Kind::Mirror => "mirror",
+        _ => key_of(k),
+    }
 }
 
 fn key_of(k: Kind) -> &'static str {
@@ -231,6 +238,8 @@ fn key_of(k: Kind) -> &'static str {
         Kind::AntKing => "ant_king",
         Kind::KnightA => "knight_a",
         Kind::KnightB => "knight_b",
+        // M6 (R7.303): until the coordinator gives the ladder its pilots
+        Kind::Champion | Kind::Mirror => "knight_b",
         _ => "bandit",
     }
 }

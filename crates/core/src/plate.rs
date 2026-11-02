@@ -80,7 +80,13 @@ pub const VISOR_COS: Fx = ONE * 766 / 1000;
 
 /// A kind that wears plate.
 pub fn armoured(kind: Kind) -> bool {
-    matches!(kind, Kind::KnightA | Kind::KnightB)
+    matches!(kind, Kind::KnightA | Kind::KnightB) || ladder_plate(kind)
+}
+
+/// M6 (R7.302): the champion and the mirror wear plate on all ten parts,
+/// as a knight does.
+fn ladder_plate(kind: Kind) -> bool {
+    matches!(kind, Kind::Champion | Kind::Mirror)
 }
 
 /// A body's plates when it comes into the ring: whole for a knight, none

@@ -20,6 +20,7 @@ pub fn kind_held(kind: Kind) -> Held {
         Kind::Leader | Kind::Trainer => Held::Sword,
         Kind::Merchant | Kind::Villager => Held::Nothing,
         Kind::KnightA | Kind::KnightB => Held::Longsword,
+        Kind::Champion | Kind::Mirror => Held::Longsword,
     }
 }
 

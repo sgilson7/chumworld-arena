@@ -192,7 +192,6 @@ fn each_knight_is_under_the_triangle_cap() {
     for kind in KNIGHTS {
         let p = rest_pose(kind, V3::ZERO, 0);
         let n = model(kind, &p, 0).model().triangles();
-        println!("{kind:?}: {n} triangles");
         assert!(n <= TRIANGLE_CAP, "{kind:?}: {n} triangles");
         assert!(n > 1_000, "{kind:?}: {n} triangles is no costume");
     }

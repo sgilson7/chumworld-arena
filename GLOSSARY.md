@@ -38,6 +38,12 @@ The knight in blackened plate, a bucket helm and wide shoulders, with a torn clo
 
 Not: Black Knight, black knight
 
+### Champion
+
+The ladder's second-hardest opponent, rung A: broad tourney plate in pale steel and gilt, huge pauldrons, a red skirt and a flat-topped great helm with two gilt wings. A working label until the person names it.
+
+Not: Champion Gundyr, Gundyr
+
 ### Chop
 
 A cut straight down from above the head: hold the left button and move the mouse down.
@@ -107,6 +113,12 @@ Not: horizontal slash
 The rings of steel under plate. A part whose plate has broken off shows its mail, and a blow there lands whole.
 
 Not: chainmail, chain mail
+
+### Mirror
+
+The ladder's last opponent, rung S: blackened plate with bright edges and a smooth egg-shaped helm with no face. A working label until the person names it.
+
+Not: Mirror Knight, mirror knight
 
 ### Parry
 
