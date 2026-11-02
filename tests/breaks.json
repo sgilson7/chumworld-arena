@@ -1937,5 +1937,96 @@
     "find": "pub const PRACTICE_FOE: &str = \"knight_b\";",
     "replace": "pub const PRACTICE_FOE: &str = \"bandit\";",
     "test": "the_game_opens_on_the_start_screen_and_practice_goes_through_the_door"
+  },
+  {
+    "name": "M6 FED squire: the brim is wide",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "const BRIM_MM: i32 = 330;",
+    "replace": "const BRIM_MM: i32 = 220;",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED sellsword: the one pauldron stands out",
+    "file": "crates/core/src/models/knight/sellsword.rs",
+    "find": "let size = v3(k.w(320 - 30 * i), k.s(124 - 12 * i), k.w(270 - 30 * i));",
+    "replace": "let size = v3(k.w(120 - 30 * i), k.s(124 - 12 * i), k.w(270 - 30 * i));",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED hedge: the point stands over the dome",
+    "file": "crates/core/src/models/knight/hedge.rs",
+    "find": "const POINT_MM: i32 = 380;",
+    "replace": "const POINT_MM: i32 = 300;",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED z-fight: the hat's crown clears the hood",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "v3(k.s(214), k.s(150), k.s(208)),",
+    "replace": "v3(k.s(200), k.s(150), k.s(194)),",
+    "test": "no_face_of_a_ladder_opponent_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 FED triangle cap",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "    for y in QUILTS {",
+    "replace": "    for y in QUILTS.repeat(20) {",
+    "test": "each_ladder_opponent_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 FED coverage: the squire's only plate is his hat",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Squire => b(HEAD),",
+    "replace": "        Kind::Squire => b(HEAD) | b(TORSO),",
+    "test": "each_ladder_opponent_wears_plate_where_the_sheet_draws_steel"
+  },
+  {
+    "name": "M6 FED coverage: the hedge knight's shins are bare",
+    "file": "crates/core/src/plate.rs",
+    "find": "((1 << PARTS) - 1) & !b(SHIN[LEFT]) & !b(SHIN[RIGHT])",
+    "replace": "((1 << PARTS) - 1) & !b(SHIN[LEFT])",
+    "test": "each_ladder_opponent_wears_plate_where_the_sheet_draws_steel"
+  },
+  {
+    "name": "M6 FED model: a part with no plate is drawn in its garment",
+    "file": "crates/core/src/models/knight/fed.rs",
+    "find": "    if cover & bit(seg) != 0 {\n        k.under(seg)",
+    "replace": "    if cover & bit(seg) != 0 || cover != 0 {\n        k.under(seg)",
+    "test": "each_ladder_opponent_is_drawn_in_plate_only_where_it_wears_it"
+  },
+  {
+    "name": "M6 FED sever: plate only on covered parts",
+    "file": "crates/core/src/plate.rs",
+    "find": "        if c & wounds::bit(s) != 0 {\n            *v = INTEGRITY[s];",
+    "replace": "        if c != 0 {\n            *v = INTEGRITY[s];",
+    "test": "a_part_without_plate_is_cut_off_and_a_plated_one_is_not"
+  },
+  {
+    "name": "M6 FED open helm: below the brim is a gap",
+    "file": "crates/core/src/plate.rs",
+    "find": "if open_helm(kind) && up < scaled(kind, OPEN_HELM_MM) {",
+    "replace": "if false && up < scaled(kind, OPEN_HELM_MM) {",
+    "test": "the_squire_s_hat_is_plate_only_above_its_brim"
+  },
+  {
+    "name": "M6 FED open helm: the brim is drawn where the gap ends",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "    let lo = OPEN_HELM_MM;\n",
+    "replace": "    let lo = OPEN_HELM_MM + 40;\n",
+    "test": "the_squire_s_hat_is_plate_only_above_its_brim"
+  },
+  {
+    "name": "M6 FED slit: the sellsword's slit at the visor gap",
+    "file": "crates/core/src/models/knight/sellsword.rs",
+    "find": "let at = p.head.add(k.up.scale(slit_y)).add(k.fwd.scale(z));",
+    "replace": "let at = p.head.add(k.up.scale(slit_y + k.s(60))).add(k.fwd.scale(z));",
+    "test": "the_drawn_slit_is_where_the_visor_gap_is_on_the_closed_helms"
+  },
+  {
+    "name": "M6 FED colours: the hedge knight's device clear of the lamp",
+    "file": "data/models.json",
+    "find": "      \"accent\": [\n        170,\n        146,\n        70\n      ],",
+    "replace": "      \"accent\": [\n        201,\n        180,\n        106\n      ],",
+    "test": "the_ladder_schemes_stand_clear_of_the_highlight_colours"
   }
 ]

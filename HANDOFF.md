@@ -48,6 +48,8 @@ By system, from `SECOND-ORDER.md`, with the rule each one produced.
 
 2026-11-02, M3 (branch `m3-knights`): `./scripts/check.sh` ends `BROWSER CHECK PASSED in chromium, firefox, webkit` and `BUILDER CHECK PASSED`; `./scripts/count-tests.sh` prints `257 passed, 0 failed, 1 ignored`; `python3 scripts/break_tests.py M3` catches all 40 rows whose names hold M3.
 
+2026-11-02, M6 rungs F, E and D (branch `ladder-costumes-1`, R7.101): `./scripts/check.sh` passes steps 1 to 7 (format, clippy, `cargo test`, the release build, the import audit, art, the notebook); step 8 fails only because a worktree's folder is `wt-costumes-1`, so the journal it looks for is `../wt-costumes-1-journal/`: `scripts/journal_check.py ../chumworld-arena` on the real journal passes; step 9, `tests/browser/check.py`, ends `BROWSER CHECK PASSED in chromium, firefox, webkit`. `./scripts/count-tests.sh` prints `266 passed, 0 failed, 1 ignored`; `python3 scripts/break_tests.py "M6 FED"` catches all 13 rows.
+
 ## The next action
 
 M1: first person (PLAN.md).

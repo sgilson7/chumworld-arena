@@ -65,6 +65,10 @@ pub enum Role {
     /// B's belt, where the skirt starts
     Waist,
     Trim,
+    /// M6 (R7.101): the squire's kettle hat's brim
+    Brim,
+    /// M6 (R7.101): the point of the hedge knight's bascinet
+    Point,
 }
 
 /// One shape of a knight and what it is.
@@ -288,6 +292,10 @@ fn across_at(r: Fx, ry: Fx, dy: Fx) -> Fx {
 
 /// A knight of `kind` on `pose`, its plate off the parts in `bare`.
 pub fn model(kind: Kind, pose: &Pose, bare: u16) -> Knight {
+    // M6 (R7.101): the ladder's lighter opponents, each in its own file
+    if let Some(k) = fed::model(kind, pose, bare) {
+        return k;
+    }
     let t = table();
     let b = build(kind);
     let fwd = facing(pose.facing, 0);
@@ -849,3 +857,9 @@ fn helm(k: &mut K, b_knight: bool) {
 
 #[cfg(test)]
 mod tests;
+
+// M6 (R7.101): rungs F, E and D of the ladder, built on this file's builder
+mod fed;
+mod hedge;
+mod sellsword;
+mod squire;

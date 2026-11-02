@@ -84,6 +84,12 @@ How much harm a body can take. A blade takes more the faster it moves when it hi
 
 Not: HP, hit points
 
+### Hedge knight
+
+The ladder's fourth opponent from the foot (rung D): a knight in half plate under a long green surcoat torn at the hem, cloth hose below the knee, and a pointed helm over a mail collar. A working label until the person names it.
+
+Not: Ser Duncan
+
 ### Ivory crown
 
 The knight in pale plate with gilt, a crown of spikes and a skirt of plate burnt at the hem: the computer's knight in Practice. A working label until the person names it.
@@ -135,6 +141,16 @@ A cut from low in front up over the shoulder: hold the left button and move the 
 Moving at {run.speed} metres a second while Shift is held with a movement key, sword sheathed.
 
 Not: sprint
+
+### Sellsword
+
+The ladder's second opponent from the foot (rung E): a hired fighter in a studded leather coat with steel plates inside, steel on the forearms, a helm with a tail and a chin plate, and one big plate on the right shoulder only. A working label until the person names it.
+
+Not: Sellsword Twinblades, Sellsword set
+
+### Squire
+
+The ladder's first opponent (rung F): a young fighter in a padded quilted coat, a mail hood round an open face and a broad-brimmed steel hat, his only plate. A working label until the person names it.
 
 ### Team deathmatch
 
