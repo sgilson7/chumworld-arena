@@ -577,14 +577,12 @@ pub fn decide_with(w: &World, id: usize, mut b: Brain) -> (Input, Brain) {
             Some(_) => Some(pick(tree, &view, &mut b.rng, true)),
             None => Some(pick(tree, &view, &mut b.rng, false)),
         };
-        let pick = read
-            .map(|(m, mut t)| {
-                t.tick = w.tick;
-                t.tree = tree_name.to_string();
-                b.trace = Some(t);
-                m
-            })
-            .flatten();
+        let pick = read.and_then(|(m, mut t)| {
+            t.tick = w.tick;
+            t.tree = tree_name.to_string();
+            b.trace = Some(t);
+            m
+        });
         if let Some(m) = pick {
             if under_way != Some(m) {
                 start(&mut b, m, &spec.cuts);
