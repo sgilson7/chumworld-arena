@@ -1716,6 +1716,19 @@ fn tinted(m: &Model, labels: &[u8], keep: u16, l: &Limbs, blood: bool) -> Model 
 /// the blow, easing back over `flinch_ticks`. Only drawn, so no capsule
 /// moves into a blade as it eases back (the arms' flinch is their points'
 /// own speed, `mark`).
+/// T10: how far a flinch has the head knocked now (a blow to the head or
+/// the body), nothing otherwise: the first-person eye rides it, and the
+/// helmet it sits in is hidden round it, so the view snaps with the head
+/// and never lands inside its own helmet.
+pub fn head_flinch(l: &Limbs) -> V3 {
+    if l.flinch == 0 || !matches!(l.flinch_seg as usize, HEAD | TORSO) {
+        return V3::ZERO;
+    }
+    let sp = spec();
+    l.flinch_way
+        .scale(mm(sp.flinch_mm) * l.flinch as i32 / sp.flinch_ticks as i32)
+}
+
 fn flinched(l: &Limbs, p: &Pose) -> Pose {
     let sp = spec();
     let mut p = *p;
@@ -1763,6 +1776,18 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
     }
     let (m, labels) = dressed(f.dress, p, dress, crate::plate::bare(&l.plate));
     if labels.len() == m.parts.len() {
+        // T10: seen from inside, the player's own body does not flash; the
+        // view's red edge says the blow landed (`feel::State::hurt`)
+        let unflashed;
+        let l = if id == 0 && w.eye_view {
+            unflashed = Limbs {
+                flash: [0; PARTS],
+                ..*l
+            };
+            &unflashed
+        } else {
+            l
+        };
         tinted(&m, &labels, !l.lost, l, blood).emit(look.ink(), out);
     } else {
         m.emit(look.ink(), out);

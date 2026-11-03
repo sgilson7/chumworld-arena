@@ -313,7 +313,10 @@ impl World {
             // shoulder camera is; the game sets the field of view by the
             // reader's setting and the screen's shape (`game.rs`)
             let eye = crate::player::eye(self, alpha, aim).add(crate::feel::knock_at(self, alpha));
-            return camera::eye_view(eye, aim, camera::FOV);
+            // T10: and tilted with the player's own cut and by a blow taken
+            let mut cam = camera::eye_view(eye, aim, camera::FOV);
+            cam.roll = crate::feel::tilt_at(self, alpha);
+            return cam;
         }
         let feet = self.player.feet(alpha);
         let mut cam = camera::view_from(feet, aim, back, |x, z| self.ground(x, z));

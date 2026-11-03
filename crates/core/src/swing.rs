@@ -190,6 +190,12 @@ pub const TRAIL_FADE: u8 = 2;
 /// another's and the order it is drawn in changes nothing, CW-18).
 pub const TRAIL_GLOW: Fx = ONE * 85 / 100;
 pub const TRAIL_THICK: Fx = ONE * 3 / 1000;
+/// T10: the trail runs from this share of the way from grip to point (M7's
+/// was half), and under the glow a pale band is stippled in, kept at
+/// `TRAIL_BAND` at its newest and thinning to nothing at its oldest, so
+/// the trail still shows where added light is lost on bright sand and sky.
+pub const TRAIL_FROM: Fx = ONE * 3 / 10;
+pub const TRAIL_BAND: Fx = ONE * 3 / 4;
 
 /// Each fighter's trail after its arm has moved this tick: a striking
 /// blade adds where it now is, any other loses its oldest.
@@ -200,7 +206,7 @@ pub fn trail(a: &mut crate::arm::Arm) {
     let striking = sw.cut.is_some_and(|c| c.phase != Phase::WindUp);
     if striking {
         sw.trail.rotate_right(1);
-        sw.trail[0] = (grip.lerp(tip, ONE / 2), tip);
+        sw.trail[0] = (grip.lerp(tip, TRAIL_FROM), tip);
         sw.trail_len = (sw.trail_len + 1).min(TRAIL as u8);
     } else {
         sw.trail_len = sw.trail_len.saturating_sub(TRAIL_FADE);
@@ -214,6 +220,7 @@ pub fn draw_trails(w: &World, look: &Look, out: &mut Shapes) {
         return;
     }
     let colour = rgb(look.palette.lamp);
+    let band = rgb(look.palette.trail);
     for id in 0..player::count(w) {
         let sw = &player::fighter(w, id).arm.swing;
         let n = sw.trail_len as usize;
@@ -233,6 +240,13 @@ pub fn draw_trails(w: &World, look: &Look, out: &mut Shapes) {
             };
             let strength = TRAIL_GLOW * (TRAIL - k) as i32 / TRAIL as i32;
             out.glow(Mesh::Cube, at, colour, strength);
+            // T10: and the stippled band, thinning as it ages
+            out.dithered(
+                Mesh::Cube,
+                at,
+                band,
+                TRAIL_BAND * (n - 1 - k) as i32 / (n - 1) as i32,
+            );
         }
     }
 }
@@ -1138,18 +1152,19 @@ mod tests {
     #[test]
     fn a_cut_leaves_a_trail_that_fades_to_nothing() {
         let look = crate::look::tests::look();
-        let glows = |w: &World| {
+        let passes = |w: &World, pass: crate::render::Pass| {
             let mut out = Shapes::default();
             w.draw(ONE, &look, &mut out);
-            out.list
-                .iter()
-                .filter(|s| s.pass == crate::render::Pass::Glow)
-                .count()
+            out.list.iter().filter(|s| s.pass == pass).count()
         };
+        let glows = |w: &World| passes(w, crate::render::Pass::Glow);
+        // T10: each quad has a stippled band under it
+        let bands = |w: &World| passes(w, crate::render::Pass::Dither);
         for on in [true, false] {
             let mut w = ready(Held::ShortSword);
             w.settings.cue = on;
             let before = glows(&w);
+            let banded_before = bands(&w);
             let (mut most, mut drawn) = (0, 0);
             let mut t = 0;
             while t < 90 && (t == 0 || w.me.arm.swing.cut.is_some()) {
@@ -1157,7 +1172,9 @@ mod tests {
                 most = most.max(w.me.arm.swing.trail_len);
                 // (the cue draws through the wind-up, not after it)
                 if w.me.arm.swing.cut.is_some_and(|c| c.phase != Phase::WindUp) {
-                    drawn = drawn.max(glows(&w) - before);
+                    let quads = glows(&w) - before;
+                    drawn = drawn.max(quads);
+                    assert_eq!(bands(&w) - banded_before, quads, "a band under each quad");
                 }
                 t += 1;
             }
@@ -1177,6 +1194,7 @@ mod tests {
                 .collect();
             assert_eq!(lens, [3, 1, 0, 0]);
             assert_eq!(glows(&w), before, "nothing of it is left");
+            assert_eq!(bands(&w), banded_before, "nor of its band");
             let frame = |w: &World| {
                 let mut out = Shapes::default();
                 w.draw(ONE, &look, &mut out);

@@ -3456,5 +3456,145 @@
     "find": "                \"join_link_text\"",
     "replace": "                \"join_room_text\"",
     "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "T10 animation: the eye leans after its own cut",
+    "file": "crates/core/src/feel.rs",
+    "find": "    let t = w.feel.tilt + (goal - w.feel.tilt) * TILT_EASE_PCT / 100;",
+    "replace": "    let t = w.feel.tilt - w.feel.tilt * TILT_EASE_PCT / 100;",
+    "test": "the_eye_leans_with_its_own_cut_and_comes_back_level_exactly"
+  },
+  {
+    "name": "T10 animation: the lean is held to its most",
+    "file": "crates/core/src/feel.rs",
+    "find": "    let goal = ((across * TILT_PER_MPS as i64) >> fx::SHIFT).clamp(-TILT_MAX as i64, TILT_MAX as i64) as i32;",
+    "replace": "    let goal = ((across * TILT_PER_MPS as i64) >> fx::SHIFT) as i32;",
+    "test": "the_eye_leans_with_its_own_cut_and_comes_back_level_exactly"
+  },
+  {
+    "name": "T10 animation: the eye comes back level exactly",
+    "file": "crates/core/src/feel.rs",
+    "find": "    w.feel.tilt = if goal == 0 && t.abs() < TILT_QUIET { 0 } else { t };",
+    "replace": "    w.feel.tilt = t;",
+    "test": "the_eye_leans_with_its_own_cut_and_comes_back_level_exactly"
+  },
+  {
+    "name": "T10 animation: a blow taken throws the eye",
+    "file": "crates/core/src/feel.rs",
+    "find": "            thrown(w, way, TILT_HIT);\n",
+    "replace": "",
+    "test": "a_blow_taken_tilts_the_eye_away_and_reddens_the_edge_which_fades_to_nothing"
+  },
+  {
+    "name": "T10 animation: a blow taken reddens the edge",
+    "file": "crates/core/src/feel.rs",
+    "find": "            w.feel.hurt = (w.feel.hurt + HURT_PER_POINT * taken).min(ONE);",
+    "replace": "",
+    "test": "a_blow_taken_tilts_the_eye_away_and_reddens_the_edge_which_fades_to_nothing"
+  },
+  {
+    "name": "T10 animation: the red edge fades to nothing",
+    "file": "crates/core/src/feel.rs",
+    "find": "    w.feel.hurt = if h < HURT_QUIET { 0 } else { h };",
+    "replace": "    w.feel.hurt = h;",
+    "test": "a_blow_taken_tilts_the_eye_away_and_reddens_the_edge_which_fades_to_nothing"
+  },
+  {
+    "name": "T10 animation: blades meeting jolt the eye",
+    "file": "crates/core/src/feel.rs",
+    "find": "            thrown(w, v3(-way.x, 0, -way.z), TILT_CLASH);\n",
+    "replace": "",
+    "test": "blades_meeting_hard_jolt_the_eye_away_from_the_other"
+  },
+  {
+    "name": "T10 animation: a blade keeps the blood it draws",
+    "file": "crates/core/src/feel.rs",
+    "find": "        w.feel.blooded[by] = (w.feel.blooded[by] + BLOOD_PER_POINT * taken).min(BLOOD_MOST);",
+    "replace": "",
+    "test": "a_blade_that_draws_blood_keeps_it_and_shows_it"
+  },
+  {
+    "name": "T10 animation: blood on a blade is held to its most",
+    "file": "crates/core/src/feel.rs",
+    "find": "(w.feel.blooded[by] + BLOOD_PER_POINT * taken).min(BLOOD_MOST);",
+    "replace": "w.feel.blooded[by] + BLOOD_PER_POINT * taken;",
+    "test": "a_blade_that_draws_blood_keeps_it_and_shows_it"
+  },
+  {
+    "name": "T10 animation: blood on a blade is drawn",
+    "file": "crates/core/src/feel.rs",
+    "find": "        out.dithered(Mesh::Cube, at, rgb(crate::wounds::spec().colours.blood_dark), share);",
+    "replace": "",
+    "test": "a_blade_that_draws_blood_keeps_it_and_shows_it"
+  },
+  {
+    "name": "T10 animation: blood off draws none on a blade",
+    "file": "crates/core/src/feel.rs",
+    "find": "    if share == 0 || !w.settings.blood {",
+    "replace": "    if share == 0 {",
+    "test": "a_blade_that_draws_blood_keeps_it_and_shows_it"
+  },
+  {
+    "name": "T10 animation: a kick taken throws the eye",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        crate::feel::thrown(w, way, crate::feel::TILT_HIT);",
+    "replace": "",
+    "test": "kicked_the_player_s_own_arms_are_not_drawn_across_the_eye"
+  },
+  {
+    "name": "T10 animation: the eye rides a knocked head",
+    "file": "crates/core/src/player.rs",
+    "find": "    let head = head.add(crate::wounds::head_flinch(&w.me.health.limbs));",
+    "replace": "",
+    "test": "a_blow_to_the_head_snaps_the_eye_with_it"
+  },
+  {
+    "name": "T10 animation: the helm is hidden round a knocked head",
+    "file": "crates/core/src/player.rs",
+    "find": "            let head = p.head.add(crate::wounds::head_flinch(&f.health.limbs));",
+    "replace": "            let head = p.head;",
+    "test": "a_knocked_head_carries_the_eye_so_the_helm_stays_out_of_it"
+  },
+  {
+    "name": "T10 animation: the eye bobs with the stride",
+    "file": "crates/core/src/player.rs",
+    "find": "        .add(bob(&w.me.gait, aim.yaw))",
+    "replace": "",
+    "test": "walking_bobs_the_eye_and_standing_lets_it_settle_exactly"
+  },
+  {
+    "name": "T10 animation: the bob dips at each footfall",
+    "file": "crates/core/src/player.rs",
+    "find": "(ONE - fx::cos(g.phase * 2)) / 2);",
+    "replace": "ONE);",
+    "test": "the_eye_bobs_with_the_stride_and_is_still_standing"
+  },
+  {
+    "name": "T10 animation: the own body does not flash seen from inside",
+    "file": "crates/core/src/wounds.rs",
+    "find": "        let l = if id == 0 && w.eye_view {",
+    "replace": "        let l = if false {",
+    "test": "the_player_s_own_body_does_not_flash_seen_from_inside"
+  },
+  {
+    "name": "T10 animation: the first-person view rolls by the tilt",
+    "file": "crates/core/src/world.rs",
+    "find": "            cam.roll = crate::feel::tilt_at(self, alpha);",
+    "replace": "",
+    "test": "the_first_person_view_rolls_by_the_eye_s_tilt"
+  },
+  {
+    "name": "T10 animation: a rolled view leans its up",
+    "file": "crates/core/src/render.rs",
+    "find": "            .add(right.scale(fx::sin(self.roll)))",
+    "replace": "",
+    "test": "the_first_person_view_rolls_by_the_eye_s_tilt"
+  },
+  {
+    "name": "T10 animation: a trail has a stippled band",
+    "file": "crates/core/src/swing.rs",
+    "find": "            out.dithered(\n                Mesh::Cube,\n                at,\n                band,",
+    "replace": "            let _ = (\n                Mesh::Cube,\n                at,\n                band,",
+    "test": "a_cut_leaves_a_trail_that_fades_to_nothing"
   }
 ]

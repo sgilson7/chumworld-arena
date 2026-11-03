@@ -609,6 +609,16 @@ fn kicked_the_player_s_own_arms_are_not_drawn_across_the_eye() {
     let mut kicked = false;
     for t in 0..30 {
         w.step(&Input::default());
+        // T10: the tick the kick lands, the eye is thrown 5° (910 units)
+        // on top of whatever lean it had
+        if !kicked && w.me.gait.stagger > 0 {
+            assert!(
+                (w.feel.tilt - w.feel.prev_tilt).abs() >= 900,
+                "thrown by the kick: {} from {}",
+                w.feel.tilt,
+                w.feel.prev_tilt
+            );
+        }
         kicked |= w.me.gait.stagger > 0;
         let e = player::eye(w, ONE, w.aim);
         let mut v = w.clone();

@@ -413,8 +413,28 @@ pub fn head_cull(build: &Build) -> Fx {
 /// that rocks the body rocks the view.
 pub fn eye(w: &World, alpha: Fx, aim: crate::camera::Aim) -> V3 {
     let head = w.me.prev_pose.lerp(&w.me.pose, alpha).head;
+    // T10: and knocked with the head by a blow, as the helmet is drawn
+    let head = head.add(crate::wounds::head_flinch(&w.me.health.limbs));
     head.add(facing(aim.yaw, 0).scale(EYE_FORWARD))
         .add(v3(0, EYE_UP, 0))
+        .add(bob(&w.me.gait, aim.yaw))
+}
+
+/// T10: the eye's bob with the stride: down `BOB_DOWN` at each footfall
+/// (twice a stride cycle) and `BOB_SWAY` toward the stepping foot, both
+/// times how far the feet swing (`Gait::swing`, `ONE` at a walk), so a body
+/// standing still holds the eye exactly still.
+pub const BOB_DOWN: Fx = ONE * 12 / 1000;
+pub const BOB_SWAY: Fx = ONE * 6 / 1000;
+
+pub fn bob(g: &crate::motion::Gait, yaw: i32) -> V3 {
+    if g.swing == 0 {
+        return V3::ZERO;
+    }
+    let down = fx::mul(fx::mul(BOB_DOWN, g.swing), (ONE - fx::cos(g.phase * 2)) / 2);
+    let sway = fx::mul(fx::mul(BOB_SWAY, g.swing), fx::sin(g.phase));
+    let right = facing(yaw, 0).cross(V3::UP).norm();
+    right.scale(sway).sub(v3(0, down, 0))
 }
 
 /// M1 (T5): the soft pull turns the view's heading by this share of how far
@@ -1076,7 +1096,8 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         crate::wounds::figure(w, id, &p, dress, look, out);
         if id == 0 && w.eye_view {
             // M1: the head and helmet the eye sits in are not drawn
-            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));
+            let head = p.head.add(crate::wounds::head_flinch(&f.health.limbs));
+            cull_near(&mut out.list, from, head, head_cull(&f.build()));
             // R3.10 (its default, M4): the sword forearm is not drawn while
             // it passes near the eye (a chop's wind-up lifts it across)
             let eye = eye(w, alpha, w.aim);
@@ -1100,6 +1121,7 @@ pub fn draw(w: &World, alpha: Fx, look: &Look, out: &mut Shapes) {
         }
         if f.held != Held::Nothing && !w.sticks {
             crate::models::held(f.held, p.grip, p.tip, look, out);
+            crate::feel::draw_blood(w, id, f.held, p.grip, p.tip, out); // T10
         }
         if matches!(f.held, Held::ShortSword | Held::Sword | Held::Longsword) && !w.sticks {
             let b = body(w, id);
@@ -2144,5 +2166,60 @@ mod tests {
         // the sword is still drawn in first person: something near the tip
         let tip = w.me.pose.tip;
         assert!(out.list.iter().any(|s| s.at.t.dist(tip) < ONE / 2));
+    }
+
+    /// T10: the bob at a walk (swing `ONE`), heading 0 (right is +x): at a
+    /// quarter of the stride cycle the eye is down the whole 1.2 cm (786
+    /// units) and over 6 mm (393) toward the stepping foot; at the cycle's
+    /// start neither. With the feet not swinging, nothing.
+    #[test]
+    fn the_eye_bobs_with_the_stride_and_is_still_standing() {
+        let mut g = crate::motion::Gait::default();
+        assert_eq!(bob(&g, 0), V3::ZERO, "standing");
+        g.swing = ONE;
+        g.phase = 0;
+        assert_eq!(bob(&g, 0), V3::ZERO);
+        g.phase = fx::QUARTER_TURN;
+        assert_eq!(bob(&g, 0), v3(393, -786, 0));
+        g.swing = ONE / 2;
+        assert_eq!(bob(&g, 0), v3(196, -393, 0), "half the swing, half the bob");
+    }
+
+    /// T10: walking moves the eye up and down; stopped, the feet stop
+    /// swinging and the eye is held exactly still again.
+    #[test]
+    fn walking_bobs_the_eye_and_standing_lets_it_settle_exactly() {
+        let mut g = crate::game::tests::game();
+        crate::game::tests::practice(&mut g);
+        let mut ys = Vec::new();
+        for _ in 0..90 {
+            crate::game::tests::frames(&mut g, 1, crate::input::FORWARD, 0);
+            ys.push(eye(&g.world, ONE, g.world.aim).y);
+        }
+        let (lo, hi) = (*ys.iter().min().unwrap(), *ys.iter().max().unwrap());
+        assert!(hi - lo > BOB_DOWN / 2, "walking bobs: {lo} to {hi}");
+        crate::game::tests::frames(&mut g, 240, 0, 0);
+        assert_eq!(g.world.me.gait.swing, 0, "the feet have stopped swinging");
+        let a = eye(&g.world, ONE, g.world.aim);
+        crate::game::tests::frames(&mut g, 30, 0, 0);
+        assert_eq!(eye(&g.world, ONE, g.world.aim), a, "and the eye is still");
+    }
+
+    /// T10: a blow that knocks the head snaps the view with it: at its
+    /// fullest (9 of 9 ticks) the head is 70 mm along the knock (4 587
+    /// units), and so is the eye; a knock on an arm leaves the eye be.
+    #[test]
+    fn a_blow_to_the_head_snaps_the_eye_with_it() {
+        let mut g = crate::game::tests::game();
+        crate::game::tests::practice(&mut g);
+        let w = &mut g.world;
+        let before = eye(w, ONE, w.aim);
+        let l = &mut w.me.health.limbs;
+        l.flinch_seg = crate::wounds::HEAD as u8;
+        l.flinch_way = v3(ONE, 0, 0);
+        l.flinch = 9;
+        assert_eq!(eye(w, ONE, w.aim).sub(before), v3(4587, 0, 0));
+        w.me.health.limbs.flinch_seg = 2;
+        assert_eq!(eye(w, ONE, w.aim), before, "an arm knocked");
     }
 }

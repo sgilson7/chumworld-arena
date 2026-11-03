@@ -53,6 +53,8 @@ pub struct Palette {
     pub body: [i32; 3],
     pub visor: [i32; 3],
     pub shadow: [i32; 3],
+    /// the pale streak a fast blade leaves (`feel::draw_trails`)
+    pub trail: [i32; 3],
 }
 
 /// `data/look.json`. Fields starting with `_` there are notes.

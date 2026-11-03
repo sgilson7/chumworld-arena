@@ -121,6 +121,11 @@ pub fn held(item: Held, grip: V3, tip: V3, look: &Look, out: &mut Shapes) {
     held::model(item, grip, tip).emit(look.ink(), out);
 }
 
+/// T10: where blood lies on a held blade (`held::blood_on`).
+pub fn blood_on(item: Held, grip: V3, tip: V3) -> Option<Affine> {
+    held::blood_on(item, grip, tip)
+}
+
 // ---- the table: data/models.json ----
 
 #[derive(Debug, Deserialize)]

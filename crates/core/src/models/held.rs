@@ -124,6 +124,29 @@ pub fn grip_to_tip(item: Held) -> Fx {
 }
 
 /// The model of an item from `grip` to `tip`.
+/// T10: where blood lies on a sword's blade: from `BLOOD_FROM_PCT` of the
+/// blade's body out to where its point starts, a millimetre proud of the
+/// steel on every side (so no face of it lies on the blade's). `None` for
+/// what has no blade.
+pub const BLOOD_FROM_PCT: i32 = 40;
+
+pub fn blood_on(item: Held, grip: V3, tip: V3) -> Option<Affine> {
+    if !matches!(item, Held::ShortSword | Held::Sword | Held::Longsword) || grip == tip {
+        return None;
+    }
+    let b = blade(item);
+    let f = along(grip, tip, V3::UP);
+    let start = mm(b.hilt + b.guard);
+    let body = (tip.sub(grip).len() - start - mm(b.width * 2)).max(mm(10));
+    let from = start + body * BLOOD_FROM_PCT / 100;
+    let long = start + body - from;
+    Some(put(
+        &f,
+        v3(0, from + long / 2, 0),
+        v3(mm(b.width + 2), long, mm(b.thick + 2)),
+    ))
+}
+
 pub fn model(item: Held, grip: V3, tip: V3) -> Model {
     let t = table();
     let mut m = Model::default();

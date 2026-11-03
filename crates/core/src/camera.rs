@@ -106,7 +106,12 @@ pub fn view_from(feet: V3, look: Aim, back: Fx, ground: impl Fn(Fx, Fx) -> Fx) -
     let fwd = facing(look.yaw, look.pitch);
     let mut eye = pivot.sub(fwd.scale(back));
     eye.y = eye.y.max(ground(eye.x, eye.z) + MIN_EYE_HEIGHT);
-    Camera { eye, fwd, fov: FOV }
+    Camera {
+        eye,
+        fwd,
+        fov: FOV,
+        roll: 0,
+    }
 }
 
 /// M1 (CA-Q15: B): the vertical field of view that shows `across` degrees
@@ -123,6 +128,7 @@ pub fn eye_view(eye: V3, look: Aim, fov: i32) -> Camera {
         eye,
         fwd: facing(look.yaw, look.pitch),
         fov,
+        roll: 0,
     }
 }
 

@@ -521,6 +521,10 @@ fn land(w: &mut World, id: usize) {
     if id == 0 || j == 0 {
         w.feel.knock = crate::feel::knock(fx::int(5), way);
     }
+    // T10: kicked, the player's view is thrown aside as by a blow
+    if j == 0 {
+        crate::feel::thrown(w, way, crate::feel::TILT_HIT);
+    }
 }
 
 /// How far a kicking leg is out, `ONE` at the hit tick, rising to it and

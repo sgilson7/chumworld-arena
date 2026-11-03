@@ -102,6 +102,11 @@ impl Game {
         self.inner.ui_version
     }
 
+    /// T10: how red the view's edge is this frame, from 0 to 1.
+    pub fn hurt(&self) -> f32 {
+        self.inner.hurt() as f32 / 1000.0
+    }
+
     /// The save's text, for the page to keep in the browser or download.
     pub fn save_text(&self) -> String {
         self.inner.save_text()

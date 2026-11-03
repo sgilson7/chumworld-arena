@@ -344,6 +344,7 @@ async function main() {
   resize();
 
   let staticVersion = 0;
+  let shownHurt = -1;
   let uiVersion = 0;
   function frame(now) {
     const { bits, dx, dy, wheel } = input.read();
@@ -353,6 +354,12 @@ async function main() {
       renderer.setStatic(game.static_values());
     }
     renderer.frame(game.view(), game.instances(), game.draws());
+    // T10: the view's edge reddened by a blow taken, as the core says
+    const hurt = game.hurt();
+    if (hurt !== shownHurt) {
+      shownHurt = hurt;
+      el("hurt").style.opacity = String(hurt);
+    }
     if (online) online.pump();
     if (game.ui_version() !== uiVersion) {
       uiVersion = game.ui_version();

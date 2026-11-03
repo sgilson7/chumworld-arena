@@ -598,6 +598,15 @@ impl Game {
         }
     }
 
+    /// T10: how red the view's edge is this frame, thousandths: a blow taken
+    /// in a first-person duel reddens it, and it fades (`feel::State::hurt`).
+    pub fn hurt(&self) -> u32 {
+        if !self.in_duel() || !self.world.first_person() {
+            return 0;
+        }
+        ((self.world.feel.hurt as i64 * 1000) >> crate::fx::SHIFT) as u32
+    }
+
     pub fn camera(&self) -> Camera {
         if !self.in_duel() {
             // M2 (R2.11): the title and the menu look across the ring from
@@ -1077,6 +1086,89 @@ pub(crate) mod tests {
             let shoulders = out.list.iter().filter(|s| s.at.t.dist(eye) < ONE / 2).count();
             assert!(shoulders > 0, "look {look}: the shoulders are still drawn");
         }
+    }
+
+    /// T10: a blow that knocks the head (head or body, any way, at its
+    /// fullest) knocks the eye with it, so nothing of the player's own
+    /// figure is drawn ahead of the eye within 25 cm. Before, the eye stayed
+    /// where the unknocked head was while the helmet was drawn 7 cm on, and
+    /// a blow from behind put the view inside its own helmet.
+    #[test]
+    fn a_knocked_head_carries_the_eye_so_the_helm_stays_out_of_it() {
+        let mut g = game();
+        practice(&mut g);
+        let mut w = g.world.clone();
+        w.foes.clear();
+        w.eye_view = true;
+        let ahead = crate::geom::facing(w.aim.yaw, 0);
+        let side = crate::geom::facing(w.aim.yaw + crate::fx::QUARTER_TURN, 0);
+        for seg in [crate::wounds::HEAD, crate::wounds::TORSO] {
+            for way in [ahead, ahead.neg(), side, side.neg()] {
+                let l = &mut w.me.health.limbs;
+                l.flinch_seg = seg as u8;
+                l.flinch_way = way;
+                l.flinch = 9;
+                let eye = crate::player::eye(&w, ONE, w.aim);
+                let mut out = crate::render::Shapes::default();
+                crate::player::draw(&w, ONE, &crate::look::tests::look(), &mut out);
+                let near = out
+                    .list
+                    .iter()
+                    .filter(|s| s.at.t.dist(eye) < ONE / 4 && s.at.t.sub(eye).dot(ahead) > 0)
+                    .count();
+                assert_eq!(
+                    near, 0,
+                    "part {seg}, knocked {way:?}: {near} shapes before the eye"
+                );
+            }
+        }
+    }
+
+    /// T10: seen from inside, the player's own figure does not flash red
+    /// when struck (the view's red edge says so instead); seen from outside,
+    /// it does.
+    #[test]
+    fn the_player_s_own_body_does_not_flash_seen_from_inside() {
+        let mut g = game();
+        practice(&mut g);
+        let mut w = g.world.clone();
+        w.foes.clear();
+        let figure = |w: &World| {
+            let mut out = crate::render::Shapes::default();
+            crate::player::draw(w, ONE, &crate::look::tests::look(), &mut out);
+            format!("{:?}", out.list)
+        };
+        for inside in [true, false] {
+            w.eye_view = inside;
+            w.me.health.limbs.flash = [0; crate::blade::PARTS];
+            let plain = figure(&w);
+            w.me.health.limbs.flash = [9; crate::blade::PARTS];
+            assert_eq!(figure(&w) == plain, inside, "seen from inside: {inside}");
+        }
+    }
+
+    /// T10: in first person the camera rolls by the eye's tilt, drawn
+    /// between the ticks; up for the view leans with it (at a quarter turn
+    /// of roll, up is the view's right).
+    #[test]
+    fn the_first_person_view_rolls_by_the_eye_s_tilt() {
+        let mut g = game();
+        practice(&mut g);
+        g.world.aim.yaw = 0;
+        g.world.feel.prev_tilt = 100;
+        g.world.feel.tilt = 300;
+        let c = g
+            .world
+            .camera(ONE / 2, crate::input::Mouse::default(), crate::camera::BACK);
+        assert_eq!(c.roll, 200, "halfway between 100 and 300");
+        let level = crate::render::Camera { roll: 0, ..c };
+        assert_eq!(level.up(), V3::UP);
+        let over = crate::render::Camera {
+            roll: crate::fx::QUARTER_TURN,
+            ..c
+        };
+        let right = over.fwd.cross(V3::UP).norm();
+        assert!(over.up().sub(right).len() < 8, "{:?}", over.up());
     }
 
     /// The title, then the menu, then Practice: a duel in rounds against

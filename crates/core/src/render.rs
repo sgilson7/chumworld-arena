@@ -458,6 +458,9 @@ pub struct Camera {
     pub eye: V3,
     pub fwd: V3,
     pub fov: i32,
+    /// the view's roll about `fwd`, angle units, positive to the right
+    /// (the eye's tilt with a cut or a blow, `feel::tilt_at`); 0 is level
+    pub roll: i32,
 }
 
 impl Camera {
@@ -470,7 +473,19 @@ impl Camera {
     /// translation, the rounding is an angle: under a hundredth of a pixel.
     pub fn matrix(&self, layer: Layer, aspect: Fx) -> Mat4 {
         let (n, f) = layer.planes();
-        Mat4::perspective(self.fov, aspect, n, f).mul(&Mat4::look(V3::ZERO, self.fwd, V3::UP))
+        Mat4::perspective(self.fov, aspect, n, f).mul(&Mat4::look(V3::ZERO, self.fwd, self.up()))
+    }
+
+    /// Up for the view: the world's up, rolled about the view's line by
+    /// `roll` toward the view's right; with no roll, the world's up exactly.
+    pub fn up(&self) -> V3 {
+        if self.roll == 0 {
+            return V3::UP;
+        }
+        let right = self.fwd.cross(V3::UP).norm();
+        V3::UP
+            .scale(fx::cos(self.roll))
+            .add(right.scale(fx::sin(self.roll)))
     }
 
     /// Which layers a sphere is drawn in: none behind the camera or past the
@@ -683,6 +698,7 @@ mod tests {
             eye: v3(int(100), int(2), int(100)),
             fwd: facing(0, 0),
             fov: deg(60),
+            roll: 0,
         }
     }
 
