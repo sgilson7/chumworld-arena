@@ -108,6 +108,7 @@ fn face(k: &mut K, g: &Garb, skin: Rgb) {
 
 /// A coat round the torso from `y0` to `y1` over the pelvis, `gap` off the
 /// body, with a belt at `belt` in `belt_c`.
+#[allow(clippy::too_many_arguments)]
 fn coat_on(k: &mut K, y0: i32, y1: i32, gap: Fx, role: Role, rgb: Rgb, belt: i32, belt_c: Rgb) {
     let (rx, rz) = coat(k, gap);
     column(k, Layer::Cloth, role, y0, y1, rx, rz, rgb);
