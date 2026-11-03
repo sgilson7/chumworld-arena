@@ -1,0 +1,193 @@
+/* The page's frame round the duel: the loading state, the panels the core
+   describes (start, pause), each fighter's health, the lines over the duel,
+   and messages. Stone, iron and soot, a little grittier than CHUMWORLD's
+   warm haze (BRIEF.md, Style). */
+:root {
+  --ink: #e9e3d8;
+  --ink-soft: #b3aa9b;
+  --stone: #2a2724;
+  --stone-edge: #4a443d;
+  --glass: rgba(26, 24, 22, 0.88);
+  --accent: #a8322a;
+  --accent-deep: #6e1d18;
+  --you: #c9b27a;
+  --foe: #b04a3c;
+  --stamina: #8fae9a;
+  --hurt: rgba(150, 12, 8, 0.85);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+* { box-sizing: border-box; }
+/* A display rule elsewhere must not show what the page hid. */
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: #1b1916;
+  color: var(--ink);
+  font: 16px/1.45 Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #1b1916; }
+body[data-ready="false"] #view { visibility: hidden; }
+/* T10: a blow taken reddens the view's edge; the core sets how much */
+#hurt {
+  position: fixed; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, var(--hurt) 100%);
+}
+#loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; letter-spacing: 0.08em; color: var(--ink-soft); }
+
+#overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.55) 100%); }
+body[data-screen="title"] #overlay, body[data-screen="menu"] #overlay { align-items: flex-end; justify-content: flex-start; gap: 16px; padding: 0 0 8vh 6vw; background: linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%); }
+/* the round's result: a band across the upper view, the duel still seen */
+body[data-screen="round"] #overlay { align-items: flex-start; padding-top: 14vh; background: none; }
+#round { text-align: center; min-width: 420px; }
+#round .note { font-size: 18px; letter-spacing: 0.08em; color: var(--ink); }
+.panel { min-width: 320px; max-width: 440px; max-height: calc(100vh - 32px); overflow: auto; padding: 28px 32px 24px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); box-shadow: var(--shadow); }
+.panel h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: 0.06em; }
+#title h1, #menu h1 { font-size: 44px; letter-spacing: 0.1em; text-transform: uppercase; }
+#title { max-width: 620px; }
+#title h1 { font-size: 60px; }
+.panel h2 { margin: 20px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.panel p { margin: 0 0 14px; color: var(--ink-soft); }
+.panel button { display: block; width: 100%; padding: 13px 22px; border: 1px solid var(--accent-deep); border-radius: 4px; background: var(--accent); color: #f6efe2; font: inherit; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; box-shadow: 0 3px 0 var(--accent-deep); }
+.panel button + button { margin-top: 10px; }
+.panel button:hover:not(:disabled) { filter: brightness(1.1); }
+.panel button:disabled { background: var(--stone); border-color: var(--stone-edge); color: var(--ink-soft); box-shadow: none; cursor: not-allowed; }
+.panel .note { margin: 14px 0 0; font-size: 14px; font-style: italic; }
+/* a setting: its name, its value in words, and its buttons */
+.setting { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--stone-edge); }
+.setting .label { flex: 1; }
+.setting output { min-width: 84px; text-align: right; font-weight: 700; color: var(--you); }
+.setting button { width: auto; min-width: 44px; margin: 0; padding: 6px 12px; font-size: 15px; letter-spacing: 0.04em; box-shadow: none; }
+.setting + button { margin-top: 20px; }
+.setting button + button { margin-top: 0; }
+.panel button:focus-visible { outline: 2px solid var(--you); outline-offset: 3px; }
+/* M5: a box of text on a panel: a code to copy or to paste in */
+.field { display: block; margin: 0 0 14px; }
+.field .label { display: block; margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.field input, .field textarea { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--stone-edge); border-radius: 4px; background: var(--stone); color: var(--ink); font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+.field textarea { height: 84px; resize: vertical; word-break: break-all; }
+#room-out { font-size: 34px; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--you); }
+#room-in { font-size: 26px; letter-spacing: 0.3em; text-align: center; text-transform: uppercase; }
+.field + button { margin-top: 4px; }
+#online-status p { margin: 0; color: var(--ink); }
+#online-status { min-width: 0; padding: 14px 20px; }
+body[data-screen="online"] #overlay { flex-direction: column; gap: 12px; }
+/* M6: the ladder's rank cards, foot to top, and a rung's dossier. A card's
+   state is in its words and its border (solid, dashed when locked, double
+   when won) and its marks are drawn diamonds, besides any colour. */
+#ladder { max-width: min(1040px, calc(100vw - 32px)); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; margin: 4px 0 18px; }
+.panel button.card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 168px; margin: 0; padding: 12px 12px 10px; text-align: left; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; color: var(--ink); background: linear-gradient(180deg, #34302b 0%, #24211e 100%); border: 1px solid var(--stone-edge); border-left: 4px solid var(--accent); box-shadow: none; }
+.panel button.card + button.card { margin-top: 0; }
+.card .rank { font-size: 40px; line-height: 1; font-weight: 700; letter-spacing: 0.04em; color: var(--you); }
+.card .name { font-weight: 700; letter-spacing: 0.04em; }
+.card .state { flex: 1; font-size: 12px; color: var(--ink-soft); }
+.card .marks { display: flex; gap: 7px; padding: 2px 0 2px 2px; }
+.card .mark { width: 11px; height: 11px; transform: rotate(45deg); border: 1.5px solid var(--ink-soft); }
+.card .mark.won { background: var(--you); border-color: var(--you); }
+.panel button.card[data-state="locked"] { border-style: dashed; border-left-color: var(--stone-edge); background: repeating-linear-gradient(135deg, #24211e 0 8px, #1e1c19 8px 14px); }
+.card[data-state="locked"] .rank, .card[data-state="locked"] .name { color: var(--ink-soft); }
+.panel button.card[data-state="won"] { border-left: 6px double var(--you); }
+#dossier { max-width: 520px; display: flex; flex-direction: column; }
+/* the dossier reads heading, how it fights, the rank's table, then Fight */
+#dossier > h1 { order: -3; }
+#dossier > p:not(.note) { order: -2; }
+#dossier > h2, #dossier > table { order: -1; }
+#dossier > table { margin-bottom: 18px; }
+#dossier table.controls td:first-child { width: 30%; vertical-align: top; }
+#dossier table.controls kbd { border: none; background: none; padding: 0; text-align: left; font-weight: 700; color: var(--ink-soft); }
+#dossier table.controls td { padding: 5px 0; }
+table.controls { width: 100%; border-collapse: collapse; }
+table.controls td { padding: 4px 0; vertical-align: middle; font-size: 14px; }
+table.controls td:first-child { width: 46%; }
+kbd { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 3px; background: var(--stone); border: 1px solid var(--stone-edge); font: inherit; font-size: 13px; font-weight: 700; text-align: center; }
+
+/* Each fighter's health: its name, its numbers in words, and a bar whose
+   length is the share left (a <progress> the core fills). The player's sits
+   bottom left, the foe's top right; a stripe on the foe's bar tells them
+   apart besides the colour (BRIEF.md, Accessibility). */
+#bars { position: fixed; inset: 0; pointer-events: none; }
+body:not([data-screen="duel"]):not([data-screen="round"]) #bars { display: none; }
+.bar { position: fixed; width: min(360px, 40vw); padding: 8px 12px 10px; background: rgba(15, 14, 12, 0.6); border: 1px solid var(--stone-edge); border-radius: 4px; }
+#bar-you { left: 24px; bottom: 24px; }
+.bar:not(#bar-you) { right: 24px; top: 24px; }
+.bar header { display: flex; justify-content: space-between; font-size: 14px; letter-spacing: 0.06em; margin-bottom: 6px; }
+.bar progress { appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 12px; border: 1px solid #000; background: #120f0d; }
+.bar progress::-webkit-progress-bar { background: #120f0d; }
+.bar progress::-webkit-progress-value { background: var(--you); }
+.bar progress::-moz-progress-bar { background: var(--you); }
+.bar:not(#bar-you) progress::-webkit-progress-value { background: repeating-linear-gradient(135deg, var(--foe) 0 8px, #8a372d 8px 12px); }
+.bar:not(#bar-you) progress::-moz-progress-bar { background: repeating-linear-gradient(135deg, var(--foe) 0 8px, #8a372d 8px 12px); }
+/* M4: stamina under the health, thinner, notched every tenth, its words
+   beside it; winded, hatched and named in words (BRIEF.md, Accessibility) */
+.bar .stamina { margin-top: 7px; }
+.bar .stamina header { font-size: 12px; margin-bottom: 4px; }
+.bar .stamina progress { height: 7px; }
+.bar .stamina progress::-webkit-progress-value { background: linear-gradient(90deg, transparent 0 calc(100% - 2px), rgba(0, 0, 0, 0.5) calc(100% - 2px)) 0 0 / 10% 100%, var(--stamina); }
+.bar .stamina progress::-moz-progress-bar { background: linear-gradient(90deg, transparent 0 calc(100% - 2px), rgba(0, 0, 0, 0.5) calc(100% - 2px)) 0 0 / 10% 100%, var(--stamina); }
+.bar:not(#bar-you) .stamina progress::-webkit-progress-value { background: linear-gradient(90deg, transparent 0 calc(100% - 2px), rgba(0, 0, 0, 0.5) calc(100% - 2px)) 0 0 / 10% 100%, var(--stamina); }
+.bar:not(#bar-you) .stamina progress::-moz-progress-bar { background: linear-gradient(90deg, transparent 0 calc(100% - 2px), rgba(0, 0, 0, 0.5) calc(100% - 2px)) 0 0 / 10% 100%, var(--stamina); }
+.bar .stamina.winded progress { border-style: dashed; border-color: var(--stamina); background: repeating-linear-gradient(135deg, #3a2f1c 0 4px, #120f0d 4px 8px); }
+.bar .stamina.winded .text { font-weight: 700; color: var(--stamina); }
+
+#hud { position: fixed; inset: auto 0 5vh 0; display: flex; justify-content: center; pointer-events: none; }
+.hud-item { margin: 0; padding: 7px 16px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); color: var(--ink); font-size: 15px; letter-spacing: 0.04em; opacity: 0; transition: opacity 1.2s ease; }
+.hud-item.shown { opacity: 1; }
+body:not([data-screen="duel"]):not([data-screen="round"]) #hud { display: none; }
+/* the round, the score and the clock, top middle; sudden death under it,
+   in words and with a striped edge besides its colour */
+#hud-round { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.08em; }
+#hud-sudden { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); color: #f6efe2; background: repeating-linear-gradient(135deg, rgba(110, 29, 24, 0.85) 0 10px, rgba(70, 20, 16, 0.85) 10px 16px); font-weight: 700; letter-spacing: 0.08em; transition: opacity 0.2s ease; }
+/* M4: a feint, a follow-up, a riposte or a kick, a moment above the cue */
+#hud-move { position: fixed; top: 55vh; left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; padding: 4px 14px; transition: opacity 0.3s ease; }
+/* the swing cue's word, small and faint below the middle of the view */
+#hud-swing { position: fixed; top: 61vh; left: 50%; transform: translateX(-50%); font-size: 13px; padding: 4px 12px; background: rgba(0, 0, 0, 0.35); transition: opacity 0.15s ease; }
+#hud-swing.shown { opacity: 0.85; }
+#hud-swing:empty { display: none; }
+#hud-wound { position: fixed; bottom: calc(5vh + 48px); left: 50%; transform: translateX(-50%); }
+
+#message:empty { display: none; }
+#message { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 520px; margin: 0; padding: 24px 28px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); box-shadow: var(--shadow); }
+[data-term] { text-decoration: underline dotted rgba(233, 227, 216, 0.5); text-underline-offset: 3px; cursor: help; }
+@media (max-height: 640px) {
+  .panel { padding: 16px 20px 14px; }
+  #title h1, #menu h1 { font-size: 30px; }
+  table.controls td { padding: 1px 0; }
+}
+
+/* T11: watch mode. The controls sit at the left, the tree at the right, the
+   fight between them; each check is marked by fill and by border, never by
+   colour alone. */
+body[data-screen="watch"] #overlay { align-items: flex-end; justify-content: flex-start; background: none; pointer-events: none; padding: 12px; }
+body[data-screen="watch"] #overlay .panel { pointer-events: auto; max-width: 300px; padding: 14px 16px; }
+body[data-screen="watch"] #overlay .panel h1 { font-size: 18px; margin-bottom: 6px; }
+body[data-screen="watch"] #overlay .panel p { font-size: 13px; margin-bottom: 8px; }
+body[data-screen="watch"] #overlay .panel button { display: inline-block; width: auto; padding: 6px 10px; margin: 0 6px 6px 0; font-size: 12px; letter-spacing: 0.04em; box-shadow: none; }
+body[data-screen="watch"] #overlay .panel button + button { margin-top: 0; }
+#watch-line { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); margin: 0; padding: 6px 14px; border-radius: 4px; background: var(--glass); font-size: 14px; }
+#watch-labels { position: fixed; inset: 0; pointer-events: none; }
+.watch-label { position: absolute; transform: translate(-50%, -100%); padding: 3px 8px; border-radius: 3px; background: var(--ink); color: var(--stone); font-size: 13px; font-weight: 700; white-space: nowrap; }
+#watch-tree { position: fixed; top: 56px; right: 12px; bottom: 12px; width: min(460px, 46vw); overflow: auto; padding: 12px 14px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); }
+#watch-tree h2 { margin: 0 0 8px; font-size: 15px; }
+#watch-tree .rules { margin: 0; padding-left: 22px; display: grid; gap: 5px; }
+#watch-tree .rule { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--ink-soft); }
+#watch-tree .check { padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px dashed var(--stone-edge); }
+#watch-tree .check[data-state="true"] { background: var(--ink); color: var(--stone); border: 1px solid var(--ink); }
+#watch-tree .check[data-state="false"] { border: 1px solid var(--ink-soft); color: var(--ink); }
+#watch-tree .act { padding: 1px 8px; border-radius: 3px; font-size: 12px; border: 1px solid var(--stone-edge); }
+#watch-tree .rule.ran { color: var(--ink); }
+#watch-tree .rule.ran .act { border: 2px solid var(--you); background: rgba(201, 178, 122, 0.25); font-weight: 700; }
+#watch-tree .keys { margin: 10px 0 4px; font-size: 13px; }
+#watch-tree .hint { margin: 0; font-size: 12px; color: var(--ink-soft); }
+
+/* T11: the campaign's map: each region a stone ring with its battles beneath;
+   a shut region is dashed and dimmed, and its line says what opens it */
+#ladder.panel { max-width: min(1180px, 96vw); }
+.map { display: grid; gap: 14px; margin-top: 8px; }
+.region { padding: 10px 12px 12px; border-radius: 40px 40px 10px 10px; border: 2px solid var(--stone-edge); background: linear-gradient(180deg, rgba(201, 178, 122, 0.12), rgba(0, 0, 0, 0.18)); }
+.region[data-open="false"] { border-style: dashed; opacity: 0.72; }
+.region header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 6px 8px; }
+.region header h2 { margin: 0; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); }
+.region header p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.region .cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

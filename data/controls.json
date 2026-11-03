@@ -1,0 +1,19 @@
+{
+  "_note": "Each key code (or MouseN for a mouse button) and the action it holds; web/input.js reads this, and the core's numbers() gives each action its bit (crates/core/src/input.rs).",
+  "KeyW": "forward",
+  "ArrowUp": "forward",
+  "KeyS": "back",
+  "ArrowDown": "back",
+  "KeyA": "left",
+  "ArrowLeft": "left",
+  "KeyD": "right",
+  "ArrowRight": "right",
+  "ShiftLeft": "run",
+  "ShiftRight": "run",
+  "Space": "dodge",
+  "KeyX": "draw",
+  "KeyF": "kick",
+  "Mouse0": "swing",
+  "Mouse2": "hold_look",
+  "Mouse1": "lock_on"
+}
