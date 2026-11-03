@@ -3666,5 +3666,12 @@
     "find": " || f.arm.swing.cut.is_some() || f.chiv.stun > 0 {",
     "replace": " || f.arm.swing.cut.is_some() {",
     "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
+  },
+  {
+    "name": "T12 beat aside: the hand goes back after the stun",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "                f.arm.shell.side = side;\n",
+    "replace": "",
+    "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
   }
 ]

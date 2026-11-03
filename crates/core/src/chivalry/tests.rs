@@ -205,7 +205,7 @@ fn a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line() {
 #[test]
 fn beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends() {
     let mut w = duel(true, 600);
-    let before = w.me.arm.shell.pitch;
+    let (before, side) = (w.me.arm.shell.pitch, w.me.arm.shell.side);
     crate::chivalry::beat(&mut w, 0);
     let guard = Input {
         buttons: HOLD_LOOK,
@@ -226,6 +226,7 @@ fn beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends() {
     }
     w.step(&Input::default());
     assert_eq!(w.me.arm.shell.pitch, before, "the guard back where it sat");
+    assert_eq!(w.me.arm.shell.side, side, "and back across");
     assert!(crate::chivalry::guards(&w, 0, &guard), "a guard again");
     w.step(&cut(-6_000, 0, 0, 0));
     assert!(w.me.arm.swing.cut.is_some(), "and a cut");

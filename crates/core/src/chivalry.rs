@@ -184,6 +184,9 @@ pub struct Chiv {
     /// and in which its blade passes through blades (`beat`)
     pub stun: u8,
     pub beaten: u8,
+    /// T12: where the hand's target sat on its shell before the beat (side,
+    /// pitch, reach), put back when the stun ends
+    pub beat_from: Option<(i32, i32, Fx)>,
 }
 
 /// T7: a guard held with the right button: how far the mouse has shifted
@@ -210,6 +213,7 @@ impl Chiv {
             guard: None,
             stun: 0,
             beaten: 0,
+            beat_from: None,
         }
     }
 
@@ -441,6 +445,14 @@ pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
         c.riposte = c.riposte.saturating_sub(1);
         c.stun = c.stun.saturating_sub(1);
         c.beaten = c.beaten.saturating_sub(1);
+        // T12: the stun over, the hand goes back to where it sat
+        if c.stun == 0 {
+            if let Some((side, pitch, reach)) = c.beat_from.take() {
+                f.arm.shell.side = side;
+                f.arm.shell.pitch = pitch;
+                f.arm.shell.reach = reach;
+            }
+        }
         c.follow = c.follow.saturating_sub(1);
         if c.follow == 0 && !busy {
             c.run = 0;
@@ -572,6 +584,8 @@ pub fn beat(w: &mut World, id: usize) {
     f.chiv.run = 0;
     f.chiv.stun = s.beat_stun_ticks;
     f.chiv.beaten = s.beat_pass_ticks;
+    let sh = f.arm.shell;
+    f.chiv.beat_from.get_or_insert((sh.side, sh.pitch, sh.reach));
     f.chiv.event = Some((Event::Beaten, 0));
     let sh = &mut f.arm.shell;
     let across = deg(s.beat_side_deg);
