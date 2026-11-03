@@ -52,6 +52,10 @@ The person's grant, word for word (2026-11-02), after answering CA-Q1 to CA-Q16 
 
 The plan is approved in advance. The agent may create the public repository `sgilson7/chumworld-arena`, push to it, and publish it to GitHub Pages at `https://sgilson7.github.io/chumworld-arena/` with `./scripts/publish.sh` once `./scripts/check.sh` passes: first the MVP (M0–M5), then the ladder (M6) with a unique costume for each opponent. The repository name is the agent's choice, since the person named none (R1.2). Where this brief is silent, the agent decides, records the decision in `SECOND-ORDER.md`, and continues. The agent may not loosen a Builder requirement or a boundary test, and may not add a server, an account, analytics or any off-origin request beyond the declared online feature (Builder's online kit, loaded only on Host or Join). The page may keep one save in the browser (settings, the knight's look, and from M6 the ladder's progress), and write and read the same save as a JSON file (CA-Q4: C). The work may be split among subagents bound by this project's `CLAUDE.md`; the main agent coordinates, reviews and keeps the journal.
 
+Later grants, word for word:
+
+- 2026-11-03, after the animation pass (T10) was committed and held: "deploy as is, add all changes to design log". Published from `734cc61`.
+
 ## Journal
 
 `default`
