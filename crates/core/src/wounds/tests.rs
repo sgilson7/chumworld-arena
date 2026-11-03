@@ -163,6 +163,29 @@ fn one_very_fast_cut_takes_a_limb_off_at_once() {
     );
 }
 
+/// T11 (CA-Q20: A): a blunt blow never takes a part off. The same 12.5
+/// m/s blow that takes the bandit's shin off from the player's short sword
+/// leaves it on from a mace, a hammer or a quarterstaff, and still does its
+/// damage (19); an axe's takes it off.
+#[test]
+fn a_blunt_blow_never_takes_a_part_off() {
+    use crate::pose::Held;
+    for (item, off) in [
+        (Held::ShortSword, true),
+        (Held::Axe, true),
+        (Held::Mace, false),
+        (Held::Hammer, false),
+        (Held::Quarterstaff, false),
+    ] {
+        let mut w = duel("bandit");
+        w.me.arm.weapon.item = item;
+        stage(&mut w, hit(1, 7, ONE * 25 / 2));
+        let l = w.foes[0].fighter.health.limbs;
+        assert_eq!(l.dmg[7], 19, "{item:?}");
+        assert_eq!(l.lost == bit(7), off, "{item:?}");
+    }
+}
+
 #[test]
 fn a_blow_on_a_stump_counts_on_the_part_above() {
     assert_eq!(landed_on(5, bit(5)), 4);

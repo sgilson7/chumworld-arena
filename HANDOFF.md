@@ -47,6 +47,7 @@ Where the design journal is, its link if it is published, and its newest entry.
 
 - R3.10 (person; journal `#2026-11-02-m1`; default: cull the forearm near the eye): a chop's wind-up lifts the sword forearm across the eye for a few frames (`../chumworld-arena-journal/img/build/m1/chop-wind-up-arm.jpg`): accept it, cull the forearm near the eye, or move the eye back.
 - R3.10 (still *person*): M4 applied the default (cull the forearm near the eye, R6.14); shot `scratchpad/m4/chop-windup-r310.jpg`, to be copied into the journal by the coordinator.
+- R15.5 (person): the six new weapons (T11, CA-Q19, CA-Q20) are the agent's: masses, hefts, rails and models in `arm.rs` and `models/held.rs`, and an axe's cut and a blunt blow's share through plate in `plate.rs`. They can be tried in watch mode's weapon pickers.
 - R14.6 (person): four new styles (T11), each a tree in `data/pilots.json` on a knight's body: the sentry, the press, the bully and the trickster. Their numbers and names are the agent's, tuned by `styles_probe`; the bully is the weakest.
 - R13.6 (person): watch mode (T11, CA-Q17: A) is the agent's layout and words: the controls at the left, the shown tree at the right, each check and move named in plain words in `data/strings.json`, the camera and the starting pair.
 - R12.5 (person): the beat aside (T12, CA-Q22: A): a parry, or a kick into a held guard, throws the other blade aside, stuns it 24 ticks and lets it pass through blades for 45; the numbers are in `data/chivalry.json` for the person to judge in play.

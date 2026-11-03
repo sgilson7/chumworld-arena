@@ -3799,5 +3799,89 @@
     "find": "        Some((crate::chivalry::Event::Feint, age)) => Some(age),",
     "replace": "        Some((_, age)) => Some(age),",
     "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 weapons: a blunt blow goes through by its share",
+    "file": "crates/core/src/plate.rs",
+    "find": "    } else if how == Strike::Blunt {\n        BLUNT_THROUGH_PCT",
+    "replace": "    } else if false {\n        BLUNT_THROUGH_PCT",
+    "test": "each_way_of_striking_goes_through_plate_by_its_share"
+  },
+  {
+    "name": "T11 weapons: an axe's cut bites plate",
+    "file": "crates/core/src/plate.rs",
+    "find": "    } else if how == Strike::Bite {\n        BITE_THROUGH_PCT",
+    "replace": "    } else if false {\n        BITE_THROUGH_PCT",
+    "test": "each_way_of_striking_goes_through_plate_by_its_share"
+  },
+  {
+    "name": "T11 weapons: axes bite",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Held::Axe | Held::GreatAxe => Strike::Bite,",
+    "replace": "        Held::Axe => Strike::Bite,",
+    "test": "each_way_of_striking_goes_through_plate_by_its_share"
+  },
+  {
+    "name": "T11 weapons: blunt weapons are blunt",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Held::Mace | Held::Hammer | Held::Quarterstaff | Held::Rock => Strike::Blunt,",
+    "replace": "        Held::Mace | Held::Rock => Strike::Blunt,",
+    "test": "each_way_of_striking_goes_through_plate_by_its_share"
+  },
+  {
+    "name": "T11 weapons: a blunt blow never takes a part off",
+    "file": "crates/core/src/wounds.rs",
+    "find": " && !blunt &&",
+    "replace": " &&",
+    "test": "a_blunt_blow_never_takes_a_part_off"
+  },
+  {
+    "name": "T11 weapons: the broadsword is held in one hand",
+    "file": "crates/core/src/arm.rs",
+    "find": "            hilt: cm(16),\n            grip: [-1, cm(8)],",
+    "replace": "            hilt: cm(16),\n            grip: [cm(2), cm(8)],",
+    "test": "the_new_weapons_are_as_long_as_the_table_and_held_as_it_says"
+  },
+  {
+    "name": "T11 weapons: the staff's hands are near its middle",
+    "file": "crates/core/src/arm.rs",
+    "find": "            grip: [cm(55), cm(120)],",
+    "replace": "            grip: [cm(55), cm(100)],",
+    "test": "the_new_weapons_are_as_long_as_the_table_and_held_as_it_says"
+  },
+  {
+    "name": "T11 weapons: a hafted weapon's tip is its length from the hand",
+    "file": "crates/core/src/models/held.rs",
+    "find": "        i if POLES.contains(&i) => mm(blade(i).blade),",
+    "replace": "        i if POLES.contains(&i) => mm(blade(i).blade + blade(i).hilt),",
+    "test": "the_new_weapons_are_as_long_as_the_table_and_held_as_it_says"
+  },
+  {
+    "name": "T11 weapons: a duel keeps each side's weapon",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    let held = r.held[0].unwrap_or_else(|| crate::models::kind_held(mine_kind));",
+    "replace": "    let held = crate::models::kind_held(mine_kind);",
+    "test": "a_side_s_weapon_is_given_and_kept_through_the_rounds"
+  },
+  {
+    "name": "T11 weapons: the foe holds its given weapon",
+    "file": "crates/core/src/pilot.rs",
+    "find": "    let held = held.unwrap_or_else(|| held_named(&spec.held));",
+    "replace": "    let held = held_named(&spec.held);",
+    "test": "a_side_s_weapon_is_given_and_kept_through_the_rounds"
+  },
+  {
+    "name": "T11 weapons: a picker steps the weapon round",
+    "file": "crates/core/src/watch.rs",
+    "find": "            v.weapons[k] = (v.weapons[k] + 1) % WEAPONS.len();",
+    "replace": "            v.weapons[k] = (v.weapons[k] + 1).min(WEAPONS.len() - 1);",
+    "test": "a_side_s_weapon_is_given_and_kept_through_the_rounds"
+  },
+  {
+    "name": "T11 weapons: the blow's weapon decides the plate",
+    "file": "crates/core/src/plate.rs",
+    "find": "    hit.through_pct = through_pct(true, opening, thrust, how);",
+    "replace": "    hit.through_pct = through_pct(true, opening, thrust, Strike::Edge);",
+    "test": "the_striker_s_weapon_decides_what_plate_takes"
   }
 ]

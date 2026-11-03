@@ -810,6 +810,22 @@ fn watch_panel(g: &Game) -> Panel {
             "",
             fill(&s.get("watch_right"), &[("name", names[1].clone())]),
         ),
+        named(
+            "watch.left_weapon",
+            "",
+            fill(
+                &s.get("watch_left_weapon"),
+                &[("weapon", crate::watch::weapon_name(g, 0))],
+            ),
+        ),
+        named(
+            "watch.right_weapon",
+            "",
+            fill(
+                &s.get("watch_right_weapon"),
+                &[("weapon", crate::watch::weapon_name(g, 1))],
+            ),
+        ),
         button(g, "watch.start", "", "watch_start", false),
         button(
             g,

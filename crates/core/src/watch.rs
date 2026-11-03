@@ -37,11 +37,28 @@ pub const PILOTS: [&str; 12] = [
 ];
 /// T11: the styles, named by their own names rather than their bodies.
 pub const STYLES: [&str; 4] = ["sentry", "press", "bully", "trickster"];
+/// T11: the weapons a side can be given in place of its own (`None`).
+pub const WEAPONS: [Option<crate::pose::Held>; 8] = {
+    use crate::pose::Held;
+    [
+        None,
+        Some(Held::Longsword),
+        Some(Held::Broadsword),
+        Some(Held::Axe),
+        Some(Held::GreatAxe),
+        Some(Held::Mace),
+        Some(Held::Quarterstaff),
+        Some(Held::Spear),
+    ]
+};
 /// Time runs at a whole share of full speed (the BT lab's four).
 pub const SPEEDS: [u32; 4] = [1, 2, 4, 8];
 /// The camera: this far from the pair's middle, looking at a point this
 /// high, at this pitch; the reader drags it round and wheels it nearer.
-pub const ORBIT_DIST: Fx = fx::int(6);
+pub const ORBIT_DIST: Fx = fx::int(8);
+/// The camera looks this share of its distance to the right of the pair,
+/// so they sit in the open view between the controls and the tree.
+pub const ORBIT_SHIFT_PCT: i32 = 7;
 pub const ORBIT_DIST_MIN: Fx = fx::int(3);
 pub const ORBIT_DIST_MAX: Fx = fx::int(14);
 pub const ORBIT_LOOK_UP: Fx = ONE * 11 / 10;
@@ -76,6 +93,8 @@ pub struct Watch {
     pub last_us: Option<i64>,
     /// fights started, so each has its own seed
     pub fights: u64,
+    /// T11: each side's weapon, an index into `WEAPONS` (0: its own)
+    pub weapons: [usize; 2],
 }
 
 impl Default for Watch {
@@ -97,6 +116,7 @@ impl Default for Watch {
             time_us: 0,
             last_us: None,
             fights: 0,
+            weapons: [0, 0],
         }
     }
 }
@@ -119,6 +139,10 @@ pub fn start(g: &mut Game) {
     crate::game::apply(&mut w, &g.kept);
     let (kind, _) = crate::pilot::pilot_named(left).expect("a watched pilot");
     crate::rounds::begin(&mut w, right, kind).expect("a watched pilot");
+    if let Some(r) = w.rounds.as_mut() {
+        r.held = v.weapons.map(|k| WEAPONS[k]);
+    }
+    crate::rounds::opening(&mut w);
     w.watch = crate::pilot::brain(left, salt ^ 0x5bd1_e995);
     g.world = w;
     g.clock.rest();
@@ -182,6 +206,12 @@ pub fn act(g: &mut Game, name: &str, value: &str) -> Result<(), String> {
             start(g);
         }
         "start" => start(g),
+        // T11: each side's weapon steps on through `WEAPONS`
+        "left_weapon" | "right_weapon" => {
+            let k = (name == "right_weapon") as usize;
+            v.weapons[k] = (v.weapons[k] + 1) % WEAPONS.len();
+            start(g);
+        }
         "speed" => {
             let s: u32 = value
                 .parse()
@@ -280,8 +310,11 @@ fn middle(g: &Game) -> V3 {
 /// over their middle, along the watch's heading and pitch.
 pub fn camera(g: &Game) -> Camera {
     let v = &g.watching;
-    let at = middle(g).add(v3(0, ORBIT_LOOK_UP, 0));
     let fwd = facing(v.yaw, v.pitch);
+    let right = facing(v.yaw, 0).cross(V3::UP).norm();
+    let at = middle(g)
+        .add(v3(0, ORBIT_LOOK_UP, 0))
+        .add(right.scale(v.dist * ORBIT_SHIFT_PCT / 100));
     Camera {
         eye: at.sub(fwd.scale(v.dist)),
         fwd,
@@ -519,6 +552,32 @@ fn side(g: &Game, id: usize, name: String) -> Side {
         keys,
         heading,
         rules,
+    }
+}
+
+/// T11: the weapon side `k` holds, in words ("its own" until one is given).
+pub fn weapon_name(g: &Game, k: usize) -> String {
+    match WEAPONS[g.watching.weapons[k]] {
+        None => g.strings.get("weapon_own"),
+        Some(item) => g.strings.get(&format!("weapon_{}", held_key(item))),
+    }
+}
+
+/// A weapon's key in the strings and the book.
+pub fn held_key(item: crate::pose::Held) -> &'static str {
+    use crate::pose::Held;
+    match item {
+        Held::Longsword => "longsword",
+        Held::Broadsword => "broadsword",
+        Held::Axe => "axe",
+        Held::GreatAxe => "great_axe",
+        Held::Mace => "mace",
+        Held::Quarterstaff => "quarterstaff",
+        Held::Spear => "spear",
+        Held::Sword => "sword",
+        Held::Cleaver => "cleaver",
+        Held::Hammer => "hammer",
+        _ => "short_sword",
     }
 }
 
@@ -777,6 +836,36 @@ mod tests {
         assert_eq!((v.show, v.labels.len()), (1, 0));
     }
 
+    /// T11: each side's weapon steps through the list and is held by its
+    /// fighter, round after round; "its own" again gives the body's own.
+    #[test]
+    fn a_side_s_weapon_is_given_and_kept_through_the_rounds() {
+        use crate::pose::Held;
+        let mut g = watching();
+        assert_eq!(g.world.me.held, Held::Longsword, "the veteran's own");
+        g.act("watch.left_weapon", "").unwrap();
+        g.act("watch.left_weapon", "").unwrap();
+        // five steps on the right: its own, longsword, broadsword, axe,
+        // great axe, mace
+        for _ in 0..5 {
+            g.act("watch.right_weapon", "").unwrap();
+        }
+        assert_eq!(g.world.me.held, Held::Broadsword);
+        assert_eq!(g.world.foes[0].fighter.held, Held::Mace);
+        assert_eq!(g.world.foes[0].fighter.arm.weapon.item, Held::Mace);
+        crate::rounds::opening(&mut g.world);
+        assert_eq!(
+            (g.world.me.held, g.world.foes[0].fighter.held),
+            (Held::Broadsword, Held::Mace),
+            "kept"
+        );
+        for _ in 0..3 {
+            g.act("watch.right_weapon", "").unwrap();
+        }
+        assert_eq!(g.world.foes[0].fighter.held, Held::Longsword, "its own again");
+        assert!(view(&g).sides.len() == 2);
+    }
+
     /// A drag of 100 px turns the camera 30° (5 461 angle units) and its
     /// pitch is held between 60° and 3° down; a wheel notch moves it 10%,
     /// held between 3 and 14 m.
@@ -803,8 +892,14 @@ mod tests {
         }
         assert_eq!(g.watching.dist, ORBIT_DIST_MIN);
         let c = camera(&g);
-        let at = middle(&g).add(v3(0, ORBIT_LOOK_UP, 0));
-        assert!((c.eye.dist(at) - ORBIT_DIST_MIN).abs() < 64, "3 m from the pair");
+        let right = facing(g.watching.yaw, 0).cross(V3::UP).norm();
+        let at = middle(&g)
+            .add(v3(0, ORBIT_LOOK_UP, 0))
+            .add(right.scale(ORBIT_DIST_MIN * ORBIT_SHIFT_PCT / 100));
+        assert!(
+            (c.eye.dist(at) - ORBIT_DIST_MIN).abs() < 64,
+            "3 m from the point it looks at"
+        );
     }
 
     /// The same fight twice from the same seed is the same fight (CA-1).

@@ -117,6 +117,22 @@ fn a_cut_on_plate_does_thirty_percent_and_wears_it() {
     assert_eq!(foe(&w).health.limbs.plate[TORSO], 45 - 28);
 }
 
+/// T11: the same cut from the player holding an axe bites: 40 × 50% = 20
+/// through, the plate taking the other 20 of its 45; from a mace, 40 × 70%
+/// = 28 through, the plate 12.
+#[test]
+fn the_striker_s_weapon_decides_what_plate_takes() {
+    for (item, through) in [(crate::pose::Held::Axe, 20), (crate::pose::Held::Mace, 28)] {
+        let mut w = duel();
+        w.me.arm.weapon.item = item;
+        let (_, _, right) = ways(&w);
+        let h = blow(&w, TORSO, 50, right, false);
+        wounds::stage(&mut w, h);
+        assert_eq!(foe(&w).health.hp, 100 - through, "{item:?}");
+        assert_eq!(foe(&w).health.limbs.plate[TORSO], 45 - (40 - through), "{item:?}");
+    }
+}
+
 #[test]
 fn a_thrust_on_plate_does_eighty_percent() {
     let mut w = duel();
@@ -323,10 +339,10 @@ fn a_blow_is_a_thrust_within_forty_five_degrees_of_the_blade_s_line() {
     assert!(!is_thrust(v3(ONE * 643 / 1000, ONE * 766 / 1000, 0), ax));
     assert!(!is_thrust(v3(-ONE, 0, 0), ax), "pommel first");
     assert!(!is_thrust(V3::ZERO, ax));
-    assert_eq!(through_pct(true, false, false), 30);
-    assert_eq!(through_pct(true, false, true), 80);
-    assert_eq!(through_pct(true, true, false), 100);
-    assert_eq!(through_pct(false, false, true), 100);
+    assert_eq!(through_pct(true, false, false, Strike::Edge), 30);
+    assert_eq!(through_pct(true, false, true, Strike::Edge), 80);
+    assert_eq!(through_pct(true, true, false, Strike::Edge), 100);
+    assert_eq!(through_pct(false, false, true, Strike::Edge), 100);
 }
 
 #[test]
@@ -379,4 +395,30 @@ fn the_blades_own_blows_meet_plate_in_a_duel() {
             .any(|p| p.iter().zip(INTEGRITY).any(|(a, b)| *a < b)),
         "{plates:?}"
     );
+}
+
+/// T11 (CA-Q20: A): what goes through plate by the way a weapon strikes:
+/// a cut 30% (plate takes 70%), an axe's cut 50%, a blunt blow 70% cut or
+/// thrust, a thrust 80% from an edge or an axe; a gap or a bare part, all.
+#[test]
+fn each_way_of_striking_goes_through_plate_by_its_share() {
+    use crate::pose::Held;
+    assert_eq!(through_pct(true, false, false, Strike::Bite), 50);
+    assert_eq!(through_pct(true, false, true, Strike::Bite), 80);
+    assert_eq!(through_pct(true, false, false, Strike::Blunt), 70);
+    assert_eq!(through_pct(true, false, true, Strike::Blunt), 70);
+    assert_eq!(through_pct(true, true, false, Strike::Blunt), 100);
+    assert_eq!(through_pct(false, false, false, Strike::Bite), 100);
+    for (item, how) in [
+        (Held::Longsword, Strike::Edge),
+        (Held::Broadsword, Strike::Edge),
+        (Held::Spear, Strike::Edge),
+        (Held::Axe, Strike::Bite),
+        (Held::GreatAxe, Strike::Bite),
+        (Held::Mace, Strike::Blunt),
+        (Held::Quarterstaff, Strike::Blunt),
+        (Held::Hammer, Strike::Blunt),
+    ] {
+        assert_eq!(strike(item), how, "{item:?}");
+    }
 }

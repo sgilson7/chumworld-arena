@@ -297,5 +297,15 @@
   "who_press": "The press",
   "who_bully": "The bully",
   "who_trickster": "The trickster",
-  "cond_foe_guards": "foe holds its guard up"
+  "cond_foe_guards": "foe holds its guard up",
+  "watch_left_weapon": "Left's weapon: {weapon}",
+  "watch_right_weapon": "Right's weapon: {weapon}",
+  "weapon_own": "its own",
+  "weapon_longsword": "Longsword",
+  "weapon_broadsword": "Broadsword",
+  "weapon_axe": "Axe",
+  "weapon_great_axe": "Great axe",
+  "weapon_mace": "Mace",
+  "weapon_quarterstaff": "Quarterstaff",
+  "weapon_spear": "Spear"
 }

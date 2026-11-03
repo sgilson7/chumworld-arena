@@ -132,6 +132,10 @@ pub struct Rounds {
     /// M6 (CA-Q9: A): the look the player's figure is drawn in each round
     /// (`Fighter::dress`); its body is `bodies[0]` whatever the look
     pub dress: Kind,
+    /// T11 (CA-Q19: C): a weapon in place of each side's own, the player's
+    /// then the foe's; `None` keeps the body's own (`models::kind_held`, the
+    /// pilot's book entry)
+    pub held: [Option<crate::pose::Held>; 2],
 }
 
 impl Rounds {
@@ -172,6 +176,7 @@ pub fn begin_dressed(w: &mut World, foe: &str, me: Kind, dress: Kind) -> Result<
         foe: foe.to_string(),
         bodies: [me, theirs],
         dress,
+        held: [None, None],
     });
     opening(w);
     Ok(())
@@ -201,11 +206,12 @@ pub fn opening(w: &mut World) {
     let (_, key) = crate::pilot::pilot_named(&r.foe).expect("begun with a known pilot");
     let [mine_kind, kind] = r.bodies;
     let dress = r.dress;
-    let held = crate::models::kind_held(mine_kind);
+    let held = r.held[0].unwrap_or_else(|| crate::models::kind_held(mine_kind));
+    let theirs_held = r.held[1];
     let yaw = crate::world::START_YAW;
     let me = Fighter::new(mine_kind, held, 0, V3::ZERO, yaw, true);
     let salt = w.rng.next_u64();
-    let them = crate::pilot::foe_keyed(&w.pilots.book, kind, key, V3::ZERO, yaw, salt);
+    let them = crate::pilot::foe_armed(&w.pilots.book, kind, key, theirs_held, V3::ZERO, yaw, salt);
     let gap = crate::pilot::reach(&me) + crate::pilot::reach(&them.fighter) + OPENING_SPACE;
     let ahead = facing(yaw, 0);
     let mine = ahead.scale(-gap / 2);
@@ -215,7 +221,7 @@ pub fn opening(w: &mut World) {
     w.me = Fighter::new(mine_kind, held, 0, mine, yaw, true);
     w.me.dress = dress;
     let back = yaw_of(mine.sub(theirs));
-    let mut foe = crate::pilot::foe_keyed(&w.pilots.book, kind, key, theirs, back, salt);
+    let mut foe = crate::pilot::foe_armed(&w.pilots.book, kind, key, theirs_held, theirs, back, salt);
     foe.brain.control = w.pilots.control.clone();
     w.foes = vec![foe];
     w.aim.yaw = yaw;

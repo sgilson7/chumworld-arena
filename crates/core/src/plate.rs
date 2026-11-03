@@ -55,6 +55,30 @@ use crate::wounds::{self, FOREARM, HEAD, SHIN, THIGH, TORSO, UPPER_ARM};
 /// Of CHUMWORLD's damage, what goes through plate: a cut, a thrust (R5.3).
 pub const CUT_THROUGH_PCT: i32 = 30;
 pub const THRUST_THROUGH_PCT: i32 = 80;
+/// T11 (CA-Q20: A): an axe's cut bites plate (it takes 50% off), and a
+/// blunt blow from a mace, a hammer or a quarterstaff dents it (30% off).
+pub const BITE_THROUGH_PCT: i32 = 50;
+pub const BLUNT_THROUGH_PCT: i32 = 70;
+
+/// T11 (CA-Q20: A): how a weapon strikes. An edge cuts or thrusts; a bite
+/// is an axe's cut (it thrusts as an edge does); a blunt blow is the same
+/// either way, and never takes a part off (`wounds`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Strike {
+    Edge,
+    Bite,
+    Blunt,
+}
+
+/// The way each weapon strikes.
+pub fn strike(item: crate::pose::Held) -> Strike {
+    use crate::pose::Held;
+    match item {
+        Held::Axe | Held::GreatAxe => Strike::Bite,
+        Held::Mace | Held::Hammer | Held::Quarterstaff | Held::Rock => Strike::Blunt,
+        _ => Strike::Edge,
+    }
+}
 /// A blow is a thrust when the blade travels within 45° of its own line,
 /// point first (cos 45° = 0.707).
 pub const THRUST_COS: Fx = ONE * 707 / 1000;
@@ -237,11 +261,15 @@ pub fn is_thrust(vel: V3, axis: V3) -> bool {
 
 /// What of CHUMWORLD's damage goes through, percent: all of it on a bare
 /// part or through a gap; otherwise a cut's or a thrust's share.
-pub fn through_pct(plated: bool, gap: bool, thrust: bool) -> i32 {
+pub fn through_pct(plated: bool, gap: bool, thrust: bool, how: Strike) -> i32 {
     if !plated || gap {
         100
+    } else if how == Strike::Blunt {
+        BLUNT_THROUGH_PCT
     } else if thrust {
         THRUST_THROUGH_PCT
+    } else if how == Strike::Bite {
+        BITE_THROUGH_PCT
     } else {
         CUT_THROUGH_PCT
     }
@@ -268,11 +296,17 @@ pub fn land(w: &mut World, hit: &mut Hit) {
     hit.plated = true;
     let pose = player::pose_of(w, id);
     let opening = gap(kind, &pose, s, hit.at, hit.from).is_some();
-    let thrust = (hit.by as usize) < player::count(w) && {
+    let by = (hit.by as usize) < player::count(w);
+    let thrust = by && {
         let a = &player::fighter(w, hit.by as usize).arm;
         is_thrust(hit.vel, a.pts[arm::TIP].p.sub(a.pts[arm::POMMEL].p))
     };
-    hit.through_pct = through_pct(true, opening, thrust);
+    let how = if by {
+        strike(player::fighter(w, hit.by as usize).arm.weapon.item)
+    } else {
+        Strike::Edge
+    };
+    hit.through_pct = through_pct(true, opening, thrust, how);
     let full = crate::health::damage(hit.speed, hit.part);
     let through = crate::health::damage_through(hit.speed, hit.part, hit.through_pct);
     let taken = full - through;

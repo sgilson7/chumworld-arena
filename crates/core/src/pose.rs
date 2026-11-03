@@ -67,6 +67,16 @@ pub enum Held {
     Hammer,
     /// M3 (CA-Q12: A): the knights' two-handed longsword, a 95 cm blade
     Longsword,
+    /// T11 (CA-Q19, CA-Q20): the campaign's new weapons, each carried by
+    /// its own opponent: a one-handed broad blade, an axe and a great axe
+    /// (their cut bites plate), a mace and a quarterstaff (blunt), and a
+    /// spear (a long thrust)
+    Broadsword,
+    Axe,
+    GreatAxe,
+    Mace,
+    Quarterstaff,
+    Spear,
 }
 
 /// Every joint of one figure this tick. `prev`/`now` pairs are interpolated

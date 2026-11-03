@@ -622,8 +622,12 @@ pub fn mark(w: &mut World, h: &Hit, k: usize, cuts: bool) {
         return;
     }
     let dmg = player::fighter(w, id).health.limbs.dmg[s];
-    // M3 (CA-Q8: A): a part that wore plate when struck is never taken off
-    if s != TORSO && !h.plated && (dmg >= sp.take_off(s, kind) || h.speed >= sp.one_cut(s, kind)) {
+    // M3 (CA-Q8: A): a part that wore plate when struck is never taken off;
+    // T11 (CA-Q20: A): nor by a blunt blow
+    let blunt = (h.by as usize) < player::count(w)
+        && crate::plate::strike(player::fighter(w, h.by as usize).arm.weapon.item)
+            == crate::plate::Strike::Blunt;
+    if s != TORSO && !h.plated && !blunt && (dmg >= sp.take_off(s, kind) || h.speed >= sp.one_cut(s, kind)) {
         take_off(w, id, s, h.vel, h.speed);
     }
 }

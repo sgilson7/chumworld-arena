@@ -299,6 +299,12 @@ fn held_named(s: &str) -> Held {
         "cleaver" => Held::Cleaver,
         "sword" => Held::Sword,
         "longsword" => Held::Longsword,
+        "broadsword" => Held::Broadsword,
+        "axe" => Held::Axe,
+        "great_axe" => Held::GreatAxe,
+        "mace" => Held::Mace,
+        "quarterstaff" => Held::Quarterstaff,
+        "spear" => Held::Spear,
         _ => Held::ShortSword,
     }
 }
@@ -368,8 +374,14 @@ pub fn foe(book: &Book, kind: Kind, at: V3, yaw: i32, salt: u64) -> Foe {
 
 /// The same, driven by the book's entry `key` (M2).
 pub fn foe_keyed(book: &Book, kind: Kind, key: &str, at: V3, yaw: i32, salt: u64) -> Foe {
+    foe_armed(book, kind, key, None, at, yaw, salt)
+}
+
+/// T11: `foe_keyed` with weapon `held` in place of its book entry's.
+pub fn foe_armed(book: &Book, kind: Kind, key: &str, held: Option<Held>, at: V3, yaw: i32, salt: u64) -> Foe {
     let spec = &book.kinds[key];
-    let mut f = Fighter::new(kind, held_named(&spec.held), 1, at, yaw, true);
+    let held = held.unwrap_or_else(|| held_named(&spec.held));
+    let mut f = Fighter::new(kind, held, 1, at, yaw, true);
     f.health = crate::health::Health::new(spec.health);
     f.health.limbs.plate = crate::plate::full(kind);
     f.servo_pct = spec.servo_pct;

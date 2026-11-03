@@ -97,6 +97,52 @@ fn blade(item: Held) -> Blade {
             width: 210,
             thick: 13,
         },
+        // T11: an 85 cm broad blade on a one-hand grip
+        Held::Broadsword => Blade {
+            hilt: 75,
+            guard: 26,
+            blade: 850,
+            width: 62,
+            thick: 9,
+        },
+        // T11: the hafted weapons. Here `hilt` is the haft behind the front
+        // hand, `blade` the length from the hand to the tip, and `width`
+        // and `thick` the head's (`POLES`)
+        Held::Axe => Blade {
+            hilt: 100,
+            guard: 0,
+            blade: 700,
+            width: 150,
+            thick: 12,
+        },
+        Held::GreatAxe => Blade {
+            hilt: 550,
+            guard: 0,
+            blade: 1000,
+            width: 230,
+            thick: 14,
+        },
+        Held::Mace => Blade {
+            hilt: 90,
+            guard: 0,
+            blade: 660,
+            width: 120,
+            thick: 120,
+        },
+        Held::Quarterstaff => Blade {
+            hilt: 1200,
+            guard: 0,
+            blade: 700,
+            width: 36,
+            thick: 36,
+        },
+        Held::Spear => Blade {
+            hilt: 1300,
+            guard: 0,
+            blade: 800,
+            width: 44,
+            thick: 10,
+        },
         Held::Boomerang | Held::Rock | Held::Nothing => Blade {
             hilt: 0,
             guard: 0,
@@ -116,12 +162,23 @@ pub fn grip_to_tip(item: Held) -> Fx {
         Held::Boomerang => mm(460),
         Held::Rock => mm(120),
         Held::Nothing => 0,
+        // T11: a hafted weapon's tip is its `blade` from the front hand
+        i if POLES.contains(&i) => mm(blade(i).blade),
         _ => {
             let b = blade(item);
             mm(b.hilt + b.guard + b.blade)
         }
     }
 }
+
+/// T11: the hafted weapons, drawn as a haft through the hands with a head.
+pub const POLES: [Held; 5] = [
+    Held::Axe,
+    Held::GreatAxe,
+    Held::Mace,
+    Held::Quarterstaff,
+    Held::Spear,
+];
 
 /// The model of an item from `grip` to `tip`.
 /// T10: where blood lies on a sword's blade: from `BLOOD_FROM_PCT` of the
@@ -159,7 +216,7 @@ pub fn model(item: Held, grip: V3, tip: V3) -> Model {
     // a part `size` across centred `y` along the item, `x` across it
     let at = |x: Fx, y: Fx, size: V3| put(&f, v3(x, y, 0), size);
     match item {
-        Held::ShortSword | Held::Sword | Held::Longsword | Held::Knife => {
+        Held::ShortSword | Held::Sword | Held::Longsword | Held::Knife | Held::Broadsword => {
             let b = blade(item);
             let (steel, edge) = (t.c("steel"), t.c("steel_edge"));
             let (grip_c, brass) = if item == Held::Knife {
@@ -269,6 +326,112 @@ pub fn model(item: Held, grip: V3, tip: V3) -> Model {
         }
         // T39: the hammer: an ash haft, a leather grip, and a squared iron
         // head across the tip with a strap of brass round it
+        // T11: a haft from `hilt` behind the hand to the tip, and its head
+        i @ (Held::Axe | Held::GreatAxe | Held::Mace | Held::Quarterstaff | Held::Spear) => {
+            let b = blade(i);
+            let (wood, iron, edge, steel) = (
+                t.c("cleaver_haft"),
+                t.c("cleaver_iron"),
+                t.c("steel_edge"),
+                t.c("steel"),
+            );
+            let back = mm(b.hilt);
+            let haft_r = if i == Held::GreatAxe || i == Held::Quarterstaff {
+                38
+            } else {
+                32
+            };
+            m.add(
+                Mesh::Cyl,
+                at(0, (len - back) / 2, v3(mm(haft_r), len + back, mm(haft_r))),
+                wood,
+                ink,
+            );
+            match i {
+                Held::Axe | Held::GreatAxe => {
+                    // a narrow neck on the haft, then the blade beyond it,
+                    // taller along the haft than the neck, its edge a thinner
+                    // strip at the far side: so it reads as an axe and not a
+                    // hammer, and no face lies on another's
+                    let neck = mm(b.width * 3 / 10);
+                    let reach = mm(b.width) - neck;
+                    let tall = mm(b.width * 11 / 10);
+                    let y = len - tall / 2 - mm(10);
+                    m.add(
+                        Mesh::Cube,
+                        at(neck / 2, y, v3(neck, tall * 4 / 10, mm(b.thick + 6))),
+                        iron,
+                        ink,
+                    );
+                    m.add(
+                        Mesh::Cube,
+                        at(neck + reach / 2, y, v3(reach, tall, mm(b.thick))),
+                        iron,
+                        ink,
+                    );
+                    m.add(
+                        Mesh::Cube,
+                        at(
+                            neck + reach + mm(14),
+                            y,
+                            v3(mm(28), tall + mm(30), mm(b.thick - 5)),
+                        ),
+                        edge,
+                        ink,
+                    );
+                }
+                Held::Mace => {
+                    let r = mm(b.width);
+                    let y = len - r / 2;
+                    m.add(Mesh::Facet, at(0, y, v3(r, r, r)), iron, ink);
+                    // four flanges standing off the head
+                    m.add(
+                        Mesh::Cube,
+                        at(0, y, v3(r + mm(50), r * 7 / 10, mm(16))),
+                        steel,
+                        ink,
+                    );
+                    m.add(
+                        Mesh::Cube,
+                        at(0, y, v3(mm(16), r * 7 / 10, r + mm(50))),
+                        steel,
+                        ink,
+                    );
+                }
+                Held::Quarterstaff => {
+                    // iron caps on both ends
+                    let cap = mm(70);
+                    m.add(
+                        Mesh::Cyl,
+                        at(0, len - cap / 2, v3(mm(haft_r + 8), cap, mm(haft_r + 8))),
+                        iron,
+                        ink,
+                    );
+                    m.add(
+                        Mesh::Cyl,
+                        at(0, cap / 2 - back, v3(mm(haft_r + 8), cap, mm(haft_r + 8))),
+                        iron,
+                        ink,
+                    );
+                }
+                _ => {
+                    // the spear's leaf head on an iron socket
+                    let head = mm(240);
+                    m.add(
+                        Mesh::Cyl,
+                        at(0, len - head - mm(30), v3(mm(44), mm(80), mm(44))),
+                        iron,
+                        ink,
+                    );
+                    m.add(
+                        Mesh::Wedge,
+                        at(0, len - head / 2, v3(mm(b.width), head, mm(b.thick))),
+                        steel,
+                        ink,
+                    );
+                }
+            }
+        }
         Held::Hammer => {
             let b = blade(item);
             let (wood, iron, brass) = (t.c("cleaver_haft"), t.c("cleaver_iron"), t.c("brass"));

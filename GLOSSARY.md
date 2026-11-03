@@ -352,6 +352,48 @@ Not: gladiator, berserker
 
 Moving at {walk.speed} metres a second with W, A, S or D, relative to where you look.
 
+### Longsword
+
+The knights' sword: a long blade with a grip for both hands. It cuts and thrusts, and plate takes most of a cut and some of a thrust.
+
+Not: greatsword, bastard sword
+
+### Broadsword
+
+A broad blade held in one hand. It cuts as a longsword does, a little shorter and heavier at the point.
+
+Not: cutlass, sabre
+
+### Axe
+
+A short haft in one hand with a heavy head. Its cut bites plate: plate takes half of it.
+
+Not: hatchet, tomahawk
+
+### Great axe
+
+A long haft in both hands with a broad head, slow to swing. Its cut bites plate as the axe's does.
+
+Not: halberd, poleaxe
+
+### Mace
+
+A short haft in one hand with a flanged iron head. A blunt blow: plate takes less of it than of a cut, and it never takes a part off.
+
+Not: club, morning star
+
+### Quarterstaff
+
+A long staff held in both hands near its middle, shod with iron at both ends. Either end strikes, and a blow is blunt.
+
+Not: pole, rod
+
+### Spear
+
+A long shaft in both hands with a leaf-shaped head, for a thrust from far off.
+
+Not: lance, pike
+
 ### Watch
 
 A screen from the main menu where two fighters duel on their own trees while you read them: one tick at a time, or at full, half, quarter or eighth speed.

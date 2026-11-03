@@ -249,10 +249,92 @@ pub fn rails(item: Held) -> &'static [Rail] {
             r: mm(30),
         },
     ];
+    // T11: the new weapons. A rail runs from `from` out to the tip, so an
+    // axe's head is two rails off the haft's line from where the head
+    // begins; the staff is one rail its whole length (both ends strike), and
+    // like the spear keeps out of its own body only beyond the front hand
+    const BROAD: [Rail; 1] = [Rail {
+        across: 0,
+        from: 0,
+        own_from: cm(8) + mm(101),
+        r: mm(31),
+    }];
+    const AXE: [Rail; 3] = [
+        Rail {
+            across: 0,
+            from: 0,
+            own_from: cm(20),
+            r: mm(16),
+        },
+        Rail {
+            across: mm(45),
+            from: cm(64),
+            own_from: cm(64),
+            r: mm(40),
+        },
+        Rail {
+            across: mm(105),
+            from: cm(66),
+            own_from: cm(66),
+            r: mm(32),
+        },
+    ];
+    const GREAT_AXE: [Rail; 3] = [
+        Rail {
+            across: 0,
+            from: 0,
+            own_from: cm(62),
+            r: mm(19),
+        },
+        Rail {
+            across: mm(70),
+            from: cm(133),
+            own_from: cm(133),
+            r: mm(52),
+        },
+        Rail {
+            across: mm(165),
+            from: cm(136),
+            own_from: cm(136),
+            r: mm(42),
+        },
+    ];
+    const MACE: [Rail; 2] = [
+        Rail {
+            across: 0,
+            from: 0,
+            own_from: cm(16),
+            r: mm(16),
+        },
+        Rail {
+            across: 0,
+            from: cm(63),
+            own_from: cm(63),
+            r: mm(62),
+        },
+    ];
+    const STAFF: [Rail; 1] = [Rail {
+        across: 0,
+        from: 0,
+        own_from: cm(130),
+        r: mm(22),
+    }];
+    const SPEAR: [Rail; 1] = [Rail {
+        across: 0,
+        from: 0,
+        own_from: cm(140),
+        r: mm(18),
+    }];
     match item {
         Held::Sword => &SWORD,
         Held::Longsword => &LONGSWORD,
         Held::Cleaver => &CLEAVER,
+        Held::Broadsword => &BROAD,
+        Held::Axe => &AXE,
+        Held::GreatAxe => &GREAT_AXE,
+        Held::Mace => &MACE,
+        Held::Quarterstaff => &STAFF,
+        Held::Spear => &SPEAR,
         _ => &SHORT,
     }
 }
@@ -329,6 +411,57 @@ fn sized(item: Held) -> Weapon {
             grip: [cm(5), cm(17)],
             mass: [2, 8],
             heft_pct: 45,
+        },
+        // T11 (the Campaign page's table): each the pommel-to-tip length
+        // from its grips and its model, its masses at the pommel and the
+        // tip, and its heft; one hand on the broadsword, axe and mace
+        Held::Broadsword => Weapon {
+            item,
+            len: 0,
+            hilt: cm(16),
+            grip: [-1, cm(8)],
+            mass: [2, 4],
+            heft_pct: 80,
+        },
+        Held::Axe => Weapon {
+            item,
+            len: 0,
+            hilt: cm(62),
+            grip: [-1, cm(10)],
+            mass: [1, 8],
+            heft_pct: 45,
+        },
+        Held::GreatAxe => Weapon {
+            item,
+            len: 0,
+            hilt: cm(130),
+            grip: [cm(8), cm(55)],
+            mass: [2, 11],
+            heft_pct: 35,
+        },
+        Held::Mace => Weapon {
+            item,
+            len: 0,
+            hilt: cm(60),
+            grip: [-1, cm(9)],
+            mass: [1, 9],
+            heft_pct: 45,
+        },
+        Held::Quarterstaff => Weapon {
+            item,
+            len: 0,
+            hilt: 0,
+            grip: [cm(55), cm(120)],
+            mass: [4, 4],
+            heft_pct: 75,
+        },
+        Held::Spear => Weapon {
+            item,
+            len: 0,
+            hilt: cm(190),
+            grip: [cm(70), cm(130)],
+            mass: [3, 2],
+            heft_pct: 70,
         },
         _ => Weapon {
             item,
@@ -1423,6 +1556,30 @@ pub fn fences_of(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// T11: each new weapon is as long as the Campaign page's table, pommel
+    /// to tip, in whole millimetres (from its grips and its model: the
+    /// broadsword 80 + 75 + 26 + 850, the axe 100 + 700, the great axe 550
+    /// + 1000, the mace 90 + 660, the staff 1200 + 700, the spear 1300 +
+    /// 800), and held in two hands only where the table says.
+    #[test]
+    fn the_new_weapons_are_as_long_as_the_table_and_held_as_it_says() {
+        for (item, mm_long, two) in [
+            (Held::Broadsword, 1031, false),
+            (Held::Axe, 800, false),
+            (Held::GreatAxe, 1550, true),
+            (Held::Mace, 750, false),
+            (Held::Quarterstaff, 1900, true),
+            (Held::Spear, 2100, true),
+        ] {
+            let w = weapon(item);
+            let long = (w.len as i64 * 1000 + ONE as i64 / 2) / ONE as i64;
+            assert!((long - mm_long).abs() <= 1, "{item:?}: {long} mm");
+            assert_eq!(w.two_handed(), two, "{item:?}");
+            assert!(w.grip[1] < w.len, "{item:?}: the front hand on the weapon");
+            assert!(!rails(item).is_empty());
+        }
+    }
     use crate::fx::int;
     use crate::player::{Body, Fighter};
     use crate::pose::Kind;
