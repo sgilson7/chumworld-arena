@@ -27,8 +27,8 @@ def run(page, check, engine):
     page.click("#title button")
     page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
     labels = [b.inner_text().strip().lower() for b in page.query_selector_all("#menu button")]
-    want = [STRINGS[k].lower() for k in ("practice", "ladder", "host", "join", "pasted_codes", "settings")]
-    check(labels == want, f"the menu offers Practice, Ladder, Host, Join, Pasted codes and Settings {labels}")
+    want = [STRINGS[k].lower() for k in ("practice", "ladder", "watch", "host", "join", "pasted_codes", "settings")]
+    check(labels == want, f"the menu offers Practice, Ladder, Watch, Host, Join, Pasted codes and Settings {labels}")
     # M5: Host and Join are open; this check never presses either, so it still
     # sees no WebSocket and no request off the origin (CA-4, online_fence.rs)
     check(page.is_enabled('#menu button[data-action="online.host"]'), "Host is open")
@@ -92,3 +92,29 @@ def run(page, check, engine):
     page.click('#paused button[data-value="ladder"]')
     page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
     check(True, "leaving a ladder duel goes back to the ladder")
+
+    # T11: watch mode. From the menu, two fighters duel: the line over the
+    # fight counts ticks, the shown fighter's tree is drawn with one row per
+    # rule of the veteran's tree in data/pilots.json, Pause stops the count,
+    # and a step moves it on by exactly one.
+    trees = json.loads((pathlib.Path(__file__).resolve().parents[2] / "data" / "pilots.json").read_text())["trees"]
+    page.click('#ladder button[data-value="menu"]')
+    page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
+    page.click('#menu button[data-value="watch"]')
+    page.wait_for_selector('body[data-screen="watch"]', timeout=10000)
+    page.wait_for_selector("#watch-tree .rule", timeout=10000)
+    check(len(page.query_selector_all("#watch-tree .rule")) == len(trees["veteran"]), "the veteran's tree is drawn, a row a rule")
+    check(page.inner_text("#watch-tree h2").startswith("The veteran"), "the tree is the left fighter's, the veteran")
+    page.click('#watch button[data-action="watch.speed"][data-value="1"]')
+    page.wait_for_function("() => /Tick (\\d+)/.exec(document.querySelector('#watch-line').textContent)[1] > 60", timeout=20000)
+    check(True, "the fight runs: past tick 60")
+    page.click('#watch button[data-action="watch.pause"]')
+    page.wait_for_function("() => document.querySelector('#watch-line').textContent.endsWith('Paused')", timeout=10000)
+    tick = lambda: int(page.inner_text("#watch-line").split("·")[0].split()[1])
+    t0 = tick()
+    page.wait_for_timeout(300)
+    check(tick() == t0, "paused, the count holds")
+    page.click('#watch button[data-action="watch.step"]')
+    page.wait_for_function(f"() => document.querySelector('#watch-line').textContent.startsWith('Tick {t0 + 1} ')", timeout=10000)
+    check(True, "a step moves it on by one tick")
+    check(len(page.query_selector_all("#watch-tree .check")) > 0, "the checks are drawn")
