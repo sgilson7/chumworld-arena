@@ -634,6 +634,49 @@ fn a_staged_move_starts_every_foe_on_it_and_a_bad_one_is_refused() {
     assert_eq!(w.foes[0].brain.control, pilot::Control::Tree);
     assert_eq!(
         w.act("chivalry.foe_move", "dance"),
-        Err("A staged move is kick or feint_cut, not \"dance\".".into())
+        Err("A staged move is guard_up, kick or feint_cut, not \"dance\".".into())
     );
+}
+
+// ---- T7: the right button's guard, for the computer's knight too ----
+
+#[test]
+fn the_knight_raises_the_guard_through_its_record_when_a_cut_comes() {
+    // the player's tip coming at the knight at 6 m/s: some seeds raise the
+    // guard (chance 25), the rest block
+    let coming = decisions(200, |w| {
+        let to = w.foes[0].body.pos.sub(w.player.pos).norm().scale(ONE / 10);
+        let tip = &mut w.me.arm.pts[crate::arm::TIP];
+        tip.q = tip.p.sub(to);
+    });
+    assert!(coming.contains(&Some(Move::GuardUp)), "{coming:?}");
+    // the move goes out as the right button held, and the knight's hand
+    // takes the guard in front through the world's own rules
+    let mut w = duel(true, 600);
+    w.act("chivalry.foe_move", "guard_up").unwrap();
+    w.tick = 0;
+    let (i, _) = pilot::decide(&w, 1);
+    assert_eq!(i.buttons & HOLD_LOOK, HOLD_LOOK);
+    for _ in 0..3 {
+        w.step(&Input::default());
+    }
+    let f = &w.foes[0].fighter;
+    assert!(f.chiv.guard.is_some());
+    assert_eq!(f.arm.shell.pitch, deg(5) + f.chiv.guard.unwrap().shift.1);
+}
+
+#[test]
+fn the_right_button_guards_only_in_first_person() {
+    // the port's path: the right button looks, as CHUMWORLD's did
+    let mut w = World::new(1);
+    w.step(&press(DRAW));
+    for _ in 0..player::DRAW_TICKS + 10 {
+        w.step(&Input::default());
+    }
+    w.step(&Input {
+        buttons: HOLD_LOOK,
+        ..Input::default()
+    });
+    assert_eq!(w.me.chiv.guard, None);
+    assert!(w.me.mouse_looks);
 }

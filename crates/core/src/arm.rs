@@ -1319,10 +1319,15 @@ pub fn move_shell(w: &mut World, id: usize, inp: &Input) {
         a.shell.swing = Shell::eased(a.shell.swing, (0, 0, 0));
         return;
     }
+    // T7: the right button held, the hand goes to the guard in front and
+    // the mouse shifts it (`chivalry::guard_shell`)
+    if crate::chivalry::guard_shell(w, id, inp) {
+        return;
+    }
     // M7 (T10): the left button gathers the mouse's travel into a cut, and
     // a cut under way holds the shell still (`swing.rs`); looking, the
     // mouse is the view's
-    let looks = f.mouse_looks;
+    let looks = player::fighter(w, id).mouse_looks;
     let taken = if looks {
         crate::swing::step(
             w,

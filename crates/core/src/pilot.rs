@@ -158,6 +158,8 @@ pub enum Move {
     Kick,
     /// a chop begun and broken off in its wind-up with the right button
     FeintCut,
+    /// T7: the right button held, the guard raised across the body
+    GuardUp,
 }
 
 impl Move {
@@ -451,8 +453,9 @@ pub struct Plan {
     /// (right, down, wheel), sent as it is; holding the button without it
     /// sends no movement, so the cut under way plays out
     pub gesture: Option<(i32, i32, i32)>,
-    /// M4: the right button pressed this tick (a feint, in a wind-up)
-    pub feint: bool,
+    /// M4: the right button held this tick (a feint, in a wind-up; T7, the
+    /// guard in front, between cuts)
+    pub right: bool,
 }
 
 /// A foe's guard (degrees right and up, reach in percent of the arm): a
@@ -665,7 +668,7 @@ fn hold(v: &View, shell: (i32, i32, i32), dir: i32) -> Plan {
         swing: false,
         fast: false,
         gesture: None,
-        feint: false,
+        right: false,
     }
 }
 
@@ -706,7 +709,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         swing: false,
         fast: false,
         gesture: None,
-        feint: false,
+        right: false,
     };
     // the left button held, the mouse moved the cut's way once, then held
     // still while the cut plays out (`swing.rs`)
@@ -716,7 +719,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         swing: true,
         fast: true,
         gesture: Some(if t == READY_TICKS { way } else { (0, 0, 0) }),
-        feint: false,
+        right: false,
     };
     let px = v.w.pilots.book.kinds[v.w.foes[v.id - 1].brain.key.as_str()].strike_px * 100;
     let guard = hold(v, GUARD, dir);
@@ -777,6 +780,14 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         Move::Kick if t <= crate::chivalry::spec().kick_ticks as u32 => {
             plain(GUARD, if t == 0 { input::KICK } else { 0 })
         }
+        // T7: the right button held, the hand at the guard in front
+        Move::GuardUp if t <= crate::chivalry::spec().pilot_guard_ticks => {
+            let s = crate::chivalry::spec();
+            Plan {
+                right: true,
+                ..plain((s.guard_side_deg, s.guard_pitch_deg, s.guard_reach_pct), 0)
+            }
+        }
         // M4: a chop readied and begun as an attack's, then broken off with
         // the right button while it winds up, then the guard
         Move::FeintCut => {
@@ -785,7 +796,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
                 t if t < READY_TICKS => plain((10, 20, 80), lunge(v)),
                 t if t < at => strike(t, (0, px, 0), 0),
                 t if t == at => Plan {
-                    feint: true,
+                    right: true,
                     ..strike(t, (0, 0, 0), 0)
                 },
                 t if t < at + READY_TICKS + 4 => plain(GUARD, recover(v)),
@@ -857,7 +868,7 @@ fn to_input(f: &Fighter, p: &Plan, spec: &KindSpec) -> Input {
     };
     Input {
         keys: p.keys,
-        buttons: (if p.swing { input::SWING } else { 0 }) | (if p.feint { input::HOLD_LOOK } else { 0 }),
+        buttons: (if p.swing { input::SWING } else { 0 }) | (if p.right { input::HOLD_LOOK } else { 0 }),
         dx,
         dy,
         wheel,
@@ -1137,7 +1148,7 @@ mod tests {
             swing: false,
             fast: false,
             gesture: None,
-            feint: false,
+            right: false,
         };
         let i = to_input(f, &p, spec);
         // far from 60°, 60°: the most a tick, hand_px pixels each way

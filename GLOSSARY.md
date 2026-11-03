@@ -68,7 +68,7 @@ Not: roll
 
 ### Draw
 
-Taking the sword out of its sheath with X. Drawn, the mouse still turns you; hold the right button to move the sword hand instead.
+Taking the sword out of its sheath with X. Drawn, the mouse still turns you; hold the right button to guard instead.
 
 Not: unsheathe
 
@@ -101,6 +101,12 @@ Not: combo, combination
 An opening in plate where a blow lands whole: the armpit, the visor's slit and the back of the knee.
 
 Not: weak spot, chink
+
+### Guard
+
+How you hold your sword between cuts. It rides with your view; hold the right button to raise the blade across your body in front, and move the mouse to shift it up to {chivalry.guard_shift} degrees each way. A blow that meets it is a parry.
+
+Not: stance
 
 ### Health
 

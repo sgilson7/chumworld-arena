@@ -348,10 +348,12 @@ pub fn look_mouse(w: &mut World, input: &Input) -> Mouse {
     }
     let looks = if w.first_person() {
         // M1 (CA-Q6: A): the mouse turns the view unless the right button
-        // frees the hand or the left gathers a cut's gesture; a cut once
-        // committed leaves the mouse to the view, and turning drags the cut
-        let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();
-        !w.me.drawn() || w.me.health.down() || !(input.button(input::HOLD_LOOK) || gathering)
+        // holds the guard (T7) or the left is held; T8: while the left is
+        // held, through the gesture and the committed cut, the mouse steers
+        // the cut only and the view stays still (M1 let a committed cut's
+        // mouse turn the view, which flung it on a hard swipe)
+        let cutting = input.button(input::SWING);
+        !w.me.drawn() || w.me.health.down() || !(input.button(input::HOLD_LOOK) || cutting)
     } else {
         !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down()
     };
@@ -933,6 +935,8 @@ pub fn goals(w: &World, id: usize, input: &Input) -> (Sheath, Fx, Goals) {
             g.hand[0] = Some(if both { second } else { free(0) });
             // (a cut turns its blade within its own plane, `swing::toward`)
             let line = match cut {
+                // T7: the right button's guard, raised across the body
+                None if f.chiv.guard.is_some() => crate::chivalry::guard_line(b.facing),
                 Some(_) => crate::swing::toward(&f.arm, blade),
                 None => through_front(&f.arm, blade, b.facing),
             };
@@ -1957,12 +1961,18 @@ mod tests {
                 (yaw, pitch),
                 "the gesture did not turn the view"
             );
-            // once the cut is committed, the mouse turns the view and the
-            // body, and the cut goes on with them (the shoulders drag it)
-            w.step(&mouse(5_000, 0, input::SWING));
-            assert_eq!(w.aim.yaw, fx::wrap(yaw - 1092));
-            assert_eq!(w.player.facing, w.aim.yaw);
+            // T8: once the cut is committed, a hard swipe with the left
+            // button held still turns nothing (M1 turned the view and the
+            // body here, and a hard swipe flung the view)
+            for _ in 0..3 {
+                w.step(&mouse(30_000, -20_000, input::SWING));
+            }
+            assert_eq!((w.aim.yaw, w.aim.pitch), (yaw, pitch), "a swipe in the cut");
+            assert_eq!(w.player.facing, yaw);
             assert!(w.me.arm.swing.cut.is_some(), "the cut is still under way");
+            // let go, the mouse turns the view again: 50 px, 1 092 units
+            w.step(&mouse(5_000, 0, 0));
+            assert_eq!(w.aim.yaw, fx::wrap(yaw - 1092));
         }
         // under 40 px nothing is chosen, and the view still holds
         let mut w = first_person();
@@ -1972,31 +1982,46 @@ mod tests {
         assert_eq!(w.aim.yaw, yaw);
     }
 
-    /// The right button frees the hand: the mouse moves its target on the
-    /// shell at CHUMWORLD's 0.15° a pixel (50 px: 7.5°, 1 365 units) and the
-    /// view holds still.
+    /// T7 (replacing M1's free hand, R3.8): the right button held puts the
+    /// hand's target at the guard in front (18° left of the sword shoulder,
+    /// 5° up, 70% of the arm, `data/chivalry.json`) and the view holds; the
+    /// mouse shifts the guard at CHUMWORLD's 0.15° a pixel (50 px: 7.5°, 1 365
+    /// units), at most 15° each way; let go, the hand goes back to the
+    /// riding guard it left.
     #[test]
-    fn in_first_person_the_right_button_frees_the_hand_and_holds_the_view() {
+    fn in_first_person_the_right_button_holds_a_guard_in_front_and_the_view() {
         let mut w = first_person();
-        let (yaw, pitch, side) = (w.aim.yaw, w.aim.pitch, w.me.arm.shell.side);
+        let (yaw, pitch) = (w.aim.yaw, w.aim.pitch);
+        let before = (w.me.arm.shell.side, w.me.arm.shell.pitch, w.me.arm.shell.reach);
         w.step(&mouse(5_000, 0, HOLD_LOOK));
         assert_eq!((w.aim.yaw, w.aim.pitch), (yaw, pitch), "the view holds");
-        assert_eq!(w.me.arm.shell.side, side + 1365, "the hand moves right");
         assert!(!w.me.mouse_looks);
-        // the hand raised 50 px stays raised against the view once let go
-        let lifted = w.me.arm.shell.pitch;
-        w.step(&mouse(0, -5_000, HOLD_LOOK));
-        assert_eq!(w.me.arm.shell.pitch, lifted + 1365);
-        w.step(&mouse(0, -5_000, 0));
         assert_eq!(
-            w.me.arm.shell.pitch,
-            lifted + 1365 + 1092,
-            "and rides on from there"
+            w.me.arm.shell.side,
+            fx::deg(-18) + 1365,
+            "the guard, shifted right"
         );
-        // no foe held, pushed past the shell's side edge, the view still holds
-        let yaw = w.aim.yaw;
-        w.step(&mouse(200_000, 0, HOLD_LOOK));
-        assert_eq!(w.aim.yaw, yaw);
+        assert_eq!(w.me.arm.shell.pitch, fx::deg(5));
+        assert_eq!(w.me.arm.shell.reach, w.me.arm.reach() * 70 / 100);
+        // pushed far, the shift stops at 15°; the view still holds
+        w.step(&mouse(200_000, 200_000, HOLD_LOOK));
+        assert_eq!(w.me.arm.shell.side, fx::deg(-18) + fx::deg(15));
+        assert_eq!(w.me.arm.shell.pitch, fx::deg(5) - fx::deg(15));
+        assert_eq!((w.aim.yaw, w.aim.pitch), (yaw, pitch));
+        // held, the servo brings the blade up across the body: its point
+        // above the grip and to the left
+        for _ in 0..40 {
+            w.step(&mouse(0, 0, HOLD_LOOK));
+        }
+        let a = &w.me.arm;
+        let up = a.pts[arm::TIP].p.sub(a.grip_point());
+        assert!(up.y > ONE / 3, "{up:?}");
+        assert!(up.dot(right_of(w.player.facing)) < 0, "{up:?}");
+        // let go: back to the guard it left, and the mouse turns the view
+        w.step(&mouse(5_000, 0, 0));
+        let s = &w.me.arm.shell;
+        assert_eq!((s.side, s.pitch, s.reach), before);
+        assert_eq!(w.aim.yaw, fx::wrap(yaw - 1092));
     }
 
     /// The largest bearing of the foe from the view's heading, either way,

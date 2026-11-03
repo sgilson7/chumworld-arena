@@ -387,6 +387,7 @@
       {"if": [{"beyond_reach": 100}], "do": "close_in"},
       {"if": ["just_parried", {"within_reach": 60}], "do": "attack", "interrupt": true},
       {"if": [{"tip_near_head": 35}], "do": "raise_guard", "interrupt": true},
+      {"if": [{"swing_coming": 400}, {"chance": 25}], "do": "guard_up", "interrupt": true},
       {"if": [{"swing_coming": 400}, {"chance": 80}], "do": "block", "interrupt": true},
       {"if": [{"stamina_below": 25}], "do": "back_off"},
       {"if": [{"foe_turtles": 90}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 60}], "do": "kick", "interrupt": true},

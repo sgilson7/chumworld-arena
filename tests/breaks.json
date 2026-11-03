@@ -1724,30 +1724,16 @@
   {
     "name": "M1: a held left button gathers a gesture and holds the view",
     "file": "crates/core/src/player.rs",
-    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
-    "replace": "let gathering = false;",
+    "find": "let cutting = input.button(input::SWING);",
+    "replace": "let cutting = false;",
     "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
   },
   {
-    "name": "M1: a committed cut leaves the mouse to the view",
+    "name": "M1, T7: the right button holds the view",
     "file": "crates/core/src/player.rs",
-    "find": "let gathering = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
-    "replace": "let gathering = input.button(input::SWING);",
-    "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
-  },
-  {
-    "name": "M1: the right button frees the hand",
-    "file": "crates/core/src/player.rs",
-    "find": "!(input.button(input::HOLD_LOOK) || gathering)",
-    "replace": "!gathering",
-    "test": "in_first_person_the_right_button_frees_the_hand_and_holds_the_view"
-  },
-  {
-    "name": "M1: the freed hand at the shell's edge leaves the view still",
-    "file": "crates/core/src/arm.rs",
-    "find": "if id == 0 && free && over != 0 && !w.first_person() {",
-    "replace": "if id == 0 && free && over != 0 {",
-    "test": "in_first_person_the_right_button_frees_the_hand_and_holds_the_view"
+    "find": "!(input.button(input::HOLD_LOOK) || cutting)",
+    "replace": "!cutting",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
   },
   {
     "name": "M1: the soft pull turns the view",
@@ -2550,15 +2536,15 @@
   {
     "name": "M4: the knight feints with the right button",
     "file": "crates/core/src/pilot.rs",
-    "find": "                t if t == at => Plan {\n                    feint: true,",
-    "replace": "                t if t == at => Plan {\n                    feint: false,",
+    "find": "                t if t == at => Plan {\n                    right: true,",
+    "replace": "                t if t == at => Plan {\n                    right: false,",
     "test": "the_knight_feints_through_its_record_and_the_feint_holds_in_the_world"
   },
   {
     "name": "M4: a pilot's feint reaches its record",
     "file": "crates/core/src/pilot.rs",
-    "find": "(if p.feint { input::HOLD_LOOK } else { 0 })",
-    "replace": "(if p.feint { 0 } else { 0 })",
+    "find": "(if p.right { input::HOLD_LOOK } else { 0 })",
+    "replace": "(if p.right { 0 } else { 0 })",
     "test": "the_knight_feints_through_its_record_and_the_feint_holds_in_the_world"
   },
   {
@@ -2588,5 +2574,61 @@
     "find": "                f.brain.current = Some((m, 0));\n",
     "replace": "",
     "test": "a_staged_move_starts_every_foe_on_it_and_a_bad_one_is_refused"
+  },
+  {
+    "name": "T8: the view holds while the left button is held, through the committed cut",
+    "file": "crates/core/src/player.rs",
+    "find": "let cutting = input.button(input::SWING);",
+    "replace": "let cutting = input.button(input::SWING) && w.me.arm.swing.cut.is_none();",
+    "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
+  },
+  {
+    "name": "T7: the right button takes the hand to the guard",
+    "file": "crates/core/src/arm.rs",
+    "find": "    if crate::chivalry::guard_shell(w, id, inp) {\n        return;\n    }",
+    "replace": "    if false {\n        return;\n    }",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
+  },
+  {
+    "name": "T7: the guard holds the blade across the body",
+    "file": "crates/core/src/player.rs",
+    "find": "None if f.chiv.guard.is_some() => crate::chivalry::guard_line(b.facing),",
+    "replace": "None if false => crate::chivalry::guard_line(b.facing),",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
+  },
+  {
+    "name": "T7: the mouse shifts the guard at most 15 degrees",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "(g.shift.0 + step(inp.dx)).clamp(-most, most),",
+    "replace": "g.shift.0 + step(inp.dx),",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
+  },
+  {
+    "name": "T7: let go, the hand goes back to where it was",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "            a.shell.side = g.from.0;\n",
+    "replace": "",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
+  },
+  {
+    "name": "T7: the guard only in first person",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    w.first_person()\n        && inp.button(input::HOLD_LOOK)",
+    "replace": "    inp.button(input::HOLD_LOOK)",
+    "test": "the_right_button_guards_only_in_first_person"
+  },
+  {
+    "name": "T7: the knight raises the guard when a cut comes",
+    "file": "data/pilots.json",
+    "find": "{\"if\": [{\"swing_coming\": 400}, {\"chance\": 25}], \"do\": \"guard_up\", \"interrupt\": true}",
+    "replace": "{\"if\": [{\"swing_coming\": 400}, {\"chance\": 0}], \"do\": \"guard_up\", \"interrupt\": true}",
+    "test": "the_knight_raises_the_guard_through_its_record_when_a_cut_comes"
+  },
+  {
+    "name": "T7: the knight's guard is the right button in its record",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            Plan {\n                right: true,\n                ..plain((s.guard_side_deg",
+    "replace": "            Plan {\n                right: false,\n                ..plain((s.guard_side_deg",
+    "test": "the_knight_raises_the_guard_through_its_record_when_a_cut_comes"
   }
 ]

@@ -94,6 +94,12 @@ pub struct Spec {
     pub kick_out_cm: i32,
     pub event_ticks: u8,
     pub pilot_feint_after_ticks: u8,
+    pub guard_side_deg: i32,
+    pub guard_pitch_deg: i32,
+    pub guard_reach_pct: i32,
+    pub guard_line_pct: [i32; 3],
+    pub guard_shift_deg: i32,
+    pub pilot_guard_ticks: u32,
 }
 
 impl Spec {
@@ -164,6 +170,17 @@ pub struct Chiv {
     pub idle: u16,
     /// the last event and its age, for the HUD
     pub event: Option<(Event, u8)>,
+    /// T7: the right button's guard held (`guard_shell`)
+    pub guard: Option<Guard>,
+}
+
+/// T7: a guard held with the right button: how far the mouse has shifted
+/// it (angle units right and up, each within `guard_shift_deg`), and the
+/// hand's target on its shell before it, which a release goes back to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Guard {
+    pub shift: (i32, i32),
+    pub from: (i32, i32, Fx),
 }
 
 impl Chiv {
@@ -178,6 +195,7 @@ impl Chiv {
             kick: 0,
             idle: 0,
             event: None,
+            guard: None,
         }
     }
 
@@ -206,6 +224,69 @@ impl Default for Chiv {
     fn default() -> Chiv {
         Chiv::new()
     }
+}
+
+/// T7: whether fighter `id` holds the right button's guard this tick: in
+/// first person (off on the port's path, where the right button looks),
+/// drawn, standing, between cuts and kicks, the right button held.
+pub fn guards(w: &World, id: usize, inp: &Input) -> bool {
+    let f = player::fighter(w, id);
+    w.first_person()
+        && inp.button(input::HOLD_LOOK)
+        && f.sheath == Sheath::Drawn
+        && !f.health.down()
+        && f.arm.swing.cut.is_none()
+        && f.chiv.kick == 0
+}
+
+/// T7: a tick of the right button's guard. The hand's target goes to the
+/// guard in front (`guard_side_deg`, `guard_pitch_deg`, `guard_reach_pct`
+/// on the shell, the blade along `guard_line`, `player::goals`), shifted by
+/// the mouse within `guard_shift_deg` each way; the arm's servo takes the
+/// hand there, so the guard is a pose the blades meet like any other.
+/// Returns whether it is held; let go, the hand's target goes back to where
+/// it was before.
+pub fn guard_shell(w: &mut World, id: usize, inp: &Input) -> bool {
+    let held = guards(w, id, inp);
+    let s = spec();
+    let f = player::parts_mut(w, id).1;
+    let a = &mut f.arm;
+    if !held {
+        if let Some(g) = f.chiv.guard.take() {
+            a.shell.side = g.from.0;
+            a.shell.pitch = g.from.1;
+            a.shell.reach = g.from.2;
+        }
+        return false;
+    }
+    let g = f.chiv.guard.get_or_insert(Guard {
+        shift: (0, 0),
+        from: (a.shell.side, a.shell.pitch, a.shell.reach),
+    });
+    let most = deg(s.guard_shift_deg);
+    let step = |d: i32| (d as i64 * crate::arm::UNITS_PER_100_PX / 10_000) as i32;
+    g.shift = (
+        (g.shift.0 + step(inp.dx)).clamp(-most, most),
+        (g.shift.1 - step(inp.dy)).clamp(-most, most),
+    );
+    let arm = a.reach();
+    a.shell.side = deg(s.guard_side_deg) + g.shift.0;
+    a.shell.pitch = deg(s.guard_pitch_deg) + g.shift.1;
+    a.shell.reach = arm * s.guard_reach_pct / 100;
+    a.shell.swing = crate::arm::Shell::eased(a.shell.swing, (0, 0, 0));
+    a.swing.gesture = (0, 0, 0);
+    true
+}
+
+/// T7: the blade's line in the right button's guard: raised across the
+/// body, its point up and to the left, for a body facing `yaw`.
+pub fn guard_line(yaw: i32) -> V3 {
+    let [r, u, f] = spec().guard_line_pct;
+    right_of(yaw)
+        .scale(r * ONE / 100)
+        .add(V3::UP.scale(u * ONE / 100))
+        .add(facing(yaw, 0).scale(f * ONE / 100))
+        .norm()
 }
 
 /// Whether the layer is on in this world (off on the port's path, R6.1).
@@ -570,9 +651,14 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
         // driven by its tree from here on: staging for a picture
         "foe_move" => {
             let m = match value.trim() {
+                "guard_up" => crate::pilot::Move::GuardUp,
                 "kick" => crate::pilot::Move::Kick,
                 "feint_cut" => crate::pilot::Move::FeintCut,
-                other => return Err(format!("A staged move is kick or feint_cut, not \"{other}\".")),
+                other => {
+                    return Err(format!(
+                        "A staged move is guard_up, kick or feint_cut, not \"{other}\"."
+                    ))
+                }
             };
             for f in &mut w.foes {
                 f.brain.control = crate::pilot::Control::Tree;
@@ -602,6 +688,7 @@ pub fn values() -> Vec<(&'static str, String)> {
         ),
         ("chivalry.kick_cost", s.kick_cost.to_string()),
         ("chivalry.kick_reach", s.kick_reach_cm.to_string()),
+        ("chivalry.guard_shift", s.guard_shift_deg.to_string()),
     ]
 }
 

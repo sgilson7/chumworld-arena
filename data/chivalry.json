@@ -27,5 +27,11 @@
   "kick_lift_cm": 55,
   "kick_out_cm": 90,
   "event_ticks": 45,
-  "pilot_feint_after_ticks": 3
+  "pilot_feint_after_ticks": 3,
+  "guard_side_deg": -18,
+  "guard_pitch_deg": 5,
+  "guard_reach_pct": 70,
+  "guard_line_pct": [-55, 75, 35],
+  "guard_shift_deg": 15,
+  "pilot_guard_ticks": 24
 }
