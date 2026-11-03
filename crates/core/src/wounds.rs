@@ -1754,12 +1754,14 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
     let p = &flinched(l, p);
     let blood = blood_on(w);
     let marked = l.flash.iter().any(|&t| t > 0) || (blood && l.stain.iter().any(|&t| t > 0));
-    let knight = crate::plate::armoured(f.kind);
+    // M6: the look the figure wears (`Fighter::dress`), its own kind unless
+    // the player wears a won rung's look
+    let knight = crate::plate::armoured(f.dress);
     if l.lost == 0 && !marked && !knight {
-        models::figure_dressed(f.kind, p, dress, look, out);
+        models::figure_dressed(f.dress, p, dress, look, out);
         return;
     }
-    let (m, labels) = dressed(f.kind, p, dress, crate::plate::bare(&l.plate));
+    let (m, labels) = dressed(f.dress, p, dress, crate::plate::bare(&l.plate));
     if labels.len() == m.parts.len() {
         tinted(&m, &labels, !l.lost, l, blood).emit(look.ink(), out);
     } else {

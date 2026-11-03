@@ -4,8 +4,14 @@
 //! A save holds the reader's settings (look speed, inverted pitch, field of
 //! view, aim help) and the knight's look, A or B (`Knight`; the knights
 //! themselves arrive in M3, so the choice is kept before anything shows it,
-//! R4.8). From M6 it will hold the ladder's progress. It holds nothing about
-//! the person: no name, no date or clock reading, nothing of the device.
+//! R4.8). M6: it holds the ladder's progress, each rung's marks
+//! (`ladder::Progress`), and the look may be a won rung's opponent's
+//! (`Knight::Rung`). It holds nothing about the person: no name, no date or
+//! clock reading, nothing of the device.
+//!
+//! M6 writes version 2 and reads versions 1 and 2: a version 1 save (the
+//! MVP's, with no ladder) reads as the same settings and look with no rung
+//! won (`read`, `migrate`).
 //!
 //! The text (`text`) is JSON: a format name and a version, a checksum over
 //! the `game` object as written (FNV-1a, 64 bits, over its compact text with
@@ -25,16 +31,20 @@ use crate::world::AimHelp;
 
 /// What the file calls itself, and the version this game writes and reads.
 pub const FORMAT: &str = "chumworld-arena-save";
-pub const VERSION: u64 = 1;
+pub const VERSION: u64 = 2;
+/// M6: the MVP's version, read and brought up to this one (no rung won).
+pub const VERSION_MVP: u64 = 1;
 /// Longer than this is not a save.
 pub const TEXT_MOST: usize = 16_384;
 
 /// The knight's look (CA-Q13: A): knight A, the black tower, or knight B,
-/// the ivory crown.
+/// the ivory crown; M6: or the look of a won rung's opponent, by the rung's
+/// number from the foot (`ladder::RUNGS`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Knight {
     A,
     B,
+    Rung(u8),
 }
 
 impl Knight {
@@ -42,15 +52,27 @@ impl Knight {
         match self {
             Knight::A => "a",
             Knight::B => "b",
+            Knight::Rung(i) => crate::ladder::RUNGS[i as usize].key,
         }
     }
 
     /// M3: the body the player wears in a duel: Knight A or Knight B (the
-    /// computer's knight wears the other, `rounds::begin`).
+    /// computer's knight wears the other, `rounds::begin`). M6 (CA-Q9: A): a
+    /// rung's look is drawn over Knight A's body, so its plate, reach and
+    /// strength stay a knight's.
     pub fn kind(self) -> crate::pose::Kind {
         match self {
             Knight::A => crate::pose::Kind::KnightA,
             Knight::B => crate::pose::Kind::KnightB,
+            Knight::Rung(_) => crate::pose::Kind::KnightA,
+        }
+    }
+
+    /// M6: what the player's figure is drawn as (`Fighter::dress`).
+    pub fn dress(self) -> crate::pose::Kind {
+        match self {
+            Knight::Rung(i) => crate::ladder::RUNGS[i as usize].kind,
+            other => other.kind(),
         }
     }
 
@@ -58,8 +80,25 @@ impl Knight {
         match s {
             "a" => Some(Knight::A),
             "b" => Some(Knight::B),
-            _ => None,
+            other => crate::ladder::rung_keyed(other).map(|i| Knight::Rung(i as u8)),
         }
+    }
+
+    /// M6: the look may be worn with this progress: the knights always, a
+    /// rung's opponent's once the rung is won.
+    pub fn worn_by(self, p: &crate::ladder::Progress) -> bool {
+        match self {
+            Knight::Rung(i) => p.won(i as usize),
+            _ => true,
+        }
+    }
+
+    /// M6: every look this progress may wear, the knights first, then each
+    /// won rung's from the foot.
+    pub fn all(p: &crate::ladder::Progress) -> Vec<Knight> {
+        let mut out = vec![Knight::A, Knight::B];
+        out.extend(p.won_rungs().map(|i| Knight::Rung(i as u8)));
+        out
     }
 }
 
@@ -73,6 +112,8 @@ pub struct Kept {
     pub fov: i32,
     pub aim_help: AimHelp,
     pub knight: Knight,
+    /// M6: each rung's marks
+    pub ladder: crate::ladder::Progress,
 }
 
 impl Default for Kept {
@@ -83,6 +124,7 @@ impl Default for Kept {
             fov: crate::world::FOV_DEFAULT,
             aim_help: AimHelp::None,
             knight: Knight::A,
+            ladder: crate::ladder::Progress::default(),
         }
     }
 }
@@ -106,7 +148,9 @@ pub fn checksum(text: &str) -> String {
 
 /// The keys of a save's `game` object and of its settings: what a save
 /// holds, and nothing else.
-pub const GAME_KEYS: [&str; 2] = ["knight", "settings"];
+pub const GAME_KEYS: [&str; 3] = ["knight", "ladder", "settings"];
+/// M6: the MVP's save (version 1) had no ladder.
+pub const GAME_KEYS_MVP: [&str; 2] = ["knight", "settings"];
 pub const SETTING_KEYS: [&str; 4] = ["aim_help", "fov", "invert_pitch", "look_pct"];
 pub const TOP_KEYS: [&str; 4] = ["checksum", "format", "game", "version"];
 
@@ -114,6 +158,7 @@ pub const TOP_KEYS: [&str; 4] = ["checksum", "format", "game", "version"];
 pub fn game_value(k: &Kept) -> Value {
     json!({
         "knight": k.knight.id(),
+        "ladder": k.ladder.marks,
         "settings": {
             "aim_help": aim_help_id(k.aim_help),
             "fov": k.fov,
@@ -207,7 +252,8 @@ pub fn read(text: &str) -> Result<Kept, Refusal> {
     if m.get("format").and_then(|f| f.as_str()) != Some(FORMAT) {
         return Err(Refusal::Format);
     }
-    if m.get("version").and_then(|v| v.as_u64()) != Some(VERSION) {
+    let version = m.get("version").and_then(|v| v.as_u64());
+    if version != Some(VERSION) && version != Some(VERSION_MVP) {
         return Err(Refusal::Version);
     }
     keys_are(m, &TOP_KEYS, "save")?;
@@ -217,10 +263,18 @@ pub fn read(text: &str) -> Result<Kept, Refusal> {
         return Err(Refusal::Checksum);
     }
     let g = object(game, "game")?;
-    keys_are(g, &GAME_KEYS, "game")?;
+    // M6: a version 1 save is brought up to this one with no rung won
+    let ladder = if version == Some(VERSION_MVP) {
+        keys_are(g, &GAME_KEYS_MVP, "game")?;
+        crate::ladder::Progress::default()
+    } else {
+        keys_are(g, &GAME_KEYS, "game")?;
+        ladder_of(&g["ladder"])?
+    };
     let knight = g["knight"]
         .as_str()
         .and_then(Knight::named)
+        .filter(|k| k.worn_by(&ladder))
         .ok_or_else(|| bad("knight"))?;
     let set = object(&g["settings"], "settings")?;
     keys_are(set, &SETTING_KEYS, "settings")?;
@@ -247,7 +301,25 @@ pub fn read(text: &str) -> Result<Kept, Refusal> {
         )?,
         aim_help,
         knight,
+        ladder,
     })
+}
+
+/// M6: the ladder's marks, one whole number a rung from the foot, each
+/// from none to `MARKS_MOST`, won in order (`Progress::valid`).
+fn ladder_of(v: &Value) -> Result<crate::ladder::Progress, Refusal> {
+    let list = v.as_array().ok_or_else(|| bad("ladder"))?;
+    let mut p = crate::ladder::Progress::default();
+    if list.len() != p.marks.len() {
+        return Err(bad("ladder"));
+    }
+    for (i, m) in list.iter().enumerate() {
+        p.marks[i] = int_in(m, "ladder", 0, crate::ladder::MARKS_MOST as i32)? as u8;
+    }
+    if !p.valid() {
+        return Err(bad("ladder"));
+    }
+    Ok(p)
 }
 
 #[cfg(test)]
@@ -265,25 +337,38 @@ mod tests {
             fov: 110,
             aim_help: AimHelp::SoftPull,
             knight: Knight::B,
+            ladder: crate::ladder::Progress::default(),
+        }
+    }
+
+    /// M6: three rungs won (F with two marks, E and D with one), wearing the
+    /// sellsword's look.
+    fn climbed() -> Kept {
+        Kept {
+            knight: Knight::Rung(1),
+            ladder: crate::ladder::Progress {
+                marks: [2, 1, 1, 0, 0, 0, 0],
+            },
+            ..odd()
         }
     }
 
     #[test]
     fn a_save_reads_back_as_it_was_written() {
-        for k in [Kept::default(), odd()] {
+        for k in [Kept::default(), odd(), climbed()] {
             assert_eq!(read(&text(&k)), Ok(k));
         }
     }
 
     /// The text by hand: the game object's compact text with sorted keys,
-    /// and nothing in it but the settings and the knight.
+    /// and nothing in it but the settings, the knight and (M6) the ladder.
     #[test]
     fn a_save_holds_the_settings_and_the_knight_and_nothing_else() {
         let t = text(&odd());
         let v: Value = serde_json::from_str(&t).unwrap();
         assert_eq!(v["format"], "chumworld-arena-save");
-        assert_eq!(v["version"], 1);
-        let compact = r#"{"knight":"b","settings":{"aim_help":"soft_pull","fov":110,"invert_pitch":true,"look_pct":140}}"#;
+        assert_eq!(v["version"], 2);
+        let compact = r#"{"knight":"b","ladder":[0,0,0,0,0,0,0],"settings":{"aim_help":"soft_pull","fov":110,"invert_pitch":true,"look_pct":140}}"#;
         assert_eq!(v["game"].to_string(), compact);
         assert_eq!(v["checksum"], checksum(compact));
         // FNV-1a of "a", by hand: (0xcbf29ce484222325 ^ 0x61) × 0x100000001b3
@@ -299,7 +384,7 @@ mod tests {
         assert_eq!(read(""), Err(Refusal::Unreadable));
         assert_eq!(read("not json"), Err(Refusal::Unreadable));
         assert_eq!(read(r#"{"format":"slides","version":1}"#), Err(Refusal::Format));
-        let old = good.replace("\"version\": 1", "\"version\": 0");
+        let old = good.replace("\"version\": 2", "\"version\": 0");
         assert_ne!(old, good);
         assert_eq!(read(&old), Err(Refusal::Version));
         assert_eq!(
@@ -326,5 +411,76 @@ mod tests {
         assert_eq!(read(&v.to_string()), Err(Refusal::Field("game.name".into())));
         // too long to be a save
         assert_eq!(read(&" ".repeat(TEXT_MOST + 1)), Err(Refusal::Unreadable));
+    }
+
+    /// M6: the ladder's progress and a won rung's look are written and read
+    /// back; the text holds each rung's marks from the foot, by hand.
+    #[test]
+    fn a_save_keeps_the_ladder_s_marks_and_a_won_rung_s_look() {
+        let k = climbed();
+        let t = text(&k);
+        let v: Value = serde_json::from_str(&t).unwrap();
+        let compact = r#"{"knight":"sellsword","ladder":[2,1,1,0,0,0,0],"settings":{"aim_help":"soft_pull","fov":110,"invert_pitch":true,"look_pct":140}}"#;
+        assert_eq!(v["game"].to_string(), compact);
+        assert_eq!(read(&t), Ok(k));
+        // the look's body stays Knight A's; only the drawing is the sellsword
+        assert_eq!(k.knight.kind(), crate::pose::Kind::KnightA);
+        assert_eq!(k.knight.dress(), crate::pose::Kind::Sellsword);
+    }
+
+    /// M6: the MVP's save (version 1, no ladder) loads as the same settings
+    /// and look with no rung won. The text is a version 1 save as the MVP
+    /// wrote it, its checksum worked out over its own game object.
+    #[test]
+    fn an_mvp_save_loads_with_no_rung_won() {
+        let game =
+            r#"{"knight":"b","settings":{"aim_help":"none","fov":108,"invert_pitch":false,"look_pct":90}}"#;
+        let t = format!(
+            r#"{{"format":"chumworld-arena-save","version":1,"checksum":"{}","game":{game}}}"#,
+            checksum(game)
+        );
+        let k = read(&t).expect("an MVP save loads");
+        assert_eq!(k.fov, 108);
+        assert_eq!(k.look_pct, 90);
+        assert_eq!(k.knight, Knight::B);
+        assert_eq!(k.ladder, crate::ladder::Progress::default());
+        // written again, it is a version 2 save
+        assert!(text(&k).contains("\"version\": 2"));
+        // a version 1 save with a ladder is not one the MVP wrote
+        let game = r#"{"knight":"b","ladder":[0,0,0,0,0,0,0],"settings":{"aim_help":"none","fov":108,"invert_pitch":false,"look_pct":90}}"#;
+        let t = format!(
+            r#"{{"format":"chumworld-arena-save","version":1,"checksum":"{}","game":{game}}}"#,
+            checksum(game)
+        );
+        assert_eq!(read(&t), Err(Refusal::Field("game.ladder".into())));
+    }
+
+    /// M6: marks that could not have been won, or a look not yet won, are
+    /// refused by name even with a checksum to match.
+    #[test]
+    fn a_save_with_marks_out_of_order_or_an_unwon_look_is_refused() {
+        let with = |ladder: Value, knight: &str| {
+            let mut v: Value = serde_json::from_str(&text(&climbed())).unwrap();
+            v["game"]["ladder"] = ladder;
+            v["game"]["knight"] = json!(knight);
+            v["checksum"] = json!(checksum(&v["game"].to_string()));
+            read(&v.to_string())
+        };
+        let ladder = Err(Refusal::Field("ladder".into()));
+        assert!(with(json!([2, 1, 1, 0, 0, 0, 0]), "sellsword").is_ok());
+        assert_eq!(with(json!([0, 1, 0, 0, 0, 0, 0]), "a"), ladder, "E won, F not");
+        assert_eq!(with(json!([3, 0, 0, 0, 0, 0, 0]), "a"), ladder, "three marks");
+        assert_eq!(with(json!([1, 0, 0]), "a"), ladder, "three rungs");
+        assert_eq!(with(json!([1, 0, 0, 0, 0, 0, -1]), "a"), ladder);
+        assert_eq!(with(json!("FED"), "a"), ladder);
+        // the veteran's look with rung C not won
+        assert_eq!(
+            with(json!([2, 1, 1, 0, 0, 0, 0]), "veteran"),
+            Err(Refusal::Field("knight".into()))
+        );
+        assert_eq!(
+            with(json!([2, 1, 1, 0, 0, 0, 0]), "knight_c"),
+            Err(Refusal::Field("knight".into()))
+        );
     }
 }

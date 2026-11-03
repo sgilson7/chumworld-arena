@@ -86,10 +86,10 @@ fn worn(kind: Kind, p: &Pose) -> Knight {
 }
 
 fn axes(p: &Pose) -> (V3, V3) {
-    let fwd = facing(p.facing, 0);
     let up0 = p.chest.sub(p.pelvis).norm();
     let up = if up0 == V3::ZERO { V3::UP } else { up0 };
-    let back = fwd.neg().sub(up.scale(fwd.neg().dot(up))).norm();
+    // the model's own back, square to up (R9.x)
+    let back = crate::models::knight::body_back(p.facing, up);
     (up.cross(back).norm(), up)
 }
 

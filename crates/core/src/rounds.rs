@@ -129,6 +129,9 @@ pub struct Rounds {
     /// M3: the bodies each round stands up: the player's, the foe's (a
     /// body and a pilot are chosen apart, `Brain::key`)
     pub bodies: [Kind; 2],
+    /// M6 (CA-Q9: A): the look the player's figure is drawn in each round
+    /// (`Fighter::dress`); its body is `bodies[0]` whatever the look
+    pub dress: Kind,
 }
 
 impl Rounds {
@@ -150,6 +153,12 @@ impl Rounds {
 /// ring are never alike (the save's look B puts the player in Knight B and
 /// the computer's knight in Knight A, R4.8).
 pub fn begin(w: &mut World, foe: &str, me: Kind) -> Result<(), String> {
+    begin_dressed(w, foe, me, me)
+}
+
+/// M6: the same, the player's figure drawn in the look `dress` over the
+/// body `me` (a won rung's look, `save::Knight::dress`).
+pub fn begin_dressed(w: &mut World, foe: &str, me: Kind, dress: Kind) -> Result<(), String> {
     let (body, _) = crate::pilot::pilot_named(foe).ok_or_else(|| format!("There is no pilot \"{foe}\"."))?;
     let theirs = if body == me { other_knight(body) } else { body };
     w.rounds = Some(Rounds {
@@ -162,6 +171,7 @@ pub fn begin(w: &mut World, foe: &str, me: Kind) -> Result<(), String> {
         outside: [0, 0],
         foe: foe.to_string(),
         bodies: [me, theirs],
+        dress,
     });
     opening(w);
     Ok(())
@@ -190,6 +200,7 @@ pub fn opening(w: &mut World) {
     };
     let (_, key) = crate::pilot::pilot_named(&r.foe).expect("begun with a known pilot");
     let [mine_kind, kind] = r.bodies;
+    let dress = r.dress;
     let held = crate::models::kind_held(mine_kind);
     let yaw = crate::world::START_YAW;
     let me = Fighter::new(mine_kind, held, 0, V3::ZERO, yaw, true);
@@ -202,6 +213,7 @@ pub fn opening(w: &mut World) {
     // each built where it stands, so its arm starts there and not at the middle
     w.player = Body::new(mine, yaw);
     w.me = Fighter::new(mine_kind, held, 0, mine, yaw, true);
+    w.me.dress = dress;
     let back = yaw_of(mine.sub(theirs));
     let mut foe = crate::pilot::foe_keyed(&w.pilots.book, kind, key, theirs, back, salt);
     foe.brain.control = w.pilots.control.clone();

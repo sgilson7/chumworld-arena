@@ -254,12 +254,7 @@ pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
 /// A foe kind's name, as the act, the book and the strings (`who_<kind>`)
 /// name it.
 pub fn kind_name(k: Kind) -> &'static str {
-    match k {
-        // M6 (R7.303): named as themselves, piloted on Knight B's entry
-        Kind::Champion => "champion",
-        Kind::Mirror => "mirror",
-        _ => key_of(k),
-    }
+    key_of(k)
 }
 
 fn key_of(k: Kind) -> &'static str {
@@ -274,8 +269,9 @@ fn key_of(k: Kind) -> &'static str {
         Kind::Hedge => "hedge",
         Kind::Veteran => "veteran",
         Kind::Banneret => "banneret",
-        // M6 (R7.303): until the coordinator gives the ladder its pilots
-        Kind::Champion | Kind::Mirror => "knight_b",
+        // M6 (R9.x): each ladder opponent has its own entry and tree now
+        Kind::Champion => "champion",
+        Kind::Mirror => "mirror",
         _ => "bandit",
     }
 }

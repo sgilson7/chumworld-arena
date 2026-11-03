@@ -306,6 +306,28 @@ pub(super) fn across_at(r: Fx, ry: Fx, dy: Fx) -> Fx {
     fx::mul(r, fx::sqrt((ONE - fx::mul(k, k)).max(0)))
 }
 
+/// M6 (R9.6): the back of the ladder's three lighter opponents (`fed.rs`),
+/// square to `up`: away from where the body faces, less what of that runs
+/// along `up`. A body lying along its own facing (within about 4°) has too
+/// little of that left to square on, so its back is taken across from its
+/// right instead. The +z that stood in before is not square to such a
+/// body's up: a fallen sellsword's layered pieces met their own covers and
+/// a fallen hedge knight's point sank into his helm. `knight::model` and
+/// `start` keep +z (R9.6).
+pub fn body_back(yaw: i32, up: V3) -> V3 {
+    let back0 = facing(yaw, 0).neg();
+    let across = back0.sub(up.scale(back0.dot(up)));
+    if across.len() >= ONE / 16 {
+        return across.norm();
+    }
+    let back = crate::geom::right_of(yaw).cross(up).norm();
+    if back == V3::ZERO {
+        v3(0, 0, ONE)
+    } else {
+        back
+    }
+}
+
 /// A knight of `kind` on `pose`, its plate off the parts in `bare`.
 pub fn model(kind: Kind, pose: &Pose, bare: u16) -> Knight {
     // M6 (R7.101): the ladder's lighter opponents, each in its own file

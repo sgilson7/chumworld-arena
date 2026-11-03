@@ -145,6 +145,10 @@ pub enum Sheath {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fighter {
     pub kind: Kind,
+    /// M6 (CA-Q9: A): the look the figure is drawn in; its own kind unless
+    /// the player wears a won rung's look over a knight's body. Only the
+    /// drawing reads it (`wounds::figure`)
+    pub dress: Kind,
     /// 0 the player's side, 1 the foes'
     pub team: u8,
     pub held: Held,
@@ -190,6 +194,7 @@ impl Fighter {
         }
         let mut f = Fighter {
             kind,
+            dress: kind,
             team,
             held,
             sheath: if drawn { Sheath::Drawn } else { Sheath::Sheathed },
@@ -1493,8 +1498,8 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 /// A foe of `kind` ahead of the player, facing them, sword drawn. A second
 /// and later foe stands to one side or the other of the first.
 pub fn spawn(w: &mut World, kind: Kind) {
-    // the book's entry the act would drive it by: the champion and the
-    // mirror are named as themselves but piloted on Knight B's (R7.303, R5.27)
+    // the book's entry the act would drive it by (R5.27; M6: every ladder
+    // opponent has its own, R7.303)
     let key = crate::pilot::pilot_named(crate::pilot::kind_name(kind)).map_or("bandit", |(_, k)| k);
     spawn_keyed(w, kind, key);
 }
@@ -1658,12 +1663,12 @@ mod tests {
 
     #[test]
     fn a_ladder_foe_spawned_by_kind_is_driven_by_its_book_entry() {
-        // R5.27: the champion and the mirror have no entry of their own yet
+        // R5.27; M6: the champion has its own entry now (R7.303)
         let mut w = World::new(1);
         spawn(&mut w, Kind::Champion);
         spawn(&mut w, Kind::Squire);
         let keys: Vec<&str> = w.foes.iter().map(|f| f.brain.key.as_str()).collect();
-        assert_eq!(keys, ["knight_b", "squire"]);
+        assert_eq!(keys, ["champion", "squire"]);
         assert_eq!(w.foes[0].fighter.kind, Kind::Champion);
     }
 

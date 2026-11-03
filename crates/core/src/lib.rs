@@ -24,6 +24,7 @@ pub mod geom;
 pub mod glossary;
 pub mod health;
 pub mod input;
+pub mod ladder;
 pub mod look;
 pub mod mesh;
 pub mod models;

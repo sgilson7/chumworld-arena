@@ -48,12 +48,9 @@ impl Garb {
 pub(super) fn start(kind: Kind, pose: &Pose, bare: u16, g: &Garb) -> K {
     let t = table();
     let b = build(kind);
-    let fwd = facing(pose.facing, 0);
     let up0 = pose.chest.sub(pose.pelvis).norm();
     let up = if up0 == V3::ZERO { V3::UP } else { up0 };
-    let back0 = fwd.neg();
-    let back = back0.sub(up.scale(back0.dot(up))).norm();
-    let back = if back == V3::ZERO { v3(0, 0, ONE) } else { back };
+    let back = super::body_back(pose.facing, up);
     let right = up.cross(back).norm();
     let sc = Scheme {
         main: g.c("main"),

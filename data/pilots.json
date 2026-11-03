@@ -1,5 +1,6 @@
 {
   "_note": "Each kind of foe and the behaviour trees they duel with (crates/core/src/pilot.rs). A tree is checked every 6 ticks on the duel as it was reaction_ticks ago; the first rule whose conditions all hold picks a move, and the move plays until it ends. A rule marked interrupt may break into a move under way, but never into a committed swing. Distances are centimetres, speeds centimetres a second, shares percent. hand_px is how far the pilot moves its mouse a tick, strike_px in a swing. keep_cm is the band a foe keeps to in a duel, that far outside its own reach (pilot::reach, shoulder to tip at full stretch: an orc's cleaver 144 cm, a bandit's short sword 140, the leader's sword 177); beyond_reach and within_reach count from the same reach. An attack steps in to 10 cm inside its reach and steps back out to the band after. The others in a group, all but the one nearest the player, run the ring tree. cuts weighs which cut an attack makes (crates/core/src/swing.rs): level (from the right), backhand (level, from the left), chop, rising, thrust; the pilot makes it as the player does, the left button held and the mouse moved that way once. M7 (wounds, T9): a foe whose sword hand is lost drops its weapon (unarmed); with the other hand whole it can take it up (can_take_up, weapon_within) and fights on with it, weaker. Orcs take theirs up when near and otherwise keep coming; bandits run; the leader goes back for its sword and switches hands.",
+  "_ladder": "M6: the ladder's seven opponents, squire (rung F) to mirror (rung S), each with its own entry and its own tree under its rung's key (crates/core/src/ladder.rs). Their rules are written with do first, so no line repeats the knight tree's. Each number and its reason is a row in SECOND-ORDER.md (R9.x); all are the agent's guess, for the person to judge from play.",
   "kinds": {
     "knight": {"held": "longsword", "health": 100, "reaction_ticks": 8, "servo_pct": 110, "hand_px": 40, "strike_px": 110, "keep_cm": [5, 35], "tree": "knight", "cuts": {"level": 25, "backhand": 20, "chop": 25, "rising": 15, "thrust": 15}},
     "orc": {
@@ -122,106 +123,13 @@
         "thrust": 15
       }
     },
-    "squire": {
-      "held": "longsword",
-      "health": 100,
-      "reaction_ticks": 10,
-      "servo_pct": 100,
-      "hand_px": 40,
-      "strike_px": 110,
-      "keep_cm": [
-        5,
-        35
-      ],
-      "tree": "leader",
-      "cuts": {
-        "level": 25,
-        "backhand": 20,
-        "chop": 25,
-        "rising": 15,
-        "thrust": 15
-      }
-    },
-    "sellsword": {
-      "held": "longsword",
-      "health": 100,
-      "reaction_ticks": 10,
-      "servo_pct": 100,
-      "hand_px": 40,
-      "strike_px": 110,
-      "keep_cm": [
-        5,
-        35
-      ],
-      "tree": "leader",
-      "cuts": {
-        "level": 25,
-        "backhand": 20,
-        "chop": 25,
-        "rising": 15,
-        "thrust": 15
-      }
-    },
-    "hedge": {
-      "held": "longsword",
-      "health": 100,
-      "reaction_ticks": 10,
-      "servo_pct": 100,
-      "hand_px": 40,
-      "strike_px": 110,
-      "keep_cm": [
-        5,
-        35
-      ],
-      "tree": "leader",
-      "cuts": {
-        "level": 25,
-        "backhand": 20,
-        "chop": 25,
-        "rising": 15,
-        "thrust": 15
-      }
-    },
-    "veteran": {
-      "held": "longsword",
-      "health": 100,
-      "reaction_ticks": 10,
-      "servo_pct": 100,
-      "hand_px": 40,
-      "strike_px": 110,
-      "keep_cm": [
-        5,
-        35
-      ],
-      "tree": "leader",
-      "cuts": {
-        "level": 25,
-        "backhand": 20,
-        "chop": 25,
-        "rising": 15,
-        "thrust": 15
-      }
-    },
-    "banneret": {
-      "held": "longsword",
-      "health": 100,
-      "reaction_ticks": 10,
-      "servo_pct": 100,
-      "hand_px": 40,
-      "strike_px": 110,
-      "keep_cm": [
-        5,
-        35
-      ],
-      "tree": "leader",
-      "cuts": {
-        "level": 25,
-        "backhand": 20,
-        "chop": 25,
-        "rising": 15,
-        "thrust": 15
-      }
-    }
+    "squire": {"tree": "squire", "held": "longsword", "health": 100, "reaction_ticks": 18, "servo_pct": 85, "hand_px": 30, "strike_px": 90, "keep_cm": [20, 50], "cuts": {"level": 30, "backhand": 25, "chop": 30, "rising": 10, "thrust": 5}},
+    "sellsword": {"tree": "sellsword", "held": "longsword", "health": 100, "reaction_ticks": 15, "servo_pct": 92, "hand_px": 34, "strike_px": 100, "keep_cm": [10, 40], "cuts": {"level": 35, "backhand": 30, "chop": 20, "rising": 10, "thrust": 5}},
+    "hedge": {"tree": "hedge", "held": "longsword", "health": 100, "reaction_ticks": 12, "servo_pct": 98, "hand_px": 38, "strike_px": 105, "keep_cm": [5, 35], "cuts": {"level": 25, "backhand": 20, "chop": 25, "rising": 15, "thrust": 15}},
+    "veteran": {"tree": "veteran", "held": "longsword", "health": 100, "reaction_ticks": 9, "servo_pct": 108, "hand_px": 40, "strike_px": 110, "keep_cm": [0, 30], "cuts": {"level": 20, "backhand": 15, "chop": 40, "rising": 15, "thrust": 10}},
+    "banneret": {"tree": "banneret", "held": "longsword", "health": 100, "reaction_ticks": 10, "servo_pct": 105, "hand_px": 42, "strike_px": 112, "keep_cm": [5, 35], "cuts": {"level": 25, "backhand": 20, "chop": 25, "rising": 15, "thrust": 15}},
+    "champion": {"tree": "champion", "held": "longsword", "health": 100, "reaction_ticks": 6, "servo_pct": 120, "hand_px": 46, "strike_px": 118, "keep_cm": [5, 35], "cuts": {"level": 25, "backhand": 20, "chop": 30, "rising": 10, "thrust": 15}},
+    "mirror": {"tree": "mirror", "held": "longsword", "health": 100, "reaction_ticks": 5, "servo_pct": 126, "hand_px": 50, "strike_px": 126, "keep_cm": [5, 35], "cuts": {"level": 25, "backhand": 25, "chop": 30, "rising": 10, "thrust": 10}}
   },
   "trees": {
     "orc": [
@@ -494,6 +402,107 @@
       {"if": [{"within_reach": 60}, {"opening": 45}, {"stamina_above": 35}, {"chance": 35}], "do": "attack", "interrupt": true},
       {"if": [{"within_reach": 60}, {"stamina_above": 50}, {"chance": 15}], "do": "feint_cut"},
       {"if": [{"chance": 25}], "do": "feint"},
+      {"do": "circle"}
+    ],
+    "squire": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 400}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "raise_guard", "if": [{"tip_near_head": 25}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 35}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 40}]},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 60}, {"stamina_above": 45}, {"chance": 20}], "interrupt": true},
+      {"do": "circle"}
+    ],
+    "sellsword": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}, {"chance": 40}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 30}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 45}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 35}, {"stamina_above": 30}, {"chance": 45}], "interrupt": true},
+      {"do": "circle"}
+    ],
+    "hedge": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}, {"chance": 70}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 35}], "interrupt": true},
+      {"do": "guard_up", "if": [{"swing_coming": 400}, {"chance": 15}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 60}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "kick", "if": [{"foe_turtles": 150}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 30}], "interrupt": true},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 45}, {"stamina_above": 35}, {"chance": 30}], "interrupt": true},
+      {"do": "feint_cut", "if": [{"within_reach": 60}, {"stamina_above": 60}, {"chance": 5}]},
+      {"do": "circle"}
+    ],
+    "veteran": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 35}], "interrupt": true},
+      {"do": "guard_up", "if": [{"swing_coming": 400}, {"chance": 20}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 70}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "kick", "if": [{"foe_turtles": 60}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 70}], "interrupt": true},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 40}, {"stamina_above": 35}, {"chance": 35}], "interrupt": true},
+      {"do": "feint_cut", "if": [{"within_reach": 60}, {"stamina_above": 50}, {"chance": 10}]},
+      {"do": "circle"}
+    ],
+    "banneret": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 35}], "interrupt": true},
+      {"do": "guard_up", "if": [{"swing_coming": 400}, {"chance": 25}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 68}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "kick", "if": [{"foe_turtles": 90}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 50}], "interrupt": true},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 45}, {"stamina_above": 40}, {"chance": 35}], "interrupt": true},
+      {"do": "feint_cut", "if": [{"within_reach": 60}, {"stamina_above": 50}, {"chance": 15}]},
+      {"do": "feint", "if": [{"chance": 25}]},
+      {"do": "circle"}
+    ],
+    "champion": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 35}], "interrupt": true},
+      {"do": "guard_up", "if": [{"swing_coming": 400}, {"chance": 25}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 80}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "kick", "if": [{"foe_turtles": 90}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 50}], "interrupt": true},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 45}, {"stamina_above": 40}, {"chance": 35}], "interrupt": true},
+      {"do": "feint_cut", "if": [{"within_reach": 60}, {"stamina_above": 50}, {"chance": 15}]},
+      {"do": "feint", "if": [{"chance": 25}]},
+      {"do": "circle"}
+    ],
+    "mirror": [
+      {"do": "guard", "if": ["foe_down"]},
+      {"do": "take_up", "if": ["can_take_up", {"weapon_within": 900}], "interrupt": true},
+      {"do": "back_off", "if": ["unarmed"], "interrupt": true},
+      {"do": "close_in", "if": [{"beyond_reach": 100}]},
+      {"do": "attack", "if": ["just_parried", {"within_reach": 60}], "interrupt": true},
+      {"do": "raise_guard", "if": [{"tip_near_head": 38}], "interrupt": true},
+      {"do": "guard_up", "if": [{"swing_coming": 400}, {"chance": 30}], "interrupt": true},
+      {"do": "block", "if": [{"swing_coming": 400}, {"chance": 80}], "interrupt": true},
+      {"do": "back_off", "if": [{"stamina_below": 30}]},
+      {"do": "kick", "if": [{"foe_turtles": 75}, {"gap_below": 175}, {"stamina_above": 35}, {"chance": 60}], "interrupt": true},
+      {"do": "attack", "if": [{"within_reach": 60}, {"opening": 45}, {"stamina_above": 40}, {"chance": 38}], "interrupt": true},
+      {"do": "feint_cut", "if": [{"within_reach": 60}, {"stamina_above": 50}, {"chance": 15}]},
+      {"do": "feint", "if": [{"chance": 25}]},
       {"do": "circle"}
     ],
     "ring": [
