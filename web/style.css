@@ -67,6 +67,31 @@ body[data-screen="round"] #overlay { align-items: flex-start; padding-top: 14vh;
 #online-status p { margin: 0; color: var(--ink); }
 #online-status { min-width: 0; padding: 14px 20px; }
 body[data-screen="online"] #overlay { flex-direction: column; gap: 12px; }
+/* M6: the ladder's rank cards, foot to top, and a rung's dossier. A card's
+   state is in its words and its border (solid, dashed when locked, double
+   when won) and its marks are drawn diamonds, besides any colour. */
+#ladder { max-width: min(1040px, calc(100vw - 32px)); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; margin: 4px 0 18px; }
+.panel button.card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 168px; margin: 0; padding: 12px 12px 10px; text-align: left; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; color: var(--ink); background: linear-gradient(180deg, #34302b 0%, #24211e 100%); border: 1px solid var(--stone-edge); border-left: 4px solid var(--accent); box-shadow: none; }
+.panel button.card + button.card { margin-top: 0; }
+.card .rank { font-size: 40px; line-height: 1; font-weight: 700; letter-spacing: 0.04em; color: var(--you); }
+.card .name { font-weight: 700; letter-spacing: 0.04em; }
+.card .state { flex: 1; font-size: 12px; color: var(--ink-soft); }
+.card .marks { display: flex; gap: 7px; padding: 2px 0 2px 2px; }
+.card .mark { width: 11px; height: 11px; transform: rotate(45deg); border: 1.5px solid var(--ink-soft); }
+.card .mark.won { background: var(--you); border-color: var(--you); }
+.panel button.card[data-state="locked"] { border-style: dashed; border-left-color: var(--stone-edge); background: repeating-linear-gradient(135deg, #24211e 0 8px, #1e1c19 8px 14px); }
+.card[data-state="locked"] .rank, .card[data-state="locked"] .name { color: var(--ink-soft); }
+.panel button.card[data-state="won"] { border-left: 6px double var(--you); }
+#dossier { max-width: 520px; display: flex; flex-direction: column; }
+/* the dossier reads heading, how it fights, the rank's table, then Fight */
+#dossier > h1 { order: -3; }
+#dossier > p:not(.note) { order: -2; }
+#dossier > h2, #dossier > table { order: -1; }
+#dossier > table { margin-bottom: 18px; }
+#dossier table.controls td:first-child { width: 30%; vertical-align: top; }
+#dossier table.controls kbd { border: none; background: none; padding: 0; text-align: left; font-weight: 700; color: var(--ink-soft); }
+#dossier table.controls td { padding: 5px 0; }
 table.controls { width: 100%; border-collapse: collapse; }
 table.controls td { padding: 4px 0; vertical-align: middle; font-size: 14px; }
 table.controls td:first-child { width: 46%; }

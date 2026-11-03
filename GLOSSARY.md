@@ -84,6 +84,12 @@ A short quick step to one side with Space and a movement key. You cannot dodge-s
 
 Not: roll
 
+### Dossier
+
+What the ladder tells you about an opponent before you fight it: its rank, what it wears, where it wears plate, how it fights and what winning gives.
+
+Not: profile, bio
+
 ### Draw
 
 Taking the sword out of its sheath with X. Drawn, the mouse still turns you; hold the right button to guard instead.
@@ -176,7 +182,7 @@ Not: bot, enemy AI, NPC, Black Knight
 
 ### Ladder
 
-The single-player run of arena fights against harder opponents in turn, each with its own costume.
+The single-player run of arena fights against harder opponents in turn, each with its own costume: {ladder.rungs} rungs from rank {ladder.foot} to rank {ladder.top}, each a duel won by the first to win {rounds.to_win} rounds.
 
 Not: campaign, tower, story mode
 
@@ -186,11 +192,23 @@ A cut across from one side to the other with the blade held flat: hold the left 
 
 Not: horizontal slash
 
+### Look
+
+The costume your knight is drawn in: the black helm, the ivory crown, or the costume of an opponent whose rung you have won. A look changes how you are drawn and nothing else: your plate, reach and strength stay a knight's.
+
+Not: skin, outfit
+
 ### Mail
 
 The rings of steel under plate. A part whose plate has broken off shows its mail, and a blow there lands whole.
 
 Not: chainmail, chain mail
+
+### Mark
+
+What a won rung shows on its rank card: one for a win, and a second for a win without losing a round. A rung keeps its best, up to {ladder.marks}.
+
+Not: star, medal
 
 ### Mirror
 
@@ -221,6 +239,16 @@ Not: platemail, plate mail
 A duel against the computer's knight, from the menu: best of three rounds.
 
 Not: training mode, tutorial
+
+### Rank
+
+A rung's letter on the ladder, from {ladder.foot} at the foot to {ladder.top} at the top.
+
+Not: tier
+
+### Rank card
+
+A rung of the ladder as the ladder shows it: its rank, its opponent, whether it is locked, open or won, and its marks.
 
 ### Relay
 
@@ -256,9 +284,15 @@ Moving at {run.speed} metres a second while Shift is held with a movement key, s
 
 Not: sprint
 
+### Rung
+
+One duel on the ladder against one opponent. The first rung is open; winning a rung opens the one above it and gives its opponent's look.
+
+Not: stage, mission
+
 ### Save
 
-What the game keeps in this browser between visits: your settings and your knight's look. You can download it as a file and load it again.
+What the game keeps in this browser between visits: your settings, your knight's look and the marks you have won on the ladder. You can download it as a file and load it again.
 
 Not: profile, account, cloud save
 

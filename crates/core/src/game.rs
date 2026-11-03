@@ -46,6 +46,9 @@ pub enum Screen {
     Online,
     /// M5: the choice of hosting or joining by pasted codes
     Paste,
+    /// M6: the ladder's rank cards, and one rung's dossier
+    Ladder,
+    Dossier,
 }
 
 impl Screen {
@@ -60,6 +63,8 @@ impl Screen {
             Screen::Result => "result",
             Screen::Online => "online",
             Screen::Paste => "paste",
+            Screen::Ladder => "ladder",
+            Screen::Dossier => "dossier",
         }
     }
 
@@ -147,6 +152,12 @@ pub struct Game {
     pub hosted: u64,
     /// M5: a duel's last words, kept for the transport after it is left
     pub parting: Vec<(u32, String)>,
+    /// M6: the rung whose dossier is open, or whose duel is under way
+    pub rung: usize,
+    /// M6: the duel under way is the ladder's, on `rung` (not Practice)
+    pub climbing: bool,
+    /// M6: the marks the last ladder duel earned, once it is over
+    pub earned: Option<u8>,
 }
 
 /// M5: how many of the transport's commands the view model keeps.
@@ -198,6 +209,9 @@ impl Game {
             build: String::from("dev"),
             hosted: 0,
             parting: Vec::new(),
+            rung: 0,
+            climbing: false,
+            earned: None,
         };
         g.world = g.fresh_world();
         g.draw();
@@ -217,10 +231,26 @@ impl Game {
 
     /// A new duel in rounds against the computer's knight.
     fn start_practice(&mut self) {
+        self.climbing = false;
+        self.start(PRACTICE_FOE);
+    }
+
+    /// M6: a new duel in rounds against rung `rung`'s opponent, on its own
+    /// pilot (`ladder::RUNGS`).
+    fn start_rung(&mut self) {
+        self.climbing = true;
+        self.earned = None;
+        self.start(crate::ladder::RUNGS[self.rung].key);
+    }
+
+    /// A new duel in rounds against the pilot `foe`, the player in the body
+    /// and (M6) the look the save keeps.
+    fn start(&mut self, foe: &str) {
         self.duels += 1;
         self.world = self.fresh_world();
-        crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())
-            .expect("the knight is in the pilots' book");
+        let k = self.kept.knight;
+        crate::rounds::begin_dressed(&mut self.world, foe, k.kind(), k.dress())
+            .expect("every pilot a duel begins with is in the pilots' book");
         for (n, v) in self.staged.clone() {
             // each was tried on the world when it was staged
             let _ = self.world.act(&n, &v);
@@ -517,9 +547,28 @@ impl Game {
             crate::rounds::Phase::Over => Screen::Result,
         };
         if self.screen != want {
+            if want == Screen::Result {
+                self.duel_over();
+            }
             self.screen = want;
             self.pending.clear();
             self.ui_version += 1;
+        }
+    }
+
+    /// M6: a ladder duel is over: its rung keeps the better of its marks
+    /// and the duel's, and the save is kept. Once a duel.
+    fn duel_over(&mut self) {
+        if !self.climbing || self.earned.is_some() || self.versus.is_some() {
+            return;
+        }
+        let Some(r) = self.world.rounds.as_ref() else {
+            return;
+        };
+        let before = self.kept.ladder;
+        self.earned = Some(self.kept.ladder.record(self.rung, r.wins));
+        if self.kept.ladder != before {
+            self.save_seq += 1;
         }
     }
 
@@ -582,11 +631,26 @@ impl Game {
 
     /// The menu, the duel behind it ended (M5: and online, left).
     fn leave_for_menu(&mut self) {
+        self.leave_duel();
+        self.show(Screen::Menu);
+    }
+
+    /// The duel behind this screen ended (M5: and online, left).
+    fn leave_duel(&mut self) {
         if self.in_duel() || self.versus.is_some() {
             self.leave_online();
             self.world = self.fresh_world();
         }
-        self.show(Screen::Menu);
+        self.climbing = false;
+    }
+
+    /// M6: the rung named by its key or its rank's letter.
+    fn rung_named(value: &str) -> Result<usize, String> {
+        let v = value.trim();
+        crate::ladder::RUNGS
+            .iter()
+            .position(|r| r.key == v || r.rank == v)
+            .ok_or_else(|| format!("There is no rung \"{value}\" on the ladder."))
     }
 
     /// The reader's settings changed: into the world, and a new save to keep.
@@ -651,6 +715,11 @@ impl Game {
                 }
                 // M5: the choice of hosting or joining by pasted codes
                 "paste" => self.show(Screen::Paste),
+                // M6: the ladder's rank cards; from a ladder duel, back to them
+                "ladder" => {
+                    self.leave_duel();
+                    self.show(Screen::Ladder);
+                }
                 "duel" => {
                     // from the menu or a result, a new duel; from a pause,
                     // the duel goes on where it was (M5: online, the duel
@@ -661,7 +730,12 @@ impl Game {
                         return Ok(());
                     }
                     if !self.in_duel() || self.screen == Screen::Result {
-                        self.start_practice();
+                        // M6: Rematch after a ladder duel fights the rung again
+                        if self.climbing && self.screen == Screen::Result {
+                            self.start_rung();
+                        } else {
+                            self.start_practice();
+                        }
                     }
                     self.show(Screen::Duel);
                     self.follow_rounds();
@@ -714,9 +788,37 @@ impl Game {
                 self.kept_changed();
             }
             "save.knight" => {
-                self.kept.knight = crate::save::Knight::named(value.trim())
+                let k = crate::save::Knight::named(value.trim())
                     .ok_or_else(|| format!("A knight's look is \"a\" or \"b\", not \"{value}\"."))?;
+                // M6 (CA-Q9: A): a rung's look once the rung is won
+                if !k.worn_by(&self.kept.ladder) {
+                    return Err(self.strings.get("look_not_won"));
+                }
+                self.kept.knight = k;
                 self.kept_changed();
+            }
+            // M6: the next look this save may wear, the knights first, then
+            // each won rung's from the foot
+            "settings.look" => {
+                let all = crate::save::Knight::all(&self.kept.ladder);
+                let at = all.iter().position(|k| *k == self.kept.knight).unwrap_or(0);
+                self.kept.knight = all[(at + 1) % all.len()];
+                self.kept_changed();
+            }
+            // M6: a rung's dossier, by its key or its rank
+            "ladder.rung" => {
+                self.rung = Self::rung_named(value)?;
+                self.show(Screen::Dossier);
+            }
+            // M6: the duel on the open dossier's rung, if it is open
+            "ladder.fight" => {
+                if !self.kept.ladder.open(self.rung) {
+                    return Err(self.strings.get("rung_shut"));
+                }
+                self.leave_duel();
+                self.start_rung();
+                self.show(Screen::Duel);
+                self.follow_rounds();
             }
             // the save this browser keeps, handed over by the page at the start
             "save.stored" => self.load(value, false),
@@ -854,6 +956,7 @@ impl Game {
             ),
         ));
         v.extend(crate::chivalry::values()); // M4
+        v.extend(crate::ladder::values()); // M6
         v
     }
 }
@@ -1245,5 +1348,287 @@ pub(crate) mod tests {
         assert!(g.hint_shown());
         frames(&mut g, 2, 0, 0);
         assert!(!g.hint_shown());
+    }
+
+    // ---- M6: the ladder ----
+
+    use crate::ladder::Progress;
+    use crate::pose::Kind;
+
+    /// Both rounds to the player: the foe falls, the beat runs, twice.
+    fn win_two(g: &mut Game) {
+        let beat = crate::rounds::BEAT_TICKS as i64;
+        for _ in 0..2 {
+            g.world.foes[0].fighter.health.hp = 0;
+            frames(g, 1, 0, 0);
+            frames(g, beat, 0, 0);
+        }
+    }
+
+    /// The player falls once, then wins two: a win that lost a round.
+    fn lose_one_win_two(g: &mut Game) {
+        let beat = crate::rounds::BEAT_TICKS as i64;
+        g.world.me.health.hp = 0;
+        frames(g, 1, 0, 0);
+        frames(g, beat, 0, 0);
+        win_two(g);
+    }
+
+    fn states(g: &Game) -> Vec<String> {
+        crate::api::ui(g).panels[0]
+            .cards
+            .iter()
+            .map(|c| c.state.clone())
+            .collect()
+    }
+
+    /// The ladder opens with rung F open and the rest locked; a locked
+    /// rung's dossier shows but cannot be fought; rung F's duel is the
+    /// squire on its own pilot, the player in Knight A.
+    #[test]
+    fn the_ladder_opens_at_rung_f_and_a_locked_rung_is_not_fought() {
+        let mut g = game();
+        g.act("screen.show", "menu").unwrap();
+        g.act("screen.show", "ladder").unwrap();
+        assert_eq!(g.screen, Screen::Ladder);
+        assert_eq!(
+            states(&g),
+            ["open", "locked", "locked", "locked", "locked", "locked", "locked"]
+        );
+        g.act("ladder.rung", "E").unwrap();
+        assert_eq!(g.screen, Screen::Dossier);
+        assert_eq!(
+            g.act("ladder.fight", ""),
+            Err("That rung is locked. Win the rung below it first.".into())
+        );
+        assert_eq!(g.screen, Screen::Dossier, "nothing began");
+        assert!(g.world.rounds.is_none());
+        assert_eq!(
+            g.act("ladder.rung", "Z"),
+            Err("There is no rung \"Z\" on the ladder.".into())
+        );
+        g.act("ladder.rung", "squire").unwrap();
+        g.act("ladder.fight", "").unwrap();
+        assert_eq!(g.screen, Screen::Duel);
+        let f = &g.world.foes[0];
+        assert_eq!(f.fighter.kind, Kind::Squire);
+        assert_eq!(f.brain.key, "squire");
+        assert_eq!(g.world.me.kind, Kind::KnightA);
+        assert_eq!(g.world.rounds.as_ref().unwrap().round, 1);
+    }
+
+    /// A win marks its rung (two marks for one without losing a round),
+    /// opens the next, and asks for a new save; Rematch fights the same
+    /// rung; a weaker win later keeps the better marks; leaving goes back
+    /// to the ladder.
+    #[test]
+    fn a_ladder_win_marks_its_rung_opens_the_next_and_is_saved() {
+        let mut g = game();
+        g.act("screen.show", "ladder").unwrap();
+        g.act("ladder.rung", "F").unwrap();
+        g.act("ladder.fight", "").unwrap();
+        let seq = g.save_seq;
+        win_two(&mut g);
+        assert_eq!(g.screen, Screen::Result);
+        assert_eq!(g.kept.ladder.marks, [2, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(g.save_seq, seq + 1, "the save is kept");
+        assert!(g.save_text().contains("\"ladder\": [\n      2,"));
+        let u = crate::api::ui(&g);
+        assert_eq!(u.panels[0].heading, "You win the duel");
+        assert_eq!(u.panels[0].text, "Rounds won: you 2, the squire 0.");
+        assert_eq!(
+            u.panels[0].note,
+            "Rank F won without losing a round: both marks. The squire's look is yours to wear: choose it under Your look in the settings."
+        );
+        let values: Vec<&str> = u.panels[0].actions.iter().map(|a| a.value.as_str()).collect();
+        assert_eq!(values, ["duel", "ladder", "menu"]);
+        // the result's frames record nothing more
+        frames(&mut g, 30, 0, 0);
+        assert_eq!(g.save_seq, seq + 1);
+        // Rematch: rung F again, and a win that lost a round keeps the two
+        g.act("screen.show", "duel").unwrap();
+        assert_eq!(g.world.foes[0].brain.key, "squire");
+        lose_one_win_two(&mut g);
+        assert_eq!(g.earned, Some(1));
+        assert_eq!(g.kept.ladder.marks[0], 2, "the better marks are kept");
+        assert_eq!(g.save_seq, seq + 1, "nothing changed, nothing saved");
+        g.act("screen.show", "ladder").unwrap();
+        assert_eq!(g.screen, Screen::Ladder);
+        assert!(g.world.rounds.is_none(), "leaving ends the duel");
+        assert_eq!(
+            states(&g),
+            ["won", "open", "locked", "locked", "locked", "locked", "locked"]
+        );
+        // rung E lost: no mark, nothing opens, the result says so
+        g.act("ladder.rung", "E").unwrap();
+        g.act("ladder.fight", "").unwrap();
+        assert_eq!(g.world.foes[0].fighter.kind, Kind::Sellsword);
+        let beat = crate::rounds::BEAT_TICKS as i64;
+        for _ in 0..2 {
+            g.world.me.health.hp = 0;
+            frames(&mut g, 1, 0, 0);
+            frames(&mut g, beat, 0, 0);
+        }
+        assert_eq!(g.screen, Screen::Result);
+        assert_eq!(g.kept.ladder.marks[1], 0);
+        let u = crate::api::ui(&g);
+        assert_eq!(u.panels[0].heading, "The sellsword wins the duel");
+        assert_eq!(
+            u.panels[0].note,
+            "Rank E is not won yet. Choose Rematch to fight it again."
+        );
+        // a pause in a ladder duel leaves for the ladder
+        g.act("screen.show", "duel").unwrap();
+        g.act("key.escape", "").unwrap();
+        let u = crate::api::ui(&g);
+        assert_eq!(u.panels[0].actions[2].value, "ladder");
+        // Practice after the ladder is Practice again
+        g.act("screen.show", "menu").unwrap();
+        g.act("screen.show", "duel").unwrap();
+        assert_eq!(g.world.foes[0].brain.key, "knight");
+        assert!(!g.climbing);
+    }
+
+    /// The round's lines name the rung's opponent, not the knight.
+    #[test]
+    fn a_ladder_round_names_its_opponent() {
+        let mut g = game();
+        g.kept.ladder = Progress {
+            marks: [1, 1, 1, 0, 0, 0, 0],
+        };
+        g.act("ladder.rung", "hedge").unwrap();
+        g.act("ladder.fight", "").unwrap();
+        g.world.foes[0].fighter.health.hp = 0;
+        frames(&mut g, 1, 0, 0);
+        let u = crate::api::ui(&g);
+        assert_eq!(u.panels[0].heading, "Round 1 to you");
+        assert_eq!(u.panels[0].note, "You 1 · Hedge knight 0");
+        assert!(
+            u.panels[0].text.starts_with("The hedge knight fell"),
+            "{}",
+            u.panels[0].text
+        );
+        assert_eq!(crate::api::bars(&g)[1].who, "The hedge knight");
+    }
+
+    /// CA-Q9: A. A won rung's look changes how the player is drawn and
+    /// nothing else: the body, its plate and its build stay Knight A's, and
+    /// the computer's knight in Practice still wears Knight B. A look not
+    /// won is refused; the look's choice steps through the won looks only.
+    #[test]
+    fn a_won_rung_s_look_is_drawn_over_a_knight_s_body_and_nothing_else() {
+        let mut g = game();
+        g.act("screen.show", "settings").unwrap();
+        g.act("settings.look", "toggle").unwrap();
+        assert_eq!(g.kept.knight, crate::save::Knight::B);
+        g.act("settings.look", "toggle").unwrap();
+        assert_eq!(g.kept.knight, crate::save::Knight::A, "no rung won: A and B");
+        assert_eq!(
+            g.act("save.knight", "squire"),
+            Err("That look is won on the ladder. Win its rung first.".into())
+        );
+        g.kept.ladder = Progress {
+            marks: [1, 2, 0, 0, 0, 0, 0],
+        };
+        let seq = g.save_seq;
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            g.act("settings.look", "toggle").unwrap();
+            seen.push(g.kept.knight.id());
+        }
+        assert_eq!(seen, ["b", "squire", "sellsword", "a"]);
+        assert_eq!(g.save_seq, seq + 4, "each change is saved");
+        g.act("save.knight", "sellsword").unwrap();
+        let u = crate::api::ui(&g);
+        let look = u.panels[0].settings.iter().find(|s| s.id == "look").unwrap();
+        assert_eq!(look.value, "The sellsword");
+        practice(&mut g);
+        let me = &g.world.me;
+        assert_eq!(me.kind, Kind::KnightA);
+        assert_eq!(me.dress, Kind::Sellsword);
+        assert_eq!(me.health.limbs.plate, crate::plate::full(Kind::KnightA));
+        assert_eq!(me.build(), crate::pose::build(Kind::KnightA));
+        assert_eq!(g.world.foes[0].fighter.kind, Kind::KnightB);
+        // and each round stands it up in the look again
+        let beat = crate::rounds::BEAT_TICKS as i64;
+        g.world.foes[0].fighter.health.hp = 0;
+        frames(&mut g, 1 + beat, 0, 0);
+        assert_eq!(g.world.rounds.as_ref().unwrap().round, 2);
+        assert_eq!(g.world.me.dress, Kind::Sellsword);
+        // drawn: the opponent's own model, not Knight A's (seen from the
+        // foe's side, the player's figure in the third person)
+        let mut w = g.world.clone();
+        w.eye_view = false;
+        w.foes.clear();
+        let mut worn = crate::render::Shapes::default();
+        crate::player::draw(&w, ONE, &crate::look::tests::look(), &mut worn);
+        w.me.dress = Kind::KnightA;
+        let mut plain = crate::render::Shapes::default();
+        crate::player::draw(&w, ONE, &crate::look::tests::look(), &mut plain);
+        assert_ne!(worn.list.len(), plain.list.len(), "the sellsword is drawn");
+    }
+
+    /// M6 in first person: whichever won rung's look the player wears,
+    /// nothing of its own figure is drawn within 25 cm of the eye and
+    /// within 36° of straight ahead, half the 72.5° the view spans top to
+    /// bottom at 105° across (the knights' test above counts anything
+    /// ahead; the champion's gilt ridge down its breastplate, 55° below the
+    /// eye, shows only when the player looks down, R9.10).
+    #[test]
+    fn no_look_s_helm_is_drawn_across_its_own_eye() {
+        for r in crate::ladder::RUNGS {
+            let mut g = game();
+            g.kept.ladder = Progress {
+                marks: [1, 1, 1, 1, 1, 1, 1],
+            };
+            g.act("save.knight", r.key).unwrap();
+            practice(&mut g);
+            assert_eq!(g.world.me.dress, r.kind);
+            let mut w = g.world.clone();
+            w.foes.clear();
+            let eye = crate::player::eye(&w, ONE, w.aim);
+            let ahead = crate::geom::facing(w.aim.yaw, 0);
+            let mut out = crate::render::Shapes::default();
+            crate::player::draw(&w, ONE, &crate::look::tests::look(), &mut out);
+            // cos 36° = 0.809
+            let near = out
+                .list
+                .iter()
+                .filter(|s| {
+                    let d = s.at.t.sub(eye);
+                    d.len() < ONE / 4 && d.dot(ahead) > fx::mul(d.len(), ONE * 809 / 1000)
+                })
+                .count();
+            assert_eq!(near, 0, "{}: shapes before the eye", r.key);
+        }
+    }
+
+    /// The save's progress is the ladder's: a file with marks shows them,
+    /// and the browser's save is the same text.
+    #[test]
+    fn a_save_file_with_progress_shows_on_the_ladder() {
+        let mut g = game();
+        let k = crate::save::Kept {
+            ladder: Progress {
+                marks: [2, 2, 1, 1, 0, 0, 0],
+            },
+            knight: crate::save::Knight::Rung(3),
+            ..crate::save::Kept::default()
+        };
+        g.act("save.file", &crate::save::text(&k)).unwrap();
+        assert_eq!(g.kept, k);
+        g.act("screen.show", "ladder").unwrap();
+        assert_eq!(
+            states(&g),
+            ["won", "won", "won", "won", "open", "locked", "locked"]
+        );
+        let u = crate::api::ui(&g);
+        let marks: Vec<u8> = u.panels[0].cards.iter().map(|c| c.marks).collect();
+        assert_eq!(marks, [2, 2, 1, 1, 0, 0, 0]);
+        assert_eq!(u.panels[0].cards[0].text, "Won without losing a round");
+        assert_eq!(u.panels[0].cards[2].text, "Won");
+        assert_eq!(u.panels[0].cards[5].text, "Locked: win rank B first.");
+        assert_eq!(u.panels[0].cards[1].marks_text, "2 of 2 marks");
+        assert_eq!(g.save_text(), crate::save::text(&k));
     }
 }

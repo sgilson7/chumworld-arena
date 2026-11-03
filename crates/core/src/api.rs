@@ -93,6 +93,24 @@ pub struct Row {
     pub does: String,
 }
 
+/// M6: one rung of the ladder as its rank card shows it: the rank's letter,
+/// the opponent, whether it is locked, open or won (`state`, and in words
+/// `text`), its marks of the most it can hold (`marks_text` says them in
+/// words, besides the page's drawn marks), and the button that opens its
+/// dossier.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Card {
+    pub id: String,
+    pub rank: String,
+    pub name: String,
+    pub state: String,
+    pub text: String,
+    pub marks: u8,
+    pub marks_most: u8,
+    pub marks_text: String,
+    pub action: Action,
+}
+
 /// One block of the screen. Empty fields are left out of the JSON.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Panel {
@@ -115,6 +133,9 @@ pub struct Panel {
     pub rows: Vec<Row>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
+    /// M6: the ladder's rank cards, after the text
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub cards: Vec<Card>,
 }
 
 /// A term and its definition, for the page's hover hints.
@@ -222,6 +243,7 @@ fn panel(id: &str) -> Panel {
         rows_heading: String::new(),
         rows: Vec::new(),
         actions: Vec::new(),
+        cards: Vec::new(),
     }
 }
 
@@ -339,14 +361,170 @@ fn settings(g: &Game) -> Vec<Setting> {
             }),
             actions: toggle("settings.aim_help"),
         },
+        // M6: the look, the knights' or a won rung's opponent's (CA-Q9: A)
+        Setting {
+            id: "look".into(),
+            label: s.get("setting_look"),
+            value: look_name(g, k.knight),
+            actions: toggle("settings.look"),
+        },
     ]
 }
 
-/// The score in words: "You 1 · Knight 0".
+/// M6: a look's name: the knight's or the opponent's working label.
+pub fn look_name(g: &Game, k: crate::save::Knight) -> String {
+    g.strings
+        .get(&format!("who_{}", crate::pilot::kind_name(k.dress())))
+}
+
+/// M6: what the round and result lines call the foe: the knight in
+/// Practice and online, a rung's opponent on the ladder ("squire").
+fn foe_name(g: &Game) -> String {
+    let key = if g.climbing && g.versus.is_none() {
+        crate::ladder::RUNGS[g.rung].key
+    } else {
+        "knight"
+    };
+    g.strings.get(&format!("short_{key}")).to_lowercase()
+}
+
+/// The name at the head of a sentence: its first letter a capital.
+fn capital(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        Some(f) => f.to_uppercase().chain(c).collect(),
+        None => String::new(),
+    }
+}
+
+/// M6: where an opponent wears plate, in words: every part, or the parts
+/// one by one, a pair as both (`plate::covered`, the one table).
+fn plate_words(g: &Game, kind: crate::pose::Kind) -> String {
+    use crate::wounds::{bit, FOREARM, HEAD, SHIN, THIGH, TORSO, UPPER_ARM};
+    let s = &g.strings;
+    let c = crate::plate::covered(kind);
+    if c == (1 << crate::blade::PARTS) - 1 {
+        return s.get("plate_every");
+    }
+    let on = |p: usize| c & bit(p) != 0;
+    let mut words = Vec::new();
+    if on(HEAD) {
+        words.push(s.get("part_head"));
+    }
+    if on(TORSO) {
+        words.push(s.get("part_torso"));
+    }
+    for (pair, key) in [
+        (UPPER_ARM, "part_upper_arm"),
+        (FOREARM, "part_forearm"),
+        (THIGH, "part_thigh"),
+        (SHIN, "part_shin"),
+    ] {
+        let part = [("part", s.get(key))];
+        let [l, r] = [on(pair[crate::pose::LEFT]), on(pair[crate::pose::RIGHT])];
+        match (l, r) {
+            (true, true) => words.push(fill(&s.get("plate_both"), &part)),
+            (true, false) => words.push(fill(&s.get("plate_left"), &part)),
+            (false, true) => words.push(fill(&s.get("plate_right"), &part)),
+            _ => {}
+        }
+    }
+    capital(&words.join(", "))
+}
+
+/// M6: a rung's state in words, for its card and its dossier.
+fn rung_text(g: &Game, i: usize) -> (String, String) {
+    use crate::ladder::State;
+    let s = &g.strings;
+    match g.kept.ladder.state(i) {
+        State::Locked => (
+            "locked".into(),
+            fill(
+                &s.get("rung_locked"),
+                &[("below", crate::ladder::RUNGS[i - 1].rank.to_string())],
+            ),
+        ),
+        State::Open => ("open".into(), s.get("rung_open")),
+        State::Won(m) => ("won".into(), s.get(&format!("rung_won_{m}"))),
+    }
+}
+
+/// M6: the ladder's rank cards, foot first.
+fn cards(g: &Game) -> Vec<Card> {
+    let s = &g.strings;
+    crate::ladder::RUNGS
+        .iter()
+        .enumerate()
+        .map(|(i, r)| {
+            let (state, text) = rung_text(g, i);
+            let marks = g.kept.ladder.marks[i];
+            let most = crate::ladder::MARKS_MOST;
+            let name = s.get(&format!("who_{}", r.key));
+            Card {
+                id: r.key.into(),
+                rank: r.rank.into(),
+                name: name.clone(),
+                state,
+                text,
+                marks,
+                marks_most: most,
+                marks_text: fill(
+                    &s.get("marks_of"),
+                    &[("n", marks.to_string()), ("most", most.to_string())],
+                ),
+                action: Action {
+                    label: fill(&s.get("rank"), &[("rank", r.rank.to_string())]),
+                    ..button(g, "ladder.rung", r.key, "rank", false)
+                },
+            }
+        })
+        .collect()
+}
+
+/// M6: one rung's dossier: who, how it fights, its rank, what it wears,
+/// where its plate is, its marks, and what winning it gives; Fight when
+/// the rung is open.
+fn dossier(g: &Game) -> Panel {
+    let s = &g.strings;
+    let i = g.rung;
+    let r = crate::ladder::RUNGS[i];
+    let (_, state) = rung_text(g, i);
+    let row = |k: &str, d: String| Row {
+        key: s.get(k),
+        does: d,
+    };
+    let open = g.kept.ladder.open(i);
+    Panel {
+        heading: s.get(&format!("who_{}", r.key)),
+        text: s.get(&format!("dossier_{}", r.key)),
+        note: if open { String::new() } else { state.clone() },
+        rows_heading: fill(&s.get("rank"), &[("rank", r.rank.to_string())]),
+        rows: vec![
+            row("dossier_wears", s.get(&format!("wears_{}", r.key))),
+            row("dossier_plate", plate_words(g, r.kind)),
+            row("dossier_marks", state),
+            row("dossier_reward", s.get("dossier_reward_text")),
+        ],
+        actions: vec![
+            Action {
+                enabled: open,
+                ..button(g, "ladder.fight", r.key, "fight", true)
+            },
+            button(g, "screen.show", "ladder", "back_to_ladder", false),
+        ],
+        ..panel("dossier")
+    }
+}
+
+/// The score in words: "You 1 · Knight 0" (M6: "You 1 · Squire 0").
 fn score(g: &Game, r: &crate::rounds::Rounds) -> String {
     fill(
         &g.strings.get("round_score"),
-        &[("you", r.wins[0].to_string()), ("foe", r.wins[1].to_string())],
+        &[
+            ("you", r.wins[0].to_string()),
+            ("foe", r.wins[1].to_string()),
+            ("Name", capital(&foe_name(g))),
+        ],
     )
 }
 
@@ -354,29 +532,31 @@ fn score(g: &Game, r: &crate::rounds::Rounds) -> String {
 fn fall_text(g: &Game, r: &crate::rounds::Rounds) -> (String, String) {
     use crate::rounds::{Blow, Fall};
     let s = &g.strings;
-    let n = [("n", r.round.to_string())];
+    let name = foe_name(g);
+    let n = [("n", r.round.to_string()), ("name", name.clone())];
+    let named = |key: &str| fill(&s.get(key), &[("name", name.clone())]);
     match r.fall {
         Some(Fall::One { who, blow }) => {
             let heading = fill(&s.get(if who == 1 { "round_to_you" } else { "round_to_foe" }), &n);
             let text = match blow {
-                Blow::Sand => s.get(if who == 1 {
+                Blow::Sand => named(if who == 1 {
                     "fell_foe_sand"
                 } else {
                     "fell_you_sand"
                 }),
-                Blow::Blade => s.get(if who == 1 {
+                Blow::Blade => named(if who == 1 {
                     "fell_foe_blade"
                 } else {
                     "fell_you_blade"
                 }),
                 Blow::Cut(k) => fill(
                     &s.get(if who == 1 { "fell_foe_cut" } else { "fell_you_cut" }),
-                    &[("blow", s.get(k.key()))],
+                    &[("blow", s.get(k.key())), ("name", name.clone())],
                 ),
             };
             (heading, text)
         }
-        _ => (fill(&s.get("round_again"), &n), s.get("fell_both")),
+        _ => (fill(&s.get("round_again"), &n), named("fell_both")),
     }
 }
 
@@ -400,6 +580,7 @@ pub fn ui(g: &Game) -> Ui {
                 note: s.get("online_menu_note"),
                 actions: vec![
                     button(g, "screen.show", "duel", "practice", true),
+                    button(g, "screen.show", "ladder", "ladder", false),
                     button(g, "online.host", "room", "host", false),
                     button(g, "online.join", "room", "join", false),
                     button(g, "screen.show", "paste", "pasted_codes", false),
@@ -440,7 +621,12 @@ pub fn ui(g: &Game) -> Ui {
             actions: vec![
                 button(g, "screen.show", "duel", "resume", true),
                 button(g, "screen.show", "settings", "settings", false),
-                button(g, "screen.show", "menu", "leave_duel", false),
+                // M6: a ladder duel is left for the ladder
+                if g.climbing {
+                    button(g, "screen.show", "ladder", "leave_duel", false)
+                } else {
+                    button(g, "screen.show", "menu", "leave_duel", false)
+                },
             ],
             rows_heading,
             rows,
@@ -485,26 +671,46 @@ pub fn ui(g: &Game) -> Ui {
                     None => button(g, "screen.show", "duel", "rematch", true),
                 };
                 let waiting = g.versus.as_ref().is_some_and(|v| v.rematch);
+                let name = [
+                    ("you", r.wins[0].to_string()),
+                    ("foe", r.wins[1].to_string()),
+                    ("name", foe_name(g)),
+                ];
+                let mut actions = vec![rematch];
+                if g.climbing {
+                    actions.push(button(g, "screen.show", "ladder", "back_to_ladder", false));
+                }
+                actions.push(button(g, "screen.show", "menu", "back_to_menu", false));
                 panels.push(Panel {
-                    heading: s.get(if won { "result_won" } else { "result_lost" }),
+                    heading: fill(&s.get(if won { "result_won" } else { "result_lost" }), &name),
                     text: fill(
                         &s.get(if won {
                             "result_won_text"
                         } else {
                             "result_lost_text"
                         }),
-                        &[("you", r.wins[0].to_string()), ("foe", r.wins[1].to_string())],
+                        &name,
                     ),
                     note: if waiting {
                         s.get("online.rematch_wait")
+                    } else if g.climbing {
+                        earned_text(g)
                     } else {
                         String::new()
                     },
-                    actions: vec![rematch, button(g, "screen.show", "menu", "back_to_menu", false)],
+                    actions,
                     ..panel("result")
                 });
             }
         }
+        Screen::Ladder => panels.push(Panel {
+            heading: s.get("ladder_heading"),
+            text: fill(&s.get("ladder_text"), &crate::ladder::values()),
+            cards: cards(g),
+            actions: vec![button(g, "screen.show", "menu", "back_to_menu", false)],
+            ..panel("ladder")
+        }),
+        Screen::Dossier => panels.push(dossier(g)),
         Screen::Duel => {}
     }
     let mut hud = vec![HudItem {
@@ -573,6 +779,24 @@ pub fn ui(g: &Game) -> Ui {
             sums: g.versus.as_ref().map(|v| v.sums()).unwrap_or_default(),
         },
         version: g.ui_version,
+    }
+}
+
+/// M6: what a ladder duel's result gave, in words: the rung's marks, and
+/// the look it gave when it was won the first time.
+fn earned_text(g: &Game) -> String {
+    let s = &g.strings;
+    let r = crate::ladder::RUNGS[g.rung];
+    let rank = [("rank", r.rank.to_string())];
+    match g.earned {
+        Some(0) | None => fill(&s.get("earned_none"), &rank),
+        Some(m) => {
+            let mut t = fill(&s.get(&format!("earned_{m}")), &rank);
+            let look = crate::save::Knight::Rung(g.rung as u8);
+            t.push(' ');
+            t.push_str(&fill(&s.get("earned_look"), &[("name", look_name(g, look))]));
+            t
+        }
     }
 }
 
@@ -750,25 +974,30 @@ mod tests {
             .iter()
             .map(|a| a["label"].as_str().unwrap())
             .collect();
-        assert_eq!(labels, ["Practice", "Host", "Join", "Pasted codes", "Settings"]);
+        assert_eq!(
+            labels,
+            ["Practice", "Ladder", "Host", "Join", "Pasted codes", "Settings"]
+        );
         assert_eq!(p["actions"][0]["engage"], true);
         assert_eq!(p["actions"][0]["value"], "duel");
+        // M6: the ladder, under Practice
+        assert_eq!(p["actions"][1]["value"], "ladder");
         // M5: Host and Join open, by room code, and Pasted codes beside them
-        assert_eq!(p["actions"][1]["enabled"], true);
-        assert_eq!(p["actions"][1]["name"], "online.host");
-        assert_eq!(p["actions"][2]["name"], "online.join");
-        assert_eq!(p["actions"][3]["value"], "paste");
+        assert_eq!(p["actions"][2]["enabled"], true);
+        assert_eq!(p["actions"][2]["name"], "online.host");
+        assert_eq!(p["actions"][3]["name"], "online.join");
+        assert_eq!(p["actions"][4]["value"], "paste");
         // and nothing asks the transport for a link until one is chosen (CA-4)
         assert!(v["ok"]["online"]["cmds"].as_array().unwrap().is_empty());
         assert!(
             v["ok"]["bars"].as_array().unwrap().is_empty(),
             "no bars before the duel"
         );
-        // the settings: four rows, each with its value in words
+        // the settings: five rows (M6: the look), each with its value in words
         let v = json(&act(&mut g, "screen.show", "settings"));
         let rows = v["ok"]["panels"][0]["settings"].as_array().unwrap();
         let values: Vec<&str> = rows.iter().map(|r| r["value"].as_str().unwrap()).collect();
-        assert_eq!(values, ["100%", "Off", "105°", "None"]);
+        assert_eq!(values, ["100%", "Off", "105°", "None", "The black helm"]);
         let acts = v["ok"]["panels"][0]["actions"].as_array().unwrap();
         assert_eq!(acts[1]["file"], true, "loading a save asks for a file");
         assert_eq!(v["ok"]["save"]["file_name"], "chumworld-arena-save.json");
@@ -896,6 +1125,75 @@ mod tests {
         assert_eq!(n["actions"]["forward"], 1);
         assert_eq!(n["actions"]["swing"], 1 << 24);
         assert_eq!(n["view"]["eye"][1], render::VIEW_VALUES);
+    }
+
+    /// M6: the ladder's seven rank cards, foot first, each opening its
+    /// dossier; a dossier names the opponent, how it fights, what it wears
+    /// and where its plate is (worked from each concept sheet's steel,
+    /// `plate::covered`), and offers Fight only on an open rung.
+    #[test]
+    fn the_ladder_shows_rank_cards_and_each_dossier_its_plate_and_fight() {
+        let mut g = game();
+        let u = json(&act(&mut g, "screen.show", "ladder"));
+        assert_eq!(u["ok"]["screen"], "ladder");
+        let p = &u["ok"]["panels"][0];
+        assert_eq!(p["heading"], "The ladder");
+        assert!(
+            p["text"].as_str().unwrap().starts_with(
+                "7 opponents, each harder than the last, from rank F at the foot to rank S at the top."
+            ),
+            "{}",
+            p["text"]
+        );
+        let cards = p["cards"].as_array().unwrap();
+        let ranks: Vec<&str> = cards.iter().map(|c| c["rank"].as_str().unwrap()).collect();
+        assert_eq!(ranks, ["F", "E", "D", "C", "B", "A", "S"]);
+        assert_eq!(cards[0]["name"], "The squire");
+        assert_eq!(cards[6]["name"], "The mirror");
+        assert_eq!(cards[0]["text"], "Open");
+        assert_eq!(cards[1]["text"], "Locked: win rank F first.");
+        assert_eq!(cards[1]["marks_text"], "0 of 2 marks");
+        assert_eq!(cards[3]["action"]["name"], "ladder.rung");
+        assert_eq!(cards[3]["action"]["value"], "veteran");
+        assert_eq!(cards[3]["action"]["label"], "Rank C");
+        let plate = |g: &mut Game, key: &str| {
+            let u = json(&act(g, "ladder.rung", key));
+            let rows = u["ok"]["panels"][0]["rows"].as_array().unwrap().clone();
+            rows.iter().find(|r| r["key"] == "Plate on").unwrap()["does"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        };
+        assert_eq!(plate(&mut g, "squire"), "Head");
+        assert_eq!(
+            plate(&mut g, "sellsword"),
+            "Head, torso, right upper arm, both forearms"
+        );
+        assert_eq!(
+            plate(&mut g, "hedge"),
+            "Head, torso, both upper arms, both forearms, both thighs"
+        );
+        assert_eq!(plate(&mut g, "veteran"), "Head, left upper arm, both forearms");
+        for k in ["banneret", "champion", "mirror"] {
+            assert_eq!(plate(&mut g, k), "Every part", "{k}");
+        }
+        let u = json(&act(&mut g, "ladder.rung", "F"));
+        let d = &u["ok"]["panels"][0];
+        assert_eq!(u["ok"]["screen"], "dossier");
+        assert_eq!(d["heading"], "The squire");
+        assert_eq!(d["rows_heading"], "Rank F");
+        assert!(d["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("Slow to see a cut coming"));
+        assert_eq!(d["actions"][0]["name"], "ladder.fight");
+        assert_eq!(d["actions"][0]["enabled"], true);
+        assert_eq!(d["actions"][0]["engage"], true);
+        assert_eq!(d["actions"][1]["value"], "ladder");
+        let u = json(&act(&mut g, "ladder.rung", "S"));
+        let d = &u["ok"]["panels"][0];
+        assert_eq!(d["actions"][0]["enabled"], false, "the mirror is locked");
+        assert_eq!(d["note"], "Locked: win rank A first.");
     }
 
     // ---- M5: online play, two games joined by a wire in the test ----

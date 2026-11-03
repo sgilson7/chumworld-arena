@@ -125,6 +125,12 @@ async function main() {
     box.id = p.id;
     if (p.heading) box.append(make("h1", p.heading));
     if (p.text) box.append(make("p", p.text));
+    // M6: the ladder's rank cards
+    if (p.cards) {
+      const grid = make("div", undefined, "cards");
+      grid.append(...p.cards.map(card));
+      box.append(grid);
+    }
     (p.settings || []).forEach((s) => {
       const row = make("div", undefined, "setting");
       row.id = `setting-${s.id}`;
@@ -146,6 +152,29 @@ async function main() {
       box.append(table);
     }
     return box;
+  }
+
+  // M6: one rank card: the rank's letter, the opponent, its state in words,
+  // and its marks drawn as diamonds, filled when won, with the count in
+  // words for a screen reader and a hover (BRIEF.md, Accessibility). The
+  // whole card opens the rung's dossier.
+  function card(c) {
+    const node = make("button", undefined, "card");
+    node.id = `card-${c.id}`;
+    node.dataset.state = c.state;
+    node.dataset.marks = String(c.marks);
+    node.dataset.action = c.action.name;
+    node.dataset.value = c.action.value;
+    node.setAttribute("aria-label", `${c.action.label}: ${c.name}. ${c.text}. ${c.marks_text}.`);
+    const marks = make("span", undefined, "marks");
+    marks.title = c.marks_text;
+    for (let i = 0; i < c.marks_most; i += 1) marks.append(make("span", undefined, i < c.marks ? "mark won" : "mark"));
+    node.append(make("span", c.rank, "rank"), make("span", c.name, "name"), make("span", c.text, "state"), marks);
+    node.addEventListener("click", () => {
+      node.blur();
+      act(c.action.name, c.action.value);
+    });
+    return node;
   }
 
   // M5: a box of text: a code to copy (fixed, marked ready once it holds

@@ -27,8 +27,8 @@ def run(page, check, engine):
     page.click("#title button")
     page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
     labels = [b.inner_text().strip().lower() for b in page.query_selector_all("#menu button")]
-    want = [STRINGS[k].lower() for k in ("practice", "host", "join", "pasted_codes", "settings")]
-    check(labels == want, f"the menu offers Practice, Host, Join, Pasted codes and Settings {labels}")
+    want = [STRINGS[k].lower() for k in ("practice", "ladder", "host", "join", "pasted_codes", "settings")]
+    check(labels == want, f"the menu offers Practice, Ladder, Host, Join, Pasted codes and Settings {labels}")
     # M5: Host and Join are open; this check never presses either, so it still
     # sees no WebSocket and no request off the origin (CA-4, online_fence.rs)
     check(page.is_enabled('#menu button[data-action="online.host"]'), "Host is open")
@@ -58,3 +58,37 @@ def run(page, check, engine):
     page.keyboard.press("Escape")
     page.wait_for_selector('body[data-screen="paused"]', timeout=10000)
     check(page.inner_text("#paused h1") == STRINGS["paused"], "Esc pauses the duel")
+
+    # M6: the ladder. Seven rank cards F to S (ladder.rs), only F open in a
+    # new save; F's dossier offers Fight, S's does not; F's duel is against
+    # the squire, whose bar names it (data/strings.json who_squire) and who
+    # starts with 100 health (data/pilots.json squire)
+    page.click('#paused button[data-value="menu"]')
+    page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
+    page.click('#menu button[data-value="ladder"]')
+    page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
+    ranks = [n.inner_text().strip() for n in page.query_selector_all("#ladder .card .rank")]
+    check(ranks == ["F", "E", "D", "C", "B", "A", "S"], f"the ladder shows seven rank cards F to S {ranks}")
+    states = [n.get_attribute("data-state") for n in page.query_selector_all("#ladder .card")]
+    check(states == ["open"] + ["locked"] * 6, f"only rank F is open in a new save {states}")
+    check(len(page.query_selector_all("#card-squire .mark")) == 2, "a card draws room for two marks")
+    check(len(page.query_selector_all("#ladder .mark.won")) == 0, "no mark is won yet")
+    page.click("#card-mirror")
+    page.wait_for_selector('body[data-screen="dossier"]', timeout=10000)
+    check(page.inner_text("#dossier h1") == STRINGS["who_mirror"], "rank S's dossier names the mirror")
+    check(page.is_disabled('#dossier button[data-action="ladder.fight"]'), "a locked rung offers no fight")
+    page.click('#dossier button[data-value="ladder"]')
+    page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
+    page.click("#card-squire")
+    page.wait_for_selector('body[data-screen="dossier"]', timeout=10000)
+    check(STRINGS["dossier_squire"] in page.inner_text("#dossier"), "the squire's dossier says how he fights")
+    page.click('#dossier button[data-action="ladder.fight"]')
+    page.wait_for_selector('body[data-screen="duel"]', timeout=10000)
+    page.wait_for_selector("#bar-foe1", timeout=10000)
+    check(page.inner_text("#bar-foe1 .who") == STRINGS["who_squire"], "rank F's duel is against the squire")
+    check(page.inner_text("#bar-foe1 .text") == "100 / 100", "the squire starts whole: 100 of 100")
+    page.keyboard.press("Escape")
+    page.wait_for_selector('body[data-screen="paused"]', timeout=10000)
+    page.click('#paused button[data-value="ladder"]')
+    page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
+    check(True, "leaving a ladder duel goes back to the ladder")
