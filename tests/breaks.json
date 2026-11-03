@@ -3757,5 +3757,47 @@
     "find": "    if v.overlay {",
     "replace": "    if true {",
     "test": "the_pickers_step_through_the_pilots_and_refuse_a_stranger"
+  },
+  {
+    "name": "T11 checks: foe feinted reads its age",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::FoeFeinted(ticks) => v.they.feinted.is_some_and(|a| a < *ticks),",
+    "replace": "        Cond::FoeFeinted(ticks) => v.they.feinted.is_some_and(|a| a <= *ticks),",
+    "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 checks: a beaten blade counts as staggered",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        staggered: f.gait.stagger > 0 || f.chiv.stun > 0,",
+    "replace": "        staggered: f.gait.stagger > 0,",
+    "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 checks: foe guards reads the held guard",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        guards: f.chiv.guard.is_some(),",
+    "replace": "        guards: false,",
+    "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 checks: my feint is mine",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::Feinted(ticks) => feint_age(v.f).is_some_and(|a| a < *ticks),",
+    "replace": "        Cond::Feinted(ticks) => v.they.feinted.is_some_and(|a| a < *ticks),",
+    "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 checks: a follow-up is read from my window",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Cond::CanFollow => v.f.chiv.follow > 0,",
+    "replace": "        Cond::CanFollow => v.f.chiv.run > 0,",
+    "test": "the_new_checks_read_what_they_name"
+  },
+  {
+    "name": "T11 checks: only a feint is a feint",
+    "file": "crates/core/src/pilot.rs",
+    "find": "        Some((crate::chivalry::Event::Feint, age)) => Some(age),",
+    "replace": "        Some((_, age)) => Some(age),",
+    "test": "the_new_checks_read_what_they_name"
   }
 ]

@@ -288,5 +288,14 @@
   "act_run_away": "Run away",
   "act_kick": "Kick",
   "act_feint_cut": "Feint a chop",
-  "act_guard_up": "Hold the guard up"
+  "act_guard_up": "Hold the guard up",
+  "cond_foe_feinted": "foe feinted within {n} ticks",
+  "cond_foe_staggered": "foe staggered or beaten aside",
+  "cond_feinted": "I feinted within {n} ticks",
+  "cond_can_follow": "a follow-up is open",
+  "who_sentry": "The sentry",
+  "who_press": "The press",
+  "who_bully": "The bully",
+  "who_trickster": "The trickster",
+  "cond_foe_guards": "foe holds its guard up"
 }
