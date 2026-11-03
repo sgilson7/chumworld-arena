@@ -4,7 +4,7 @@ A first-person sword duel for a desktop browser. You steer a simulated sword arm
 
 - **Practice:** a best-of-three duel against the computer's knight, which moves through the same input a player gives.
 - **Host and Join:** the same duel against another browser, met by a room code or by pasted codes. Nothing loads from another site until you press one.
-- **Controls:** hold the left button and swipe to cut; hold the right button to guard; Esc pauses.
+- **Controls:** hold the left button and swipe to cut; hold the right button to guard, or press it as a cut draws back to feint; F kicks; Esc pauses. Cuts, parries, feints and kicks cost stamina.
 
 The combat is CHUMWORLD's (same author), copied at commit d9cb5b5 and changed as `SECOND-ORDER.md` records. The game is built under Builder: the rules are in `BUILDER-SPEC.md`, a coding agent's instructions in `CLAUDE.md` and `AGENTS.md`, each term in `GLOSSARY.md`, and the rules for every string in `TONE.md`.
 
