@@ -180,3 +180,14 @@ body[data-screen="watch"] #overlay .panel button + button { margin-top: 0; }
 #watch-tree .rule.ran .act { border: 2px solid var(--you); background: rgba(201, 178, 122, 0.25); font-weight: 700; }
 #watch-tree .keys { margin: 10px 0 4px; font-size: 13px; }
 #watch-tree .hint { margin: 0; font-size: 12px; color: var(--ink-soft); }
+
+/* T11: the campaign's map: each region a stone ring with its battles beneath;
+   a shut region is dashed and dimmed, and its line says what opens it */
+#ladder.panel { max-width: min(1180px, 96vw); }
+.map { display: grid; gap: 14px; margin-top: 8px; }
+.region { padding: 10px 12px 12px; border-radius: 40px 40px 10px 10px; border: 2px solid var(--stone-edge); background: linear-gradient(180deg, rgba(201, 178, 122, 0.12), rgba(0, 0, 0, 0.18)); }
+.region[data-open="false"] { border-style: dashed; opacity: 0.72; }
+.region header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 6px 8px; }
+.region header h2 { margin: 0; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); }
+.region header p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.region .cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

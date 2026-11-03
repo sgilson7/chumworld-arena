@@ -3883,5 +3883,96 @@
     "find": "    hit.through_pct = through_pct(true, opening, thrust, how);",
     "replace": "    hit.through_pct = through_pct(true, opening, thrust, Strike::Edge);",
     "test": "the_striker_s_weapon_decides_what_plate_takes"
+  },
+  {
+    "name": "T11 campaign: a region waits for its gate",
+    "file": "crates/core/src/ladder.rs",
+    "find": "        r < REGIONS.len() && (r == 0 || self.region_marks(r - 1) >= REGIONS[r].gate)",
+    "replace": "        r < REGIONS.len()",
+    "test": "only_the_first_battle_is_open_and_the_marches_wait_for_four_marks"
+  },
+  {
+    "name": "T11 campaign: a battle needs every line",
+    "file": "crates/core/src/ladder.rs",
+    "find": "RUNGS[i].needs.iter().all(|&n| self.meets(n))",
+    "replace": "RUNGS[i].needs.iter().any(|&n| self.meets(n))",
+    "test": "only_the_first_battle_is_open_and_the_marches_wait_for_four_marks"
+  },
+  {
+    "name": "T11 campaign: a clean win is both marks",
+    "file": "crates/core/src/ladder.rs",
+    "find": "            Need::Clean(j) => j < RUNGS.len() && self.marks[j] >= MARKS_MOST,",
+    "replace": "            Need::Clean(j) => self.won(j),",
+    "test": "each_kind_of_line_opens_its_battle_and_nothing_less"
+  },
+  {
+    "name": "T11 campaign: a weapon line needs that weapon",
+    "file": "crates/core/src/ladder.rs",
+    "find": "            Need::With(j, h) => j < RUNGS.len() && weapon_bit(h).is_some_and(|b| self.with[j] & b != 0),",
+    "replace": "            Need::With(j, _) => self.won(j),",
+    "test": "each_kind_of_line_opens_its_battle_and_nothing_less"
+  },
+  {
+    "name": "T11 campaign: any of a list needs its count",
+    "file": "crates/core/src/ladder.rs",
+    "find": "            Need::AnyOf(list, n) => list.iter().filter(|&&j| self.won(j)).count() >= n as usize,",
+    "replace": "            Need::AnyOf(list, _) => list.iter().any(|&j| self.won(j)),",
+    "test": "each_kind_of_line_opens_its_battle_and_nothing_less"
+  },
+  {
+    "name": "T11 campaign: a win keeps its weapon",
+    "file": "crates/core/src/ladder.rs",
+    "find": "            self.with[i] |= weapon_bit(held).unwrap_or(0);",
+    "replace": "",
+    "test": "a_win_marks_its_battle_and_keeps_its_weapon"
+  },
+  {
+    "name": "T11 campaign: a beaten carrier gives its weapon",
+    "file": "crates/core/src/ladder.rs",
+    "find": ".filter(|&h| h == Held::Longsword || self.won_rungs().any(|i| RUNGS[i].held == Some(h)))",
+    "replace": ".filter(|&h| h == Held::Longsword)",
+    "test": "beating_a_carrier_gives_its_weapon"
+  },
+  {
+    "name": "T11 campaign: a weapon is kept only on a won battle",
+    "file": "crates/core/src/ladder.rs",
+    "find": " && (self.with[i] == 0 || self.marks[i] > 0)",
+    "replace": "",
+    "test": "a_save_s_progress_is_bounded"
+  },
+  {
+    "name": "T11 campaign: a ladder save's rungs land on their battles",
+    "file": "crates/core/src/save.rs",
+    "find": "pub const LADDER_BATTLES: [usize; 7] = [0, 1, 2, 3, 6, 10, 12];",
+    "replace": "pub const LADDER_BATTLES: [usize; 7] = [0, 1, 2, 3, 4, 5, 6];",
+    "test": "a_ladder_save_loads_into_the_campaign"
+  },
+  {
+    "name": "T11 campaign: a save's weapon must be won",
+    "file": "crates/core/src/save.rs",
+    "find": ".and_then(|k| p.weapons().into_iter().find(|&h| crate::watch::held_key(h) == k))",
+    "replace": ".and_then(|k| crate::ladder::WEAPONS.into_iter().find(|&h| crate::watch::held_key(h) == k))",
+    "test": "a_save_with_a_bad_campaign_or_an_unwon_look_or_weapon_is_refused"
+  },
+  {
+    "name": "T11 campaign: a locked card says what it needs",
+    "file": "crates/core/src/api.rs",
+    "find": "            fill(&s.get(\"rung_locked\"), &[(\"needs\", needs_text(g, i))]),",
+    "replace": "            s.get(\"rung_open\"),",
+    "test": "a_save_file_with_progress_shows_on_the_ladder"
+  },
+  {
+    "name": "T11 campaign: the player holds the kept weapon",
+    "file": "crates/core/src/game.rs",
+    "find": "            r.held[0] = Some(self.kept.weapon);",
+    "replace": "            r.held[0] = None;",
+    "test": "the_player_holds_the_weapon_the_save_keeps"
+  },
+  {
+    "name": "T11 campaign: the weapon setting steps round",
+    "file": "crates/core/src/game.rs",
+    "find": "                self.kept.weapon = all[(at + 1) % all.len()];",
+    "replace": "                self.kept.weapon = all[(at + 1).min(all.len() - 1)];",
+    "test": "the_player_holds_the_weapon_the_save_keeps"
   }
 ]

@@ -111,6 +111,17 @@ pub struct Card {
     pub action: Action,
 }
 
+/// T11 (CA-Q18: A): one region of the campaign's map: its name, whether it
+/// is open (and if not, what opens it, in words), and its battles' cards.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RegionView {
+    pub id: String,
+    pub heading: String,
+    pub open: bool,
+    pub text: String,
+    pub cards: Vec<Card>,
+}
+
 /// One block of the screen. Empty fields are left out of the JSON.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Panel {
@@ -136,6 +147,9 @@ pub struct Panel {
     /// M6: the ladder's rank cards, after the text
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<Card>,
+    /// T11: the campaign's map, region by region, each with its cards
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub regions: Vec<RegionView>,
 }
 
 /// A term and its definition, for the page's hover hints.
@@ -247,6 +261,7 @@ fn panel(id: &str) -> Panel {
         rows: Vec::new(),
         actions: Vec::new(),
         cards: Vec::new(),
+        regions: Vec::new(),
     }
 }
 
@@ -371,6 +386,14 @@ fn settings(g: &Game) -> Vec<Setting> {
             value: look_name(g, k.knight),
             actions: toggle("settings.look"),
         },
+        // T11 (CA-Q19: C): the weapon, the longsword or one the campaign
+        // has given
+        Setting {
+            id: "weapon".into(),
+            label: s.get("setting_weapon"),
+            value: s.get(&format!("weapon_{}", crate::watch::held_key(k.weapon))),
+            actions: toggle("settings.weapon"),
+        },
     ]
 }
 
@@ -442,17 +465,114 @@ fn rung_text(g: &Game, i: usize) -> (String, String) {
     match g.kept.ladder.state(i) {
         State::Locked => (
             "locked".into(),
-            fill(
-                &s.get("rung_locked"),
-                &[("below", crate::ladder::RUNGS[i - 1].rank.to_string())],
-            ),
+            fill(&s.get("rung_locked"), &[("needs", needs_text(g, i))]),
         ),
         State::Open => ("open".into(), s.get("rung_open")),
         State::Won(m) => ("won".into(), s.get(&format!("rung_won_{m}"))),
     }
 }
 
-/// M6: the ladder's rank cards, foot first.
+/// A name that begins "The " as it reads mid-sentence: "the Marches".
+fn mid(name: &str) -> String {
+    match name.strip_prefix("The ") {
+        Some(rest) => format!("the {rest}"),
+        None => name.to_string(),
+    }
+}
+
+/// T11: what battle `i` still needs, in words: its region's gate, then
+/// each of its lines not yet met (CA-Q21: A).
+pub fn needs_text(g: &Game, i: usize) -> String {
+    use crate::ladder::{Need, REGIONS, RUNGS};
+    let s = &g.strings;
+    let p = &g.kept.ladder;
+    let who = |j: usize| s.get(&format!("who_{}", RUNGS[j].key)).to_lowercase();
+    let mut out = Vec::new();
+    let r = RUNGS[i].region;
+    if !p.region_open(r) {
+        out.push(fill(
+            &s.get("need_gate"),
+            &[
+                ("n", REGIONS[r].gate.to_string()),
+                ("region", mid(&s.get(&format!("region_{}", REGIONS[r - 1].key)))),
+            ],
+        ));
+    }
+    for &n in RUNGS[i].needs {
+        if p.meets(n) {
+            continue;
+        }
+        out.push(match n {
+            Need::Won(j) => fill(&s.get("need_won"), &[("name", who(j))]),
+            Need::Clean(j) => fill(&s.get("need_clean"), &[("name", who(j))]),
+            Need::With(j, h) => fill(
+                &s.get("need_with"),
+                &[
+                    ("name", who(j)),
+                    (
+                        "weapon",
+                        s.get(&format!("weapon_{}", crate::watch::held_key(h)))
+                            .to_lowercase(),
+                    ),
+                ],
+            ),
+            Need::AnyOf(list, k) => fill(
+                &s.get("need_any"),
+                &[
+                    ("n", k.to_string()),
+                    (
+                        "names",
+                        list.iter()
+                            .map(|&j| who(j))
+                            .collect::<Vec<_>>()
+                            .join(&s.get("need_or")),
+                    ),
+                ],
+            ),
+        });
+    }
+    out.join(&s.get("need_and"))
+}
+
+/// T11: the campaign's map: each region, open or what opens it, and its
+/// battles' cards.
+fn regions(g: &Game) -> Vec<RegionView> {
+    use crate::ladder::REGIONS;
+    let s = &g.strings;
+    let all = cards(g);
+    REGIONS
+        .iter()
+        .enumerate()
+        .map(|(r, reg)| {
+            let open = g.kept.ladder.region_open(r);
+            RegionView {
+                id: reg.key.into(),
+                heading: s.get(&format!("region_{}", reg.key)),
+                open,
+                text: if open {
+                    s.get("region_open")
+                } else {
+                    fill(
+                        &s.get("region_shut"),
+                        &[
+                            ("n", reg.gate.to_string()),
+                            ("region", mid(&s.get(&format!("region_{}", REGIONS[r - 1].key)))),
+                            ("have", g.kept.ladder.region_marks(r - 1).to_string()),
+                        ],
+                    )
+                },
+                cards: crate::ladder::RUNGS
+                    .iter()
+                    .zip(all.iter())
+                    .filter(|(b, _)| b.region == r)
+                    .map(|(_, c)| c.clone())
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+/// M6: the ladder's rank cards, foot first (T11: every battle's, in order).
 fn cards(g: &Game) -> Vec<Card> {
     let s = &g.strings;
     crate::ladder::RUNGS
@@ -476,7 +596,11 @@ fn cards(g: &Game) -> Vec<Card> {
                     &[("n", marks.to_string()), ("most", most.to_string())],
                 ),
                 action: Action {
-                    label: fill(&s.get("rank"), &[("rank", r.rank.to_string())]),
+                    label: if r.rank.is_empty() {
+                        name.clone()
+                    } else {
+                        fill(&s.get("rank"), &[("rank", r.rank.to_string())])
+                    },
                     ..button(g, "ladder.rung", r.key, "rank", false)
                 },
             }
@@ -501,13 +625,32 @@ fn dossier(g: &Game) -> Panel {
         heading: s.get(&format!("who_{}", r.key)),
         text: s.get(&format!("dossier_{}", r.key)),
         note: if open { String::new() } else { state.clone() },
-        rows_heading: fill(&s.get("rank"), &[("rank", r.rank.to_string())]),
-        rows: vec![
-            row("dossier_wears", s.get(&format!("wears_{}", r.key))),
-            row("dossier_plate", plate_words(g, r.kind)),
-            row("dossier_marks", state),
-            row("dossier_reward", s.get("dossier_reward_text")),
-        ],
+        rows_heading: if r.rank.is_empty() {
+            s.get(&format!("region_{}", crate::ladder::REGIONS[r.region].key))
+        } else {
+            fill(&s.get("rank"), &[("rank", r.rank.to_string())])
+        },
+        rows: {
+            let carried = r.held.unwrap_or(crate::pose::Held::Longsword);
+            let weapon = s.get(&format!("weapon_{}", crate::watch::held_key(carried)));
+            vec![
+                row("dossier_wears", s.get(&format!("wears_{}", r.key))),
+                row("dossier_weapon", weapon.clone()),
+                row("dossier_plate", plate_words(g, r.kind)),
+                row("dossier_marks", state),
+                row(
+                    "dossier_reward",
+                    if r.held.is_some() {
+                        fill(
+                            &s.get("dossier_reward_weapon"),
+                            &[("weapon", weapon.to_lowercase())],
+                        )
+                    } else {
+                        s.get("dossier_reward_text")
+                    },
+                ),
+            ]
+        },
         actions: vec![
             Action {
                 enabled: open,
@@ -710,7 +853,7 @@ pub fn ui(g: &Game) -> Ui {
         Screen::Ladder => panels.push(Panel {
             heading: s.get("ladder_heading"),
             text: fill(&s.get("ladder_text"), &crate::ladder::values()),
-            cards: cards(g),
+            regions: regions(g),
             actions: vec![button(g, "screen.show", "menu", "back_to_menu", false)],
             ..panel("ladder")
         }),
@@ -879,14 +1022,32 @@ fn watch_panel(g: &Game) -> Panel {
 fn earned_text(g: &Game) -> String {
     let s = &g.strings;
     let r = crate::ladder::RUNGS[g.rung];
-    let rank = [("rank", r.rank.to_string())];
+    // a ladder rung by its rank ("Rank F"), a new battle by its opponent
+    let what = if r.rank.is_empty() {
+        s.get(&format!("who_{}", r.key))
+    } else {
+        fill(&s.get("rank"), &[("rank", r.rank.to_string())])
+    };
+    let what = [("what", what)];
     match g.earned {
-        Some(0) | None => fill(&s.get("earned_none"), &rank),
+        Some(0) | None => fill(&s.get("earned_none"), &what),
         Some(m) => {
-            let mut t = fill(&s.get(&format!("earned_{m}")), &rank);
+            let mut t = fill(&s.get(&format!("earned_{m}")), &what);
             let look = crate::save::Knight::Rung(g.rung as u8);
             t.push(' ');
             t.push_str(&fill(&s.get("earned_look"), &[("name", look_name(g, look))]));
+            // T11: and its weapon, if it carries one
+            if let Some(h) = r.held {
+                t.push(' ');
+                t.push_str(&fill(
+                    &s.get("earned_weapon"),
+                    &[(
+                        "weapon",
+                        s.get(&format!("weapon_{}", crate::watch::held_key(h)))
+                            .to_lowercase(),
+                    )],
+                ));
+            }
             t
         }
     }
@@ -1082,7 +1243,7 @@ mod tests {
             labels,
             [
                 "Practice",
-                "Ladder",
+                "Single Player Campaign",
                 "Watch",
                 "Host",
                 "Join",
@@ -1107,11 +1268,14 @@ mod tests {
             v["ok"]["bars"].as_array().unwrap().is_empty(),
             "no bars before the duel"
         );
-        // the settings: five rows (M6: the look), each with its value in words
+        // the settings: six rows (M6: the look; T11: the weapon), each with its value in words
         let v = json(&act(&mut g, "screen.show", "settings"));
         let rows = v["ok"]["panels"][0]["settings"].as_array().unwrap();
         let values: Vec<&str> = rows.iter().map(|r| r["value"].as_str().unwrap()).collect();
-        assert_eq!(values, ["100%", "Off", "105°", "None", "The black helm"]);
+        assert_eq!(
+            values,
+            ["100%", "Off", "105°", "None", "The black helm", "Longsword"]
+        );
         let acts = v["ok"]["panels"][0]["actions"].as_array().unwrap();
         assert_eq!(acts[1]["file"], true, "loading a save asks for a file");
         assert_eq!(v["ok"]["save"]["file_name"], "chumworld-arena-save.json");
@@ -1251,21 +1415,38 @@ mod tests {
         let u = json(&act(&mut g, "screen.show", "ladder"));
         assert_eq!(u["ok"]["screen"], "ladder");
         let p = &u["ok"]["panels"][0];
-        assert_eq!(p["heading"], "The ladder");
+        assert_eq!(p["heading"], "The campaign");
         assert!(
-            p["text"].as_str().unwrap().starts_with(
-                "7 opponents, each harder than the last, from rank F at the foot to rank S at the top."
-            ),
+            p["text"]
+                .as_str()
+                .unwrap()
+                .starts_with("13 battles in 4 regions."),
             "{}",
             p["text"]
         );
-        let cards = p["cards"].as_array().unwrap();
+        // T11: the map, region by region; the seven ranks among the battles
+        let regions = p["regions"].as_array().unwrap();
+        let heads: Vec<&str> = regions.iter().map(|r| r["heading"].as_str().unwrap()).collect();
+        assert_eq!(
+            heads,
+            ["The Yard", "The Marches", "The Toll Towns", "The High Tourney"]
+        );
+        let cards: Vec<serde_json::Value> = regions
+            .iter()
+            .flat_map(|r| r["cards"].as_array().unwrap().clone())
+            .collect();
         let ranks: Vec<&str> = cards.iter().map(|c| c["rank"].as_str().unwrap()).collect();
-        assert_eq!(ranks, ["F", "E", "D", "C", "B", "A", "S"]);
+        assert_eq!(ranks, ["F", "E", "D", "C", "", "", "B", "", "", "", "A", "", "S"]);
         assert_eq!(cards[0]["name"], "The squire");
-        assert_eq!(cards[6]["name"], "The mirror");
+        assert_eq!(cards[4]["name"], "The woodsman");
+        assert_eq!(
+            cards[4]["action"]["label"], "The woodsman",
+            "a battle with no rank by its name"
+        );
+        assert_eq!(cards[12]["name"], "The mirror");
         assert_eq!(cards[0]["text"], "Open");
-        assert_eq!(cards[1]["text"], "Locked: win rank F first.");
+        assert_eq!(cards[1]["text"], "Locked: win the squire.");
+        assert_eq!(regions[1]["text"], "Opens at 4 marks in the Yard: 0 so far");
         assert_eq!(cards[1]["marks_text"], "0 of 2 marks");
         assert_eq!(cards[3]["action"]["name"], "ladder.rung");
         assert_eq!(cards[3]["action"]["value"], "veteran");
@@ -1307,7 +1488,7 @@ mod tests {
         let u = json(&act(&mut g, "ladder.rung", "S"));
         let d = &u["ok"]["panels"][0];
         assert_eq!(d["actions"][0]["enabled"], false, "the mirror is locked");
-        assert_eq!(d["note"], "Locked: win rank A first.");
+        assert_eq!(d["note"], "Locked: win 6 marks in the Toll Towns and win the champion without losing a round and win the headsman without losing a round.");
     }
 
     // ---- M5: online play, two games joined by a wire in the test ----

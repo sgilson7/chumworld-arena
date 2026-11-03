@@ -59,18 +59,27 @@ def run(page, check, engine):
     page.wait_for_selector('body[data-screen="paused"]', timeout=10000)
     check(page.inner_text("#paused h1") == STRINGS["paused"], "Esc pauses the duel")
 
-    # M6: the ladder. Seven rank cards F to S (ladder.rs), only F open in a
-    # new save; F's dossier offers Fight, S's does not; F's duel is against
+    # M6, T11: the campaign. Four regions (ladder.rs REGIONS), thirteen
+    # battles whose seven ranks run F to S, only F open in a new save and
+    # only the Yard's region open; F's dossier offers Fight, S's does not;
+    # the woodsman's names the axe it carries; F's duel is against
     # the squire, whose bar names it (data/strings.json who_squire) and who
     # starts with 100 health (data/pilots.json squire)
     page.click('#paused button[data-value="menu"]')
     page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
     page.click('#menu button[data-value="ladder"]')
     page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
-    ranks = [n.inner_text().strip() for n in page.query_selector_all("#ladder .card .rank")]
-    check(ranks == ["F", "E", "D", "C", "B", "A", "S"], f"the ladder shows seven rank cards F to S {ranks}")
+    regions = [n.get_attribute("data-open") for n in page.query_selector_all("#ladder .region")]
+    check(regions == ["true", "false", "false", "false"], f"four regions, the Yard open {regions}")
+    ranks = [n.inner_text().strip() for n in page.query_selector_all("#ladder .card .rank") if n.inner_text().strip()]
+    check(ranks == ["F", "E", "D", "C", "B", "A", "S"], f"the seven ranks F to S among the battles {ranks}")
     states = [n.get_attribute("data-state") for n in page.query_selector_all("#ladder .card")]
-    check(states == ["open"] + ["locked"] * 6, f"only rank F is open in a new save {states}")
+    check(states == ["open"] + ["locked"] * 12, f"only rank F is open in a new save {states}")
+    page.click("#card-woodsman")
+    page.wait_for_selector('body[data-screen="dossier"]', timeout=10000)
+    check(STRINGS["weapon_axe"] in page.inner_text("#dossier"), "the woodsman's dossier names the axe he carries")
+    page.click('#dossier button[data-value="ladder"]')
+    page.wait_for_selector('body[data-screen="ladder"]', timeout=10000)
     check(len(page.query_selector_all("#card-squire .mark")) == 2, "a card draws room for two marks")
     check(len(page.query_selector_all("#ladder .mark.won")) == 0, "no mark is won yet")
     page.click("#card-mirror")

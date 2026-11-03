@@ -361,6 +361,126 @@
     "rising": 15,
     "thrust": 15
    }
+  },
+  "woodsman": {
+   "tree": "bully",
+   "held": "axe",
+   "health": 100,
+   "reaction_ticks": 12,
+   "servo_pct": 98,
+   "hand_px": 38,
+   "strike_px": 105,
+   "keep_cm": [
+    -40,
+    -10
+   ],
+   "cuts": {
+    "level": 25,
+    "backhand": 20,
+    "chop": 25,
+    "rising": 15,
+    "thrust": 15
+   }
+  },
+  "friar": {
+   "tree": "sentry",
+   "held": "quarterstaff",
+   "health": 100,
+   "reaction_ticks": 9,
+   "servo_pct": 108,
+   "hand_px": 40,
+   "strike_px": 110,
+   "keep_cm": [
+    0,
+    30
+   ],
+   "cuts": {
+    "level": 20,
+    "backhand": 15,
+    "chop": 40,
+    "rising": 15,
+    "thrust": 10
+   }
+  },
+  "warden": {
+   "tree": "press",
+   "held": "mace",
+   "health": 100,
+   "reaction_ticks": 10,
+   "servo_pct": 105,
+   "hand_px": 42,
+   "strike_px": 112,
+   "keep_cm": [
+    5,
+    35
+   ],
+   "cuts": {
+    "level": 25,
+    "backhand": 20,
+    "chop": 25,
+    "rising": 15,
+    "thrust": 15
+   }
+  },
+  "reiver": {
+   "tree": "trickster",
+   "held": "broadsword",
+   "health": 100,
+   "reaction_ticks": 10,
+   "servo_pct": 105,
+   "hand_px": 42,
+   "strike_px": 112,
+   "keep_cm": [
+    5,
+    35
+   ],
+   "cuts": {
+    "level": 25,
+    "backhand": 20,
+    "chop": 25,
+    "rising": 15,
+    "thrust": 15
+   }
+  },
+  "pikeman": {
+   "tree": "sentry",
+   "held": "spear",
+   "health": 100,
+   "reaction_ticks": 10,
+   "servo_pct": 105,
+   "hand_px": 42,
+   "strike_px": 112,
+   "keep_cm": [
+    5,
+    35
+   ],
+   "cuts": {
+    "level": 25,
+    "backhand": 20,
+    "chop": 25,
+    "rising": 15,
+    "thrust": 15
+   }
+  },
+  "headsman": {
+   "tree": "press",
+   "held": "great_axe",
+   "health": 100,
+   "reaction_ticks": 6,
+   "servo_pct": 120,
+   "hand_px": 46,
+   "strike_px": 118,
+   "keep_cm": [
+    5,
+    35
+   ],
+   "cuts": {
+    "level": 25,
+    "backhand": 20,
+    "chop": 30,
+    "rising": 10,
+    "thrust": 15
+   }
   }
  },
  "trees": {
@@ -2064,5 +2184,6 @@
    }
   ]
  },
- "_styles": "T11: four styles built in watch mode, each the knight's body and longsword with its own tree: the sentry holds its ground, parries and punishes, the press chains follow-ups, the bully kicks a held guard and cuts into the stagger, the trickster feints before the real cut. They are the campaign's new opponents' trees once those have weapons."
+ "_styles": "T11: four styles built in watch mode, each the knight's body and longsword with its own tree: the sentry holds its ground, parries and punishes, the press chains follow-ups, the bully kicks a held guard and cuts into the stagger, the trickster feints before the real cut. They are the campaign's new opponents' trees once those have weapons.",
+ "_campaign": "T11: the campaign's six new opponents, each a style's tree with the weapon it carries and the reaction, strength and hand speed of the ladder opponent nearest it in the campaign (woodsman as the hedge knight; friar as the veteran; warden, reiver and pikeman as the banneret; headsman as the champion)."
 }

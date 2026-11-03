@@ -131,6 +131,23 @@ async function main() {
       grid.append(...p.cards.map(card));
       box.append(grid);
     }
+    // T11: the campaign's map, a region at a time, each with its battles;
+    // a shut region says what opens it, in words and by its dashed edge
+    if (p.regions) {
+      const map = make("div", undefined, "map");
+      for (const r of p.regions) {
+        const region = make("section", undefined, "region");
+        region.id = `region-${r.id}`;
+        region.dataset.open = String(r.open);
+        const head = make("header");
+        head.append(make("h2", r.heading), make("p", r.text));
+        const grid = make("div", undefined, "cards");
+        grid.append(...r.cards.map(card));
+        region.append(head, grid);
+        map.append(region);
+      }
+      box.append(map);
+    }
     (p.settings || []).forEach((s) => {
       const row = make("div", undefined, "setting");
       row.id = `setting-${s.id}`;

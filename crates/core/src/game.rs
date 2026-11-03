@@ -265,6 +265,11 @@ impl Game {
         let k = self.kept.knight;
         crate::rounds::begin_dressed(&mut self.world, foe, k.kind(), k.dress())
             .expect("every pilot a duel begins with is in the pilots' book");
+        // T11 (CA-Q19: C): the player holds the weapon the save keeps
+        if let Some(r) = self.world.rounds.as_mut() {
+            r.held[0] = Some(self.kept.weapon);
+        }
+        crate::rounds::opening(&mut self.world);
         for (n, v) in self.staged.clone() {
             // each was tried on the world when it was staged
             let _ = self.world.act(&n, &v);
@@ -587,7 +592,7 @@ impl Game {
             return;
         };
         let before = self.kept.ladder;
-        self.earned = Some(self.kept.ladder.record(self.rung, r.wins));
+        self.earned = Some(self.kept.ladder.record(self.rung, r.wins, self.world.me.held));
         if self.kept.ladder != before {
             self.save_seq += 1;
         }
@@ -683,8 +688,8 @@ impl Game {
         let v = value.trim();
         crate::ladder::RUNGS
             .iter()
-            .position(|r| r.key == v || r.rank == v)
-            .ok_or_else(|| format!("There is no rung \"{value}\" on the ladder."))
+            .position(|r| r.key == v || (!r.rank.is_empty() && r.rank == v))
+            .ok_or_else(|| format!("There is no battle \"{value}\" in the campaign."))
     }
 
     /// The reader's settings changed: into the world, and a new save to keep.
@@ -845,6 +850,13 @@ impl Game {
                 self.kept.knight = all[(at + 1) % all.len()];
                 self.kept_changed();
             }
+            // T11 (CA-Q19: C): the next weapon the campaign has given
+            "settings.weapon" => {
+                let all = self.kept.ladder.weapons();
+                let at = all.iter().position(|h| *h == self.kept.weapon).unwrap_or(0);
+                self.kept.weapon = all[(at + 1) % all.len()];
+                self.kept_changed();
+            }
             // M6: a rung's dossier, by its key or its rank
             "ladder.rung" => {
                 self.rung = Self::rung_named(value)?;
@@ -853,7 +865,10 @@ impl Game {
             // M6: the duel on the open dossier's rung, if it is open
             "ladder.fight" => {
                 if !self.kept.ladder.open(self.rung) {
-                    return Err(self.strings.get("rung_shut"));
+                    return Err(crate::api::fill(
+                        &self.strings.get("rung_shut"),
+                        &[("needs", crate::api::needs_text(self, self.rung))],
+                    ));
                 }
                 self.leave_duel();
                 self.start_rung();
@@ -1508,38 +1523,68 @@ pub(crate) mod tests {
         win_two(g);
     }
 
-    fn states(g: &Game) -> Vec<String> {
+    /// Every battle's card, region by region, as the map shows them.
+    fn all_cards(g: &Game) -> Vec<crate::api::Card> {
         crate::api::ui(g).panels[0]
-            .cards
+            .regions
             .iter()
-            .map(|c| c.state.clone())
+            .flat_map(|r| r.cards.clone())
             .collect()
+    }
+
+    fn states(g: &Game) -> Vec<String> {
+        all_cards(g).iter().map(|c| c.state.clone()).collect()
     }
 
     /// The ladder opens with rung F open and the rest locked; a locked
     /// rung's dossier shows but cannot be fought; rung F's duel is the
     /// squire on its own pilot, the player in Knight A.
+    /// T11 (CA-Q19: C): Your weapon steps through the weapons the campaign
+    /// has given (the longsword, then the axe once the woodsman is beaten),
+    /// and Practice puts it in the player's hands, round after round.
+    #[test]
+    fn the_player_holds_the_weapon_the_save_keeps() {
+        use crate::pose::Held;
+        let mut g = game();
+        g.act("settings.weapon", "").unwrap();
+        assert_eq!(g.kept.weapon, Held::Longsword, "nothing else won yet");
+        g.kept.ladder.marks[4] = 1;
+        g.kept.ladder.with[4] = 1;
+        g.act("settings.weapon", "").unwrap();
+        assert_eq!(g.kept.weapon, Held::Axe);
+        practice(&mut g);
+        assert_eq!(g.world.me.held, Held::Axe);
+        assert_eq!(g.world.me.arm.weapon.item, Held::Axe);
+        crate::rounds::opening(&mut g.world);
+        assert_eq!(g.world.me.held, Held::Axe, "the next round too");
+        g.act("settings.weapon", "").unwrap();
+        assert_eq!(g.kept.weapon, Held::Longsword, "round to the first");
+    }
+
     #[test]
     fn the_ladder_opens_at_rung_f_and_a_locked_rung_is_not_fought() {
         let mut g = game();
         g.act("screen.show", "menu").unwrap();
         g.act("screen.show", "ladder").unwrap();
         assert_eq!(g.screen, Screen::Ladder);
-        assert_eq!(
-            states(&g),
-            ["open", "locked", "locked", "locked", "locked", "locked", "locked"]
-        );
+        let mut want = vec!["locked"; 13];
+        want[0] = "open";
+        assert_eq!(states(&g), want);
         g.act("ladder.rung", "E").unwrap();
         assert_eq!(g.screen, Screen::Dossier);
         assert_eq!(
             g.act("ladder.fight", ""),
-            Err("That rung is locked. Win the rung below it first.".into())
+            Err("That battle is locked: win the squire.".into())
         );
         assert_eq!(g.screen, Screen::Dossier, "nothing began");
         assert!(g.world.rounds.is_none());
         assert_eq!(
             g.act("ladder.rung", "Z"),
-            Err("There is no rung \"Z\" on the ladder.".into())
+            Err("There is no battle \"Z\" in the campaign.".into())
+        );
+        assert!(
+            g.act("ladder.rung", "").is_err(),
+            "a new battle's empty rank names none"
         );
         g.act("ladder.rung", "squire").unwrap();
         g.act("ladder.fight", "").unwrap();
@@ -1564,9 +1609,13 @@ pub(crate) mod tests {
         let seq = g.save_seq;
         win_two(&mut g);
         assert_eq!(g.screen, Screen::Result);
-        assert_eq!(g.kept.ladder.marks, [2, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(g.kept.ladder.marks, [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(g.save_seq, seq + 1, "the save is kept");
-        assert!(g.save_text().contains("\"ladder\": [\n      2,"));
+        assert!(
+            g.save_text().contains("\"marks\": [\n        2,"),
+            "{}",
+            g.save_text()
+        );
         let u = crate::api::ui(&g);
         assert_eq!(u.panels[0].heading, "You win the duel");
         assert_eq!(u.panels[0].text, "Rounds won: you 2, the squire 0.");
@@ -1589,10 +1638,10 @@ pub(crate) mod tests {
         g.act("screen.show", "ladder").unwrap();
         assert_eq!(g.screen, Screen::Ladder);
         assert!(g.world.rounds.is_none(), "leaving ends the duel");
-        assert_eq!(
-            states(&g),
-            ["won", "open", "locked", "locked", "locked", "locked", "locked"]
-        );
+        // F won: E and D open (each needs F); the Marches wait for 4 marks
+        let mut want = vec!["locked"; 13];
+        want[..3].copy_from_slice(&["won", "open", "open"]);
+        assert_eq!(states(&g), want);
         // rung E lost: no mark, nothing opens, the result says so
         g.act("ladder.rung", "E").unwrap();
         g.act("ladder.fight", "").unwrap();
@@ -1628,7 +1677,8 @@ pub(crate) mod tests {
     fn a_ladder_round_names_its_opponent() {
         let mut g = game();
         g.kept.ladder = Progress {
-            marks: [1, 1, 1, 0, 0, 0, 0],
+            marks: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            with: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         };
         g.act("ladder.rung", "hedge").unwrap();
         g.act("ladder.fight", "").unwrap();
@@ -1659,10 +1709,11 @@ pub(crate) mod tests {
         assert_eq!(g.kept.knight, crate::save::Knight::A, "no rung won: A and B");
         assert_eq!(
             g.act("save.knight", "squire"),
-            Err("That look is won on the ladder. Win its rung first.".into())
+            Err("That look is won in the campaign. Win its battle first.".into())
         );
         g.kept.ladder = Progress {
-            marks: [1, 2, 0, 0, 0, 0, 0],
+            marks: [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            with: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         };
         let seq = g.save_seq;
         let mut seen = Vec::new();
@@ -1713,7 +1764,8 @@ pub(crate) mod tests {
         for r in crate::ladder::RUNGS {
             let mut g = game();
             g.kept.ladder = Progress {
-                marks: [1, 1, 1, 1, 1, 1, 1],
+                marks: [1; 13],
+                with: [1; 13],
             };
             g.act("save.knight", r.key).unwrap();
             practice(&mut g);
@@ -1744,7 +1796,8 @@ pub(crate) mod tests {
         let mut g = game();
         let k = crate::save::Kept {
             ladder: Progress {
-                marks: [2, 2, 1, 1, 0, 0, 0],
+                marks: [2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                with: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             },
             knight: crate::save::Knight::Rung(3),
             ..crate::save::Kept::default()
@@ -1752,17 +1805,46 @@ pub(crate) mod tests {
         g.act("save.file", &crate::save::text(&k)).unwrap();
         assert_eq!(g.kept, k);
         g.act("screen.show", "ladder").unwrap();
+        // F, E, D and C won: 5 marks in the Yard open the Marches, so the
+        // woodsman (needs D) is open; the friar needs the woodsman too; the
+        // Toll Towns need 4 marks in the Marches (1 so far)
+        let mut want = vec!["locked"; 13];
+        want[..5].copy_from_slice(&["won", "won", "won", "won", "open"]);
+        assert_eq!(states(&g), want);
+        let cards = all_cards(&g);
+        let marks: Vec<u8> = cards.iter().map(|c| c.marks).collect();
+        assert_eq!(marks, [2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(cards[0].text, "Won without losing a round");
+        assert_eq!(cards[2].text, "Won");
+        assert_eq!(cards[5].text, "Locked: win the woodsman.");
         assert_eq!(
-            states(&g),
-            ["won", "won", "won", "won", "open", "locked", "locked"]
+            cards[6].text,
+            "Locked: win 4 marks in the Marches and win the veteran without losing a round."
         );
+        assert_eq!(
+            cards[9].text,
+            "Locked: win 4 marks in the Marches and win 2 of the banneret, the warden, the reiver."
+        );
+        assert_eq!(cards[1].marks_text, "2 of 2 marks");
         let u = crate::api::ui(&g);
-        let marks: Vec<u8> = u.panels[0].cards.iter().map(|c| c.marks).collect();
-        assert_eq!(marks, [2, 2, 1, 1, 0, 0, 0]);
-        assert_eq!(u.panels[0].cards[0].text, "Won without losing a round");
-        assert_eq!(u.panels[0].cards[2].text, "Won");
-        assert_eq!(u.panels[0].cards[5].text, "Locked: win rank B first.");
-        assert_eq!(u.panels[0].cards[1].marks_text, "2 of 2 marks");
+        let regions: Vec<(&str, bool)> = u.panels[0]
+            .regions
+            .iter()
+            .map(|r| (r.heading.as_str(), r.open))
+            .collect();
+        assert_eq!(
+            regions,
+            [
+                ("The Yard", true),
+                ("The Marches", true),
+                ("The Toll Towns", false),
+                ("The High Tourney", false)
+            ]
+        );
+        assert_eq!(
+            u.panels[0].regions[2].text,
+            "Opens at 4 marks in the Marches: 1 so far"
+        );
         assert_eq!(g.save_text(), crate::save::text(&k));
     }
 }

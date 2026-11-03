@@ -40,7 +40,7 @@ Not: bot, enemy AI, NPC
 
 ### Banneret
 
-The ladder's opponent at rung B: fluted plate from head to foot, a rounded helm with a plume, a blue tabard with a gilt band and a cape behind. A working label until the person names it.
+The campaign's opponent at rank B: fluted plate from head to foot, a rounded helm with a plume, a blue tabard with a gilt band and a cape behind. A working label until the person names it.
 
 Not: Lord, paladin
 
@@ -52,7 +52,7 @@ Not: Black Knight, black knight
 
 ### Champion
 
-The ladder's second-hardest opponent, rung A: broad tourney plate in pale steel and gilt, huge pauldrons, a red skirt and a flat-topped great helm with two gilt wings. A working label until the person names it.
+The campaign's opponent at rank A: broad tourney plate in pale steel and gilt, huge pauldrons, a red skirt and a flat-topped great helm with two gilt wings. A working label until the person names it.
 
 Not: Champion Gundyr, Gundyr
 
@@ -86,7 +86,7 @@ Not: roll
 
 ### Dossier
 
-What the ladder tells you about an opponent before you fight it: its rank, what it wears, where it wears plate, how it fights and what winning gives.
+What the campaign tells you about an opponent before you fight it: its rank, what it wears and carries, where it wears plate, how it fights and what winning gives.
 
 Not: profile, bio
 
@@ -140,7 +140,7 @@ Not: HP, hit points
 
 ### Hedge knight
 
-The ladder's fourth opponent from the foot (rung D): a knight in half plate under a long green surcoat torn at the hem, cloth hose below the knee, and a pointed helm over a mail collar. A working label until the person names it.
+The campaign's third opponent (rank D): a knight in half plate under a long green surcoat torn at the hem, cloth hose below the knee, and a pointed helm over a mail collar. A working label until the person names it.
 
 Not: Ser Duncan
 
@@ -186,11 +186,11 @@ A fighter in plate. In Practice the computer fights as a knight through the same
 
 Not: bot, enemy AI, NPC, Black Knight
 
-### Ladder
+### Campaign
 
-The single-player run of arena fights against harder opponents in turn, each with its own costume: {ladder.rungs} rungs from rank {ladder.foot} to rank {ladder.top}, each a duel won by the first to win {rounds.to_win} rounds.
+The single player campaign: {campaign.rungs} battles in {campaign.regions} regions on a map, each a duel won by the first to win {rounds.to_win} rounds. A battle opens when what it needs is won, and a region when the one before it holds enough marks. On the main menu it is the Single Player Campaign.
 
-Not: campaign, tower, story mode
+Not: ladder, tower, story mode
 
 ### Level cut
 
@@ -200,7 +200,7 @@ Not: horizontal slash
 
 ### Look
 
-The costume your knight is drawn in: the black helm, the ivory crown, or the costume of an opponent whose rung you have won. A look changes how you are drawn and nothing else: your plate, reach and strength stay a knight's.
+The costume your knight is drawn in: the black helm, the ivory crown, or the costume of an opponent whose battle you have won. A look changes how you are drawn and nothing else: your plate, reach and strength stay a knight's.
 
 Not: skin, outfit
 
@@ -212,13 +212,13 @@ Not: chainmail, chain mail
 
 ### Mark
 
-What a won rung shows on its rank card: one for a win, and a second for a win without losing a round. A rung keeps its best, up to {ladder.marks}.
+What a won battle shows on its card: one for a win, and a second for a win without losing a round. A battle keeps its best, up to {campaign.marks}.
 
 Not: star, medal
 
 ### Mirror
 
-The ladder's last opponent, rung S: blackened plate with bright edges and a smooth egg-shaped helm with no face. A working label until the person names it.
+The campaign's last opponent, rank S: blackened plate with bright edges and a smooth egg-shaped helm with no face. A working label until the person names it.
 
 Not: Mirror Knight, mirror knight
 
@@ -248,13 +248,13 @@ Not: training mode, tutorial
 
 ### Rank
 
-A rung's letter on the ladder, from {ladder.foot} at the foot to {ladder.top} at the top.
+The letter of one of the seven first opponents of the campaign, from {campaign.foot} to {campaign.top}.
 
 Not: tier
 
 ### Rank card
 
-A rung of the ladder as the ladder shows it: its rank, its opponent, whether it is locked, open or won, and its marks.
+A battle as the campaign's map shows it: its rank, its opponent, whether it is locked, open or won, and its marks.
 
 ### Relay
 
@@ -296,27 +296,33 @@ Moving at {run.speed} metres a second while Shift is held with a movement key, s
 
 Not: sprint
 
-### Rung
+### Battle
 
-One duel on the ladder against one opponent. The first rung is open; winning a rung opens the one above it and gives its opponent's look.
+One duel in the campaign against one opponent. The first is open; each other opens when what it needs is won, and winning one gives its opponent's look, and its weapon if it carries a new one.
 
-Not: stage, mission
+Not: rung, stage, mission
+
+### Region
+
+A part of the campaign's map holding a few battles. The first is open; each other opens once the region before it holds enough marks.
+
+Not: zone, world
 
 ### Save
 
-What the game keeps in this browser between visits: your settings, your knight's look and the marks you have won on the ladder. You can download it as a file and load it again.
+What the game keeps in this browser between visits: your settings, your knight's look the marks you have won in the campaign and the weapon you hold. You can download it as a file and load it again.
 
 Not: profile, account, cloud save
 
 ### Sellsword
 
-The ladder's second opponent from the foot (rung E): a hired fighter in a studded leather coat with steel plates inside, steel on the forearms, a helm with a tail and a chin plate, and one big plate on the right shoulder only. A working label until the person names it.
+The campaign's second opponent (rank E): a hired fighter in a studded leather coat with steel plates inside, steel on the forearms, a helm with a tail and a chin plate, and one big plate on the right shoulder only. A working label until the person names it.
 
 Not: Sellsword Twinblades, Sellsword set
 
 ### Squire
 
-The ladder's first opponent (rung F): a young fighter in a padded quilted coat, a mail hood round an open face and a broad-brimmed steel hat, his only plate. A working label until the person names it.
+The campaign's first opponent (rank F): a young fighter in a padded quilted coat, a mail hood round an open face and a broad-brimmed steel hat, his only plate. A working label until the person names it.
 
 ### Stamina
 
@@ -344,7 +350,7 @@ Not: lunge, poke
 
 ### Veteran
 
-The ladder's opponent at rung C, the sheet's "pit veteran": bare upper arms, one huge pauldron on the left shoulder, a leather coat over a mail skirt and an open helm with a T-shaped face. Only his helm, the pauldron's arm and his forearms wear plate. A working label until the person names it.
+The campaign's opponent at rank C, the sheet's "pit veteran": bare upper arms, one huge pauldron on the left shoulder, a leather coat over a mail skirt and an open helm with a T-shaped face. Only his helm, the pauldron's arm and his forearms wear plate. A working label until the person names it.
 
 Not: gladiator, berserker
 

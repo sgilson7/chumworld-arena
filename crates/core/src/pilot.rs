@@ -265,6 +265,14 @@ pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
         "press" => Some((Kind::KnightA, "press")),
         "bully" => Some((Kind::KnightA, "bully")),
         "trickster" => Some((Kind::KnightA, "trickster")),
+        // T11: the campaign's new opponents, each in a ladder opponent's
+        // body until its own costume is made (`ladder::RUNGS`, R16.2)
+        "woodsman" => Some((Kind::Sellsword, "woodsman")),
+        "friar" => Some((Kind::Squire, "friar")),
+        "warden" => Some((Kind::Hedge, "warden")),
+        "reiver" => Some((Kind::Veteran, "reiver")),
+        "pikeman" => Some((Kind::Banneret, "pikeman")),
+        "headsman" => Some((Kind::Champion, "headsman")),
         _ => kind_named(name).map(|k| (k, key_of(k))),
     }
 }
