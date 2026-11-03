@@ -33,6 +33,10 @@ The state measured rather than recalled, so later changes can be compared with i
 | M4: parity with CHUMWORLD (CA-2) | `cargo test -p tool_core --test parity` | `port_keeps_chumworld_duel` passes with its data unedited; the layer is off on its path (R6.1) | 2026-11-02, Apple M2 Max |
 | M4 merged with main (M5, the ladder): online frame at rollback's worst, the layer on (R6.26) | `cargo test --release -p tool_core --test rollback_probe -- --ignored --nocapture` | mean 794 µs, median 764 µs, 99th percentile 1 158 µs, worst 1 563 µs, none over 2 ms; a checksum 176 µs (load average near 7) | 2026-11-02, Apple M2 Max |
 | M4 merged: core tick, tests, size | `tick_probe`; `./scripts/count-tests.sh`; `./scripts/build.sh` | mean 123 µs, worst 406 µs; 385 passed, 0 failed, 2 ignored; 1 369 KB | 2026-11-02, Apple M2 Max |
+| M6: WebAssembly size | printed by `./scripts/build.sh` | 1 415 KB with the ladder (1 369 KB at M4 merged, R9.15) | 2026-11-03, Apple M2 Max |
+| M6: core tick | `cargo test --release -p tool_core --test tick_probe -- --ignored --nocapture` | Practice's duel, unchanged by the ladder: mean 126, 125 and 126 µs, worst 444, 436 and 424 µs over three runs of 3 600 ticks (load average near 10, other agents' builds running). The probe does not run a ladder rung's opponent | 2026-11-03, Apple M2 Max |
+| M6: the scripted player up the ladder (R9.5) | `cargo test --release -p tool_core --test ladder_probe -- --ignored --nocapture` | 32 seeds per rung, duels won by the player: F 28, E 23, D 17, C 20, B 13, A 13, S 8; rounds 59–21, 51–28, 40–39, 50–30, 40–47, 35–45, 30–52; mean duel 59, 44, 47, 44, 47, 43, 43 s. Practice's knight: 11 of 32 | 2026-11-02, Apple M2 Max |
+| M6: tests and breaks | `./scripts/count-tests.sh`; `python3 scripts/break_tests.py` on the M6 rows and the four repointed | 399 passed, 0 failed, 3 ignored; 33 of 33 breaks caught (R9.16) | 2026-11-03, Apple M2 Max |
 
 ## Not measured
 

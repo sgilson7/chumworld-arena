@@ -37,6 +37,14 @@ Where the design journal is, its link if it is published, and its newest entry.
   - R8.15: the host always wears Knight A and the guest Knight B, whatever the save's look.
   - R8.18: the online strings and the glossary's Desync, Pasted codes, Relay and Room code entries.
 
+- M6, the ladder (branch `m6-ladder`; shots in the coordinator's scratchpad `m6/`):
+  - R9.1: how the ladder is climbed: F to S, the next rung opened by a win, one mark for a win and a second for a win without losing a round.
+  - R9.4: every number in the seven opponents' pilots is the agent's guess; judge the climb from play.
+  - R9.5: the scripted probe finds rung D harder than C, and Practice's knight harder than B and A.
+  - R9.8: the ladder's strings, the dossiers, and the glossary's Dossier, Look, Mark, Rank, Rank card and Rung.
+  - R9.10: wearing the champion's look, its gilt ridge shows when the player looks down; keep it or cull it.
+  - R9.13: the ladder page's look (the cards, their borders, the marks as diamonds).
+
 - R3.10 (person; journal `#2026-11-02-m1`; default: cull the forearm near the eye): a chop's wind-up lifts the sword forearm across the eye for a few frames (`../chumworld-arena-journal/img/build/m1/chop-wind-up-arm.jpg`): accept it, cull the forearm near the eye, or move the eye back.
 - R3.10 (still *person*): M4 applied the default (cull the forearm near the eye, R6.14); shot `scratchpad/m4/chop-windup-r310.jpg`, to be copied into the journal by the coordinator.
 - R6.16 (person): every number of the Chivalry layer (`data/chivalry.json`) and the knight's tree (`data/pilots.json` `knight`) is the agent's guess at the pace; the person judges it from play (CA-10). R6.13: the scripted probe's duel now lasts 53 s (74 s before T7) and the knight wins it 2–1. T7 and T8 (TRIAGE.md) are answered: the right button holds a guard in front, and the view holds while either button is held; whether they feel right is the person's. R6.20: the feint's window may be too tight. R6.21: the settled guard shows the blade end-on.
@@ -76,7 +84,8 @@ By system, from `SECOND-ORDER.md`, with the rule each one produced.
 2026-11-02, M4 (branch `m4-chivalry`, in its worktree, before T7 and T8): `cargo fmt --check`, `cargo clippy -D warnings` and `cargo test` pass; `./scripts/count-tests.sh` prints `310 passed, 0 failed, 1 ignored`; `scripts/build.sh` (1 071 KB), `wasm_imports.py`, `art_check.py` and `notebook_check.py` pass; `journal_check.py` run on the main checkout passes (check.sh's step 8 looks for `../wt-m4-journal` in a worktree); `tests/browser/check.py` ends `BROWSER CHECK PASSED in chromium, firefox, webkit`; `python3 scripts/break_tests.py` catches 370 of 370; `port_keeps_chumworld_duel` passes with its data unedited.
 
 2026-11-02, M4 with T7 and T8 merged with main (M5 and the ladder costumes) on `m4-chivalry`: steps 1 to 7 and 9 of `./scripts/check.sh` run one by one in the worktree (fmt, clippy, `cargo test`, build 1 369 KB, import audit, art, notebook; `BROWSER CHECK PASSED in chromium, firefox, webkit`), step 8 as `python3 scripts/journal_check.py` on the main checkout; `python3 tests/browser/online.py chromium firefox webkit` ends `ONLINE CHECK PASSED in chromium, firefox, webkit`; `./scripts/count-tests.sh` prints `385 passed, 0 failed, 2 ignored`; `python3 scripts/break_tests.py M4 T7 T8 M5 "held left button"` catches 92 of 92 (the full list, 376 of 376, was run on the branch before the merge); `port_keeps_chumworld_duel` passes with its data unedited.
+2026-11-03, M6 the ladder (branch `m6-ladder`, in the worktree `wt-m6`): `./scripts/check.sh` with only step 8 pointed at the main checkout (`journal_check.py /Users/samgilson/Documents/ChumworldArena/chumworld-arena`) ends `BROWSER CHECK PASSED in chromium, firefox, webkit` and `BUILDER CHECK PASSED`; `tests/browser/online.py chromium firefox webkit` ends `ONLINE CHECK PASSED`; `./scripts/count-tests.sh` prints `399 passed, 0 failed, 3 ignored`; `python3 scripts/break_tests.py` on the 29 new M6 rows and the four repointed catches 33 of 33 (the full list was not run); build 1 415 KB.
 
 ## The next action
 
-M6: the ladder's rules (rungs, unlocks, progress in the save) on the merged costumes; the M4 journal entry with the shots in `scratchpad/m4/`.
+Merge `m6-ladder` into main, run the full break list once, then publish under T1's grant so T6's "deploy that too" is met; the M6 journal entry with the shots in `scratchpad/m6/`.

@@ -1689,8 +1689,8 @@
   {
     "name": "M0 game: Practice puts no foe in the ring",
     "file": "crates/core/src/game.rs",
-    "find": "        crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())\n            .expect(\"the knight is in the pilots' book\");",
-    "replace": "        let _ = PRACTICE_FOE;",
+    "find": "        self.start(PRACTICE_FOE);",
+    "replace": "        self.world = self.fresh_world();",
     "test": "the_game_opens_on_the_title_then_the_menu_and_practice_begins_a_duel_in_rounds"
   },
   {
@@ -1892,8 +1892,8 @@
   {
     "name": "M2: an old save is refused",
     "file": "crates/core/src/save.rs",
-    "find": "    if m.get(\"version\").and_then(|v| v.as_u64()) != Some(VERSION) {",
-    "replace": "    if m.get(\"version\").and_then(|v| v.as_u64()) == Some(99) {",
+    "find": "    if version != Some(VERSION) && version != Some(VERSION_MVP) {",
+    "replace": "    if version == Some(99) {",
     "test": "a_bad_or_old_save_is_refused_with_its_reason"
   },
   {
@@ -1983,8 +1983,8 @@
   {
     "name": "M2: a round's result names the blow",
     "file": "crates/core/src/api.rs",
-    "find": "                    &[(\"blow\", s.get(k.key()))],",
-    "replace": "                    &[(\"blow\", s.get(\"blow_thrust\"))],",
+    "find": "                    &[(\"blow\", s.get(k.key())), (\"name\", name.clone())],",
+    "replace": "                    &[(\"blow\", s.get(\"blow_thrust\")), (\"name\", name.clone())],",
     "test": "a_round_s_result_names_who_fell_and_the_blow"
   },
   {
@@ -2214,8 +2214,8 @@
   {
     "name": "M3 merge: the save's look B puts the player in Knight B",
     "file": "crates/core/src/game.rs",
-    "find": "crate::rounds::begin(&mut self.world, PRACTICE_FOE, self.kept.knight.kind())",
-    "replace": "crate::rounds::begin(&mut self.world, PRACTICE_FOE, crate::pose::Kind::KnightA)",
+    "find": "crate::rounds::begin_dressed(&mut self.world, foe, k.kind(), k.dress())",
+    "replace": "crate::rounds::begin_dressed(&mut self.world, foe, crate::pose::Kind::KnightA, k.dress())",
     "test": "the_save_s_knight_look_b_swaps_the_knights"
   },
   {
@@ -3211,5 +3211,208 @@
     "find": "        let inp = if id == 0 { *input } else { foes[id - 1] };",
     "replace": "        let inp = *input;",
     "test": "the_guest_seat_s_knight_pays_feints_guards_kicks_and_holds_its_view_from_its_own_record"
+  },
+  {
+    "name": "M6 ladder: only rung F opens without a win",
+    "file": "crates/core/src/ladder.rs",
+    "find": "        i < RUNGS.len() && (i == 0 || self.marks[i - 1] > 0)",
+    "replace": "        i < RUNGS.len()",
+    "test": "the_first_rung_is_open_and_each_win_opens_the_next"
+  },
+  {
+    "name": "M6 ladder: a locked rung records nothing",
+    "file": "crates/core/src/ladder.rs",
+    "find": "        if !self.open(i) {\n            return 0;",
+    "replace": "        if false {\n            return 0;",
+    "test": "the_first_rung_is_open_and_each_win_opens_the_next"
+  },
+  {
+    "name": "M6 ladder: a win takes two rounds",
+    "file": "crates/core/src/ladder.rs",
+    "find": "    if wins[0] < crate::rounds::TO_WIN {",
+    "replace": "    if wins[0] < 1 {",
+    "test": "a_win_marks_its_rung_once_and_a_clean_win_twice_and_the_best_is_kept"
+  },
+  {
+    "name": "M6 ladder: a win without losing a round earns both marks",
+    "file": "crates/core/src/ladder.rs",
+    "find": "    } else if wins[1] == 0 {",
+    "replace": "    } else if false {",
+    "test": "a_win_marks_its_rung_once_and_a_clean_win_twice_and_the_best_is_kept"
+  },
+  {
+    "name": "M6 ladder: a rung keeps its best marks",
+    "file": "crates/core/src/ladder.rs",
+    "find": "self.marks[i] = self.marks[i].max(got);",
+    "replace": "self.marks[i] = got;",
+    "test": "a_win_marks_its_rung_once_and_a_clean_win_twice_and_the_best_is_kept"
+  },
+  {
+    "name": "M6 ladder: marks above an unwon rung are not valid",
+    "file": "crates/core/src/ladder.rs",
+    "find": "self.marks[i] <= MARKS_MOST && (self.marks[i] == 0 || self.open(i))",
+    "replace": "self.marks[i] <= MARKS_MOST",
+    "test": "marks_above_an_unwon_rung_or_past_two_are_not_valid"
+  },
+  {
+    "name": "M6 save: the ladder's marks are written",
+    "file": "crates/core/src/save.rs",
+    "find": "        \"ladder\": k.ladder.marks,",
+    "replace": "        \"ladder\": [0u8; 7],",
+    "test": "a_save_keeps_the_ladder_s_marks_and_a_won_rung_s_look"
+  },
+  {
+    "name": "M6 save: a version 1 save still loads",
+    "file": "crates/core/src/save.rs",
+    "find": "    if version != Some(VERSION) && version != Some(VERSION_MVP) {",
+    "replace": "    if version != Some(VERSION) {",
+    "test": "an_mvp_save_loads_with_no_rung_won"
+  },
+  {
+    "name": "M6 save: marks out of order are refused",
+    "file": "crates/core/src/save.rs",
+    "find": "    if !p.valid() {\n        return Err(bad(\"ladder\"));",
+    "replace": "    if false {\n        return Err(bad(\"ladder\"));",
+    "test": "a_save_with_marks_out_of_order_or_an_unwon_look_is_refused"
+  },
+  {
+    "name": "M6 save: a look not won is refused on load",
+    "file": "crates/core/src/save.rs",
+    "find": "        .filter(|k| k.worn_by(&ladder))\n",
+    "replace": "",
+    "test": "a_save_with_marks_out_of_order_or_an_unwon_look_is_refused"
+  },
+  {
+    "name": "M6 look: a rung's look keeps Knight A's body",
+    "file": "crates/core/src/save.rs",
+    "find": "            Knight::Rung(_) => crate::pose::Kind::KnightA,",
+    "replace": "            Knight::Rung(i) => crate::ladder::RUNGS[i as usize].kind,",
+    "test": "a_won_rung_s_look_is_drawn_over_a_knight_s_body_and_nothing_else"
+  },
+  {
+    "name": "M6 look: the look's choice steps through the won rungs",
+    "file": "crates/core/src/save.rs",
+    "find": "        out.extend(p.won_rungs().map(|i| Knight::Rung(i as u8)));",
+    "replace": "",
+    "test": "a_won_rung_s_look_is_drawn_over_a_knight_s_body_and_nothing_else"
+  },
+  {
+    "name": "M6 look: the look reaches the player's figure",
+    "file": "crates/core/src/rounds.rs",
+    "find": "    w.me.dress = dress;",
+    "replace": "    w.me.dress = w.me.kind;",
+    "test": "a_won_rung_s_look_is_drawn_over_a_knight_s_body_and_nothing_else"
+  },
+  {
+    "name": "M6 game: a look not won is refused",
+    "file": "crates/core/src/game.rs",
+    "find": "                if !k.worn_by(&self.kept.ladder) {",
+    "replace": "                if false {",
+    "test": "a_won_rung_s_look_is_drawn_over_a_knight_s_body_and_nothing_else"
+  },
+  {
+    "name": "M6 game: a locked rung is not fought",
+    "file": "crates/core/src/game.rs",
+    "find": "                if !self.kept.ladder.open(self.rung) {",
+    "replace": "                if false {",
+    "test": "the_ladder_opens_at_rung_f_and_a_locked_rung_is_not_fought"
+  },
+  {
+    "name": "M6 game: a ladder duel is against the rung's pilot",
+    "file": "crates/core/src/game.rs",
+    "find": "        self.start(crate::ladder::RUNGS[self.rung].key);",
+    "replace": "        self.start(PRACTICE_FOE);",
+    "test": "the_ladder_opens_at_rung_f_and_a_locked_rung_is_not_fought"
+  },
+  {
+    "name": "M6 game: a ladder win is recorded",
+    "file": "crates/core/src/game.rs",
+    "find": "        self.earned = Some(self.kept.ladder.record(self.rung, r.wins));",
+    "replace": "        self.earned = Some(0);",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 game: a ladder win asks for a save",
+    "file": "crates/core/src/game.rs",
+    "find": "        if self.kept.ladder != before {\n            self.save_seq += 1;",
+    "replace": "        if self.kept.ladder != before {\n            let _ = 0;",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 game: Rematch on the ladder fights the same rung",
+    "file": "crates/core/src/game.rs",
+    "find": "                        if self.climbing && self.screen == Screen::Result {",
+    "replace": "                        if false {",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 api: the result offers Back to the ladder",
+    "file": "crates/core/src/api.rs",
+    "find": "                    actions.push(button(g, \"screen.show\", \"ladder\", \"back_to_ladder\", false));",
+    "replace": "",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 api: the result says what was earned",
+    "file": "crates/core/src/api.rs",
+    "find": "                    } else if g.climbing {\n                        earned_text(g)",
+    "replace": "                    } else if false {\n                        earned_text(g)",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 api: a ladder duel's pause leaves for the ladder",
+    "file": "crates/core/src/api.rs",
+    "find": "                    button(g, \"screen.show\", \"ladder\", \"leave_duel\", false)",
+    "replace": "                    button(g, \"screen.show\", \"menu\", \"leave_duel\", false)",
+    "test": "a_ladder_win_marks_its_rung_opens_the_next_and_is_saved"
+  },
+  {
+    "name": "M6 api: the round names the rung's opponent",
+    "file": "crates/core/src/api.rs",
+    "find": "    let key = if g.climbing && g.versus.is_none() {",
+    "replace": "    let key = if false {",
+    "test": "a_ladder_round_names_its_opponent"
+  },
+  {
+    "name": "M6 api: the menu offers the ladder",
+    "file": "crates/core/src/api.rs",
+    "find": "                    button(g, \"screen.show\", \"ladder\", \"ladder\", false),\n",
+    "replace": "",
+    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
+  },
+  {
+    "name": "M6 api: a card shows its rung's marks",
+    "file": "crates/core/src/api.rs",
+    "find": "                marks,\n                marks_most: most,",
+    "replace": "                marks: 0,\n                marks_most: most,",
+    "test": "a_save_file_with_progress_shows_on_the_ladder"
+  },
+  {
+    "name": "M6 api: a locked card names the rung below",
+    "file": "crates/core/src/api.rs",
+    "find": "&[(\"below\", crate::ladder::RUNGS[i - 1].rank.to_string())],",
+    "replace": "&[(\"below\", crate::ladder::RUNGS[i].rank.to_string())],",
+    "test": "a_save_file_with_progress_shows_on_the_ladder"
+  },
+  {
+    "name": "M6 api: a dossier offers Fight only on an open rung",
+    "file": "crates/core/src/api.rs",
+    "find": "                enabled: open,\n                ..button(g, \"ladder.fight\"",
+    "replace": "                enabled: true,\n                ..button(g, \"ladder.fight\"",
+    "test": "the_ladder_shows_rank_cards_and_each_dossier_its_plate_and_fight"
+  },
+  {
+    "name": "M6 api: a dossier's plate names its side",
+    "file": "crates/core/src/api.rs",
+    "find": "            (true, false) => words.push(fill(&s.get(\"plate_left\"), &part)),",
+    "replace": "            (true, false) => words.push(fill(&s.get(\"plate_right\"), &part)),",
+    "test": "the_ladder_shows_rank_cards_and_each_dossier_its_plate_and_fight"
+  },
+  {
+    "name": "M6 api: a dossier says Every part for full plate",
+    "file": "crates/core/src/api.rs",
+    "find": "    if c == (1 << crate::blade::PARTS) - 1 {",
+    "replace": "    if false {",
+    "test": "the_ladder_shows_rank_cards_and_each_dossier_its_plate_and_fight"
   }
 ]
