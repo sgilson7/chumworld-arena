@@ -327,8 +327,13 @@ async function main() {
   // M5: this build's name for the online hello, from this module's own
   // stamped address (scripts/build.sh), so two builds are told apart
   act("online.build", new URL(import.meta.url).searchParams.get("v") || "dev");
+  // this page's address, for the host's join link
+  act("online.address", location.origin + location.pathname);
   // the save this browser keeps, if any, read by the core before anything shows
   act("save.stored", save.stored());
+  // opened from a join link (?join=CODE): the core shows Join with the code
+  const joining = params.get("join");
+  if (joining) act("online.link", joining);
   show(JSON.parse(game.ui()).ok);
 
   function resize() {

@@ -173,6 +173,9 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R9.14 | finding | The new round's numbers would be free | Comments copied from CHUMWORLD already cite its own notebook's R9.6, R9.10 and R9.88 (`player.rs`, `feel.rs`, `pose.rs`); this project's R9.6 and R9.10 are cited in `knight.rs` and `game.rs` | Left as is; a reader of a copied comment reads "CHUMWORLD" or "M7" beside it | — | open |
 | R9.15 | finding | The WebAssembly would grow little with the ladder | 1 415 KB, from 1 369 KB at M4 merged (R6.26): the four opponents' models and the ladder's screens | Nothing cut; R2.10's budget stays exceeded | MEASUREMENTS.md | done |
 | R9.16 | finding | Every break row would still find its text | Four rows had rotted under M6's `Game::start` and save version: M0's Practice foe, M2's old save, M2's blow name, M3 merge's look B | Repointed; 29 rows added for M6's rules | `tests/breaks.json` | done |
+| R10.1 | divergence | T9 would say what a join link does | T9 asks for joining by link and nothing more | The host's room-code screen also shows a join link: the page's own address with `?join=CODE`. Opening it shows Join with the code typed in and a line saying so; the player still chooses Join, so nothing goes near a relay before a press (CA-4, `online_fence.rs` unchanged). A bad code in a link is refused with the room-code message | `host_offers_a_join_link_and_the_link_fills_in_join`; `tests/breaks.json` "Join link:" (6 of 6 caught) | done |
+| R10.2 | assumption | The page may tell the core its own address | The core cannot read the address; the page sends `location.origin + location.pathname` once at start (`online.address`), as it sends the build name. With no address the host's screen shows the code alone | same test (no address, no link) | done |
+| R10.3 | worklist | — | The link is in a read-only box that selects itself on focus, as the room code is; no Copy button yet | — | open |
 
 ## Strings written by the agent
 
@@ -287,3 +290,5 @@ M6 (the ladder), strings written by the agent:
 | `setting_look`, `look_not_won` | Your look / That look is won on the ladder. Win its rung first. |
 | `round_score`, `round_to_foe`, `fell_*`, `result_lost`, `result_*_text` | now name `{name}` (R9.9) |
 | GLOSSARY.md (M6) | new entries: Dossier, Look, Mark, Rank, Rank card, Rung; Ladder and Save extended |
+| `join_link`, `join_link_text`, `host_room_text` (changed) | Join link / The room code from your join link is filled in. Choose Join. You are the ivory crown. / Give the other player this room code, or send them the join link. They choose Join and type the code, or open the link and choose Join; the duel begins when they arrive. You are the black helm. (R10.1) |
+| GLOSSARY.md (T9) | new entry: Join link |

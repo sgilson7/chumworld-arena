@@ -148,6 +148,12 @@ pub struct Game {
     pub next_cmd: u32,
     /// M5: this build's name, from the page (`online.build`), for the hello
     pub build: String,
+    /// The page's own address, from the page (`online.address`), so the
+    /// host's screen can offer a join link: this address with `?join=CODE`
+    pub address: String,
+    /// A room code that came in a join link (`online.link`): Join shows it
+    /// typed in, and the link opens only when the player chooses Join (CA-4)
+    pub invited: String,
     /// M5: online duels begun, each a room code of its own chance
     pub hosted: u64,
     /// M5: a duel's last words, kept for the transport after it is left
@@ -207,6 +213,8 @@ impl Game {
             online_cmds: Vec::new(),
             next_cmd: 1,
             build: String::from("dev"),
+            address: String::new(),
+            invited: String::new(),
             hosted: 0,
             parting: Vec::new(),
             rung: 0,
@@ -431,6 +439,7 @@ impl Game {
             self.cmd("close", "", String::new(), String::new());
         }
         self.hosted += 1;
+        self.invited.clear();
         let mut v = Versus::new(role, way, &self.build);
         let mut rng = crate::rng::Rng::new(self.seed ^ self.hosted.wrapping_mul(0xa076_1d64_78bd_642f));
         if role == Role::Host && way == Way::Room {
@@ -840,6 +849,15 @@ impl Game {
             "page.leaving" => self.leave_online(),
             // M5: online play (`versus.rs`)
             "online.build" => self.build = value.trim().to_string(),
+            "online.address" => self.address = value.trim().to_string(),
+            // the page was opened from a join link: Join, with the code typed
+            // in; nothing goes near a relay until the player chooses Join
+            "online.link" => {
+                let code =
+                    crate::versus::read_code(value).ok_or_else(|| self.strings.get("online.bad_room"))?;
+                self.go_online(crate::versus::Role::Guest, crate::versus::Way::Room);
+                self.invited = code;
+            }
             "online.host" | "online.join" => {
                 use crate::versus::{Role, Way};
                 let role = if name == "online.host" {

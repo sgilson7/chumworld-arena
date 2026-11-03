@@ -272,6 +272,12 @@ A cut from low in front up over the shoulder: hold the left button and move the 
 
 Not: lobby code, PIN, password
 
+### Join link
+
+This page's address with the room code added, shown on the host's screen beside the code. Opening it shows Join with the code typed in; the duel's link to the relays opens only when the player chooses Join.
+
+Not: invite link, URL
+
 ### Round
 
 One part of a duel: it ends when a knight falls. The first to win {rounds.to_win} rounds wins the duel.

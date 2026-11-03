@@ -79,6 +79,8 @@ pub const REQUIRED: &[&str] = &[
     "host_room_text",
     "join_room_text",
     "room_code",
+    "join_link",
+    "join_link_text",
     "paste_host_text",
     "paste_join_text",
     "invitation",

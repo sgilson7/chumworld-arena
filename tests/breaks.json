@@ -3414,5 +3414,47 @@
     "find": "    if c == (1 << crate::blade::PARTS) - 1 {",
     "replace": "    if false {",
     "test": "the_ladder_shows_rank_cards_and_each_dossier_its_plate_and_fight"
+  },
+  {
+    "name": "Join link: the host's screen offers the link",
+    "file": "crates/core/src/api.rs",
+    "find": "f.push(field(g, \"room-link\", \"join_link\", &link, true, true));",
+    "replace": "",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "Join link: the link carries the code",
+    "file": "crates/core/src/api.rs",
+    "find": "let link = format!(\"{}?join={}\", g.address, v.code);",
+    "replace": "let link = g.address.clone();",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "Join link: opening it fills in the code",
+    "file": "crates/core/src/game.rs",
+    "find": "                self.invited = code;",
+    "replace": "",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "Join link: a bad code in a link is refused",
+    "file": "crates/core/src/game.rs",
+    "find": "crate::versus::read_code(value).ok_or_else(|| self.strings.get(\"online.bad_room\"))?;\n                self.go_online(",
+    "replace": "crate::versus::read_code(value).unwrap_or_default();\n                self.go_online(",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "Join link: a later Join starts empty",
+    "file": "crates/core/src/game.rs",
+    "find": "        self.invited.clear();\n",
+    "replace": "",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
+  },
+  {
+    "name": "Join link: the guest is told the code is filled in",
+    "file": "crates/core/src/api.rs",
+    "find": "                \"join_link_text\"",
+    "replace": "                \"join_room_text\"",
+    "test": "host_offers_a_join_link_and_the_link_fills_in_join"
   }
 ]

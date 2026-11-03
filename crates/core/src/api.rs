@@ -846,14 +846,26 @@ fn online_panel(g: &Game, v: &crate::versus::Versus) -> Panel {
         (Role::Host, Way::Room) => Panel {
             heading: s.get("host"),
             text: s.get("host_room_text"),
-            fields: vec![field(g, "room-out", "room_code", &v.code, true, true)],
+            fields: {
+                let mut f = vec![field(g, "room-out", "room_code", &v.code, true, true)];
+                // a join link, once the page has said where it lives
+                if !g.address.is_empty() {
+                    let link = format!("{}?join={}", g.address, v.code);
+                    f.push(field(g, "room-link", "join_link", &link, true, true));
+                }
+                f
+            },
             actions: vec![instead("online.host"), back],
             ..panel("online")
         },
         (Role::Guest, Way::Room) if v.code.is_empty() => Panel {
             heading: s.get("join"),
-            text: s.get("join_room_text"),
-            fields: vec![field(g, "room-in", "room_code", "", false, true)],
+            text: s.get(if g.invited.is_empty() {
+                "join_room_text"
+            } else {
+                "join_link_text"
+            }),
+            fields: vec![field(g, "room-in", "room_code", &g.invited, false, true)],
             actions: vec![
                 sends(g, "online.room", "room-in", "join"),
                 instead("online.join"),
@@ -1282,6 +1294,64 @@ mod tests {
         let cmds = u["ok"]["online"]["cmds"].as_array().unwrap();
         assert_eq!(cmds.last().unwrap()["act"], "close");
         assert!(j.versus.is_none());
+    }
+
+    /// A join link: the host's screen offers this page's address with the
+    /// code once the page has said where it lives; opening the link shows
+    /// Join with the code typed in and opens nothing until Join is chosen.
+    #[test]
+    fn host_offers_a_join_link_and_the_link_fills_in_join() {
+        let mut g = game();
+        let u = json(&act(&mut g, "online.host", "room"));
+        assert_eq!(
+            u["ok"]["panels"][0]["fields"].as_array().unwrap().len(),
+            1,
+            "no address, no link"
+        );
+        act(&mut g, "screen.show", "menu");
+        act(&mut g, "online.address", "https://example.test/arena/index.html");
+        let u = json(&act(&mut g, "online.host", "room"));
+        let f = &u["ok"]["panels"][0]["fields"];
+        let code = f[0]["value"].as_str().unwrap().to_string();
+        assert_eq!(f[1]["id"], "room-link");
+        assert_eq!(f[1]["label"], "Join link");
+        assert_eq!(
+            f[1]["value"],
+            format!("https://example.test/arena/index.html?join={code}")
+        );
+        assert_eq!(f[1]["fixed"], true);
+
+        let mut j = game();
+        let bad = json(&act(&mut j, "online.link", "AB1"));
+        assert_eq!(bad["error"], "A room code is five letters, such as KMRTW.");
+        assert!(j.versus.is_none(), "a bad link goes nowhere");
+        let u = json(&act(&mut j, "online.link", &code.to_lowercase()));
+        assert_eq!(u["ok"]["screen"], "online");
+        let p = &u["ok"]["panels"][0];
+        assert_eq!(p["heading"], "Join");
+        assert_eq!(
+            p["text"],
+            "The room code from your join link is filled in. Choose Join. You are the ivory crown."
+        );
+        assert_eq!(p["fields"][0]["id"], "room-in");
+        assert_eq!(p["fields"][0]["value"], code.as_str());
+        assert!(
+            u["ok"]["online"]["cmds"].as_array().unwrap().is_empty(),
+            "nothing opens before Join"
+        );
+        let u = json(&act(&mut j, "online.room", &code));
+        assert_eq!(
+            u["ok"]["online"]["cmds"][0]["room"],
+            format!("chumworld-arena-p1-{code}")
+        );
+        // a later Join from the menu starts with an empty box
+        act(&mut j, "screen.show", "menu");
+        let u = json(&act(&mut j, "online.join", "room"));
+        assert_eq!(u["ok"]["panels"][0]["fields"][0]["value"], "");
+        assert_eq!(
+            u["ok"]["panels"][0]["text"],
+            "Type the room code the host gave you, then choose Join. You are the ivory crown."
+        );
     }
 
     /// Two browsers meet by pasted codes and fight: each sees from its own
