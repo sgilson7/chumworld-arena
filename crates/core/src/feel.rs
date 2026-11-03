@@ -287,6 +287,8 @@ pub fn hold(w: &mut World, input: &Input) {
         w.aim = w.aim.turned(crate::player::view_mouse(w, input));
     }
     crate::arm::move_shell(w, 0, input);
+    // M5: and the second seat's knight's
+    crate::seat::hold(w);
     settle(w);
     w.blades.hits.clear();
     w.blades.clashes.clear();

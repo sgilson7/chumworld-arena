@@ -229,7 +229,16 @@ fn clothes(kind: Kind, variant: u8, t: &Table) -> Clothes {
             shoe: c("trainer_boot"),
         },
         // M3: the knights are built in `knight.rs`; this is never drawn
-        Kind::KnightA | Kind::KnightB => Clothes {
+        // (M6: nor are the ladder's opponents, `knight/fed.rs`, `champion.rs`)
+        Kind::KnightA
+        | Kind::KnightB
+        | Kind::Squire
+        | Kind::Sellsword
+        | Kind::Hedge
+        | Kind::Veteran
+        | Kind::Banneret
+        | Kind::Champion
+        | Kind::Mirror => Clothes {
             skin: c("eye"),
             shirt: c("eye"),
             sleeve: c("eye"),
@@ -547,7 +556,15 @@ fn outfit(
         Kind::AntKing => ant_king(f),
         Kind::Merchant => merchant(f, hooded, hrv, head, torso),
         Kind::Trainer => trainer(f, hooded, hrv, head, torso),
-        Kind::KnightA | Kind::KnightB => {}
+        Kind::KnightA
+        | Kind::KnightB
+        | Kind::Squire
+        | Kind::Sellsword
+        | Kind::Hedge
+        | Kind::Veteran
+        | Kind::Banneret
+        | Kind::Champion
+        | Kind::Mirror => {}
         Kind::Villager => villager(
             f,
             dress.variant % VILLAGER_VARIANTS,

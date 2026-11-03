@@ -42,6 +42,10 @@ pub enum Screen {
     Round,
     /// the duel won or lost: rematch or back
     Result,
+    /// M5: hosting or joining online, or an online duel that has ended
+    Online,
+    /// M5: the choice of hosting or joining by pasted codes
+    Paste,
 }
 
 impl Screen {
@@ -54,6 +58,8 @@ impl Screen {
             Screen::Paused => "paused",
             Screen::Round => "round",
             Screen::Result => "result",
+            Screen::Online => "online",
+            Screen::Paste => "paste",
         }
     }
 
@@ -129,7 +135,22 @@ pub struct Game {
     /// ticks the title and menu have shown, for their drifting camera
     pub title_ticks: u64,
     pub ui_version: u32,
+    /// M5: the online duel, from Host, Join or Pasted codes until the menu
+    pub versus: Option<crate::versus::Versus>,
+    /// M5: what the page's transport is to do, newest last, numbered from 1
+    /// for the whole visit (`versus::Cmd`)
+    pub online_cmds: Vec<crate::versus::Cmd>,
+    pub next_cmd: u32,
+    /// M5: this build's name, from the page (`online.build`), for the hello
+    pub build: String,
+    /// M5: online duels begun, each a room code of its own chance
+    pub hosted: u64,
+    /// M5: a duel's last words, kept for the transport after it is left
+    pub parting: Vec<(u32, String)>,
 }
+
+/// M5: how many of the transport's commands the view model keeps.
+pub const CMDS_KEPT: usize = 8;
 
 impl Game {
     /// A game from the strings, the glossary, the look and the page's seed.
@@ -171,6 +192,12 @@ impl Game {
             play_ticks: 0,
             title_ticks: 0,
             ui_version: 1,
+            versus: None,
+            online_cmds: Vec::new(),
+            next_cmd: 1,
+            build: String::from("dev"),
+            hosted: 0,
+            parting: Vec::new(),
         };
         g.world = g.fresh_world();
         g.draw();
@@ -227,6 +254,10 @@ impl Game {
     /// One display frame: the page's clock in microseconds, the held action
     /// bits, and the mouse and wheel movement in hundredths of a CSS pixel.
     pub fn advance(&mut self, now_us: i64, bits: u32, dx: i32, dy: i32, wheel: i32) {
+        if self.versus.is_some() {
+            self.advance_online(now_us, bits, dx, dy, wheel);
+            return;
+        }
         let ticks = self.clock.frame(now_us, bits);
         if self.screen.plays() {
             self.pending.add(dx, dy, wheel);
@@ -256,6 +287,190 @@ impl Game {
             self.alpha = self.clock.alpha();
         }
         self.draw();
+    }
+
+    /// M5: one display frame online. The duel never pauses: while the
+    /// reader is on another screen its knight is given no record. Each tick
+    /// the clock runs, this browser's record goes to the session, which runs
+    /// the tick if its window allows (`rollback.rs`); the page then draws
+    /// the session's world, the guest's turned round.
+    fn advance_online(&mut self, now_us: i64, bits: u32, dx: i32, dy: i32, wheel: i32) {
+        let ticks = self.clock.frame(now_us, bits);
+        let fighting = matches!(self.screen, Screen::Duel | Screen::Round);
+        if fighting {
+            let (dx, dy) = crate::versus::scaled(&self.kept, dx, dy);
+            self.pending.add(dx, dy, wheel);
+        } else {
+            self.pending.clear();
+        }
+        let Some(v) = self.versus.as_mut() else {
+            return;
+        };
+        let before = (v.status(), v.session.made.back().copied(), v.rematch);
+        let mut ran = false;
+        if v.live() {
+            for (k, b) in ticks.iter().enumerate() {
+                let m = if k == 0 {
+                    self.pending.take()
+                } else {
+                    Mouse::default()
+                };
+                let i = if fighting {
+                    Input::from_page(*b, m)
+                } else {
+                    Input::default()
+                };
+                v.session.local(v.record(i));
+                ran |= v.session.step();
+            }
+            // (heard before the first frame: the silence counts from now)
+            if v.heard_us.is_none() {
+                v.heard_us = self.clock.last();
+            }
+            if let (Some(h), Some(now)) = (v.heard_us, self.clock.last()) {
+                if now - h > crate::versus::TIMEOUT_US {
+                    v.error = Some(crate::versus::TIMEOUT);
+                }
+            }
+        }
+        let fresh = !v.started && v.live();
+        let redraw = ran || fresh;
+        if redraw {
+            v.started = true;
+            let mut w = v.view();
+            apply_display(&mut w, &self.kept);
+            if w.rounds
+                .as_ref()
+                .is_some_and(|r| r.phase != crate::rounds::Phase::Over)
+            {
+                v.rematch = false;
+            }
+            self.world = w;
+        }
+        let ended = v.started && v.ended();
+        let after = (v.status(), v.session.made.back().copied(), v.rematch);
+        if fresh {
+            self.play_ticks = 0;
+            self.show(Screen::Duel);
+        }
+        if redraw && self.screen.plays() {
+            let s0 = self.stamp();
+            self.follow_rounds();
+            if s0 != self.stamp() {
+                self.ui_version += 1;
+            }
+            self.play_ticks += ticks.len() as u64;
+        }
+        if ended && self.screen != Screen::Online && self.screen != Screen::Settings {
+            self.show(Screen::Online);
+        }
+        if before != after {
+            self.ui_version += 1;
+        }
+        self.alpha = self.clock.alpha();
+        self.draw();
+    }
+
+    /// M5: a command for the page's transport.
+    fn cmd(&mut self, act: &str, mode: &str, room: String, code: String) {
+        let host = self
+            .versus
+            .as_ref()
+            .is_some_and(|v| v.role == crate::versus::Role::Host);
+        self.online_cmds.push(crate::versus::Cmd {
+            id: self.next_cmd,
+            act: act.into(),
+            host,
+            mode: mode.into(),
+            room,
+            code,
+        });
+        self.next_cmd += 1;
+        let extra = self.online_cmds.len().saturating_sub(CMDS_KEPT);
+        self.online_cmds.drain(..extra);
+        self.ui_version += 1;
+    }
+
+    /// M5: Host or Join, by room code or pasted codes. A host by room code
+    /// is given a room code and opens its link at once; a guest by room
+    /// code waits for the code to be typed; by pasted codes the host's link
+    /// makes an invitation and the guest's waits for one.
+    fn go_online(&mut self, role: crate::versus::Role, way: crate::versus::Way) {
+        use crate::versus::{Role, Versus, Way};
+        if self.versus.is_some() {
+            self.cmd("close", "", String::new(), String::new());
+        }
+        self.hosted += 1;
+        let mut v = Versus::new(role, way, &self.build);
+        let mut rng = crate::rng::Rng::new(self.seed ^ self.hosted.wrapping_mul(0xa076_1d64_78bd_642f));
+        if role == Role::Host && way == Way::Room {
+            v.code = crate::versus::room_code(&mut rng);
+        }
+        self.world = v.view();
+        apply_display(&mut self.world, &self.kept);
+        let room = crate::online::room_name(crate::online::APP_ID, &v.code);
+        self.versus = Some(v);
+        match (role, way) {
+            (Role::Host, Way::Room) => self.cmd("open", "room", room, String::new()),
+            (Role::Host, Way::Paste) => {
+                self.cmd("open", "code", String::new(), String::new());
+                self.cmd("invite", "code", String::new(), String::new());
+            }
+            (Role::Guest, Way::Paste) => self.cmd("open", "code", String::new(), String::new()),
+            (Role::Guest, Way::Room) => {}
+        }
+        self.clock.rest();
+        self.show(Screen::Online);
+        self.ui_version += 1;
+    }
+
+    /// M5: this browser leaves the online duel: the other is told, the
+    /// transport closed.
+    fn leave_online(&mut self) {
+        if let Some(v) = self.versus.as_mut() {
+            v.session.link.leave();
+            self.parting.extend(v.session.take_outbox());
+            self.cmd("close", "", String::new(), String::new());
+            self.versus = None;
+        }
+    }
+
+    /// M5: the transport says a browser arrived.
+    pub fn online_connected(&mut self, peer: u32) {
+        if let Some(v) = self.versus.as_mut() {
+            v.session.connected(peer);
+            v.heard_us = self.clock.last();
+            self.ui_version += 1;
+        }
+    }
+
+    /// M5: the transport says a browser left.
+    pub fn online_left(&mut self, peer: u32) {
+        if let Some(v) = self.versus.as_mut() {
+            v.session.left(peer);
+            self.ui_version += 1;
+        }
+    }
+
+    /// M5: text from a browser.
+    pub fn online_message(&mut self, peer: u32, text: &str) {
+        if let Some(v) = self.versus.as_mut() {
+            let before = v.status();
+            v.session.message(peer, text);
+            v.heard_us = self.clock.last();
+            if before != v.status() {
+                self.ui_version += 1;
+            }
+        }
+    }
+
+    /// M5: what the transport is to send, as JSON: `[[peer, text], ...]`.
+    pub fn online_outbox(&mut self) -> String {
+        let mut out = std::mem::take(&mut self.parting);
+        if let Some(v) = self.versus.as_mut() {
+            out.extend(v.session.take_outbox());
+        }
+        serde_json::to_string(&out).expect("pairs of a number and text serialise")
     }
 
     /// Whether a duel is under way behind this screen (fought, paused, or
@@ -309,7 +524,8 @@ impl Game {
     }
 
     pub fn hint_shown(&self) -> bool {
-        self.screen == Screen::Duel && self.play_ticks < HINT_TICKS
+        // (M5: online, Esc opens the pause's panel but the duel runs on)
+        self.screen == Screen::Duel && self.play_ticks < HINT_TICKS && self.versus.is_none()
     }
 
     /// The title's and the menu's slow turn round the ring's middle.
@@ -364,9 +580,10 @@ impl Game {
         }
     }
 
-    /// The menu, the duel behind it ended.
+    /// The menu, the duel behind it ended (M5: and online, left).
     fn leave_for_menu(&mut self) {
-        if self.in_duel() {
+        if self.in_duel() || self.versus.is_some() {
+            self.leave_online();
             self.world = self.fresh_world();
         }
         self.show(Screen::Menu);
@@ -432,9 +649,17 @@ impl Game {
                     };
                     self.show(to);
                 }
+                // M5: the choice of hosting or joining by pasted codes
+                "paste" => self.show(Screen::Paste),
                 "duel" => {
                     // from the menu or a result, a new duel; from a pause,
-                    // the duel goes on where it was
+                    // the duel goes on where it was (M5: online, the duel
+                    // was never paused)
+                    if self.versus.is_some() {
+                        self.show(Screen::Duel);
+                        self.follow_rounds();
+                        return Ok(());
+                    }
                     if !self.in_duel() || self.screen == Screen::Result {
                         self.start_practice();
                     }
@@ -508,6 +733,89 @@ impl Game {
                 trial.act(n, v)?;
                 self.staged.push((n.to_string(), v.to_string()));
             }
+            // M5: the page is going away: an online duel is left, so the
+            // other browser hears of it at once rather than after a silence
+            "page.leaving" => self.leave_online(),
+            // M5: online play (`versus.rs`)
+            "online.build" => self.build = value.trim().to_string(),
+            "online.host" | "online.join" => {
+                use crate::versus::{Role, Way};
+                let role = if name == "online.host" {
+                    Role::Host
+                } else {
+                    Role::Guest
+                };
+                let way = match value.trim() {
+                    "room" => Way::Room,
+                    "code" => Way::Paste,
+                    other => {
+                        return Err(format!(
+                            "Online play is by \"room\" or \"code\", not \"{other}\"."
+                        ))
+                    }
+                };
+                self.go_online(role, way);
+            }
+            // the guest typed a room code
+            "online.room" => {
+                let code =
+                    crate::versus::read_code(value).ok_or_else(|| self.strings.get("online.bad_room"))?;
+                let Some(v) = self.versus.as_mut() else {
+                    return Err(self.strings.get("online.not_online"));
+                };
+                v.code = code.clone();
+                let room = crate::online::room_name(crate::online::APP_ID, &code);
+                self.cmd("open", "room", room, String::new());
+            }
+            // the host's page made its invitation; the guest's its reply
+            "online.offer" | "online.answer" => {
+                let Some(v) = self.versus.as_mut() else {
+                    return Err(self.strings.get("online.not_online"));
+                };
+                if name == "online.offer" {
+                    v.offer = value.trim().to_string();
+                } else {
+                    v.answer = value.trim().to_string();
+                }
+                self.ui_version += 1;
+            }
+            // the guest pasted the host's invitation; the host the reply
+            "online.reply" | "online.accept" => {
+                let code: String = value.split_whitespace().collect();
+                if code.is_empty() {
+                    return Err(self.strings.get("online.bad_code"));
+                }
+                let Some(v) = self.versus.as_mut() else {
+                    return Err(self.strings.get("online.not_online"));
+                };
+                v.error = None;
+                if name == "online.reply" {
+                    v.offer = code.clone();
+                    v.answer.clear();
+                } else {
+                    v.answer = code.clone();
+                }
+                let act = name.trim_start_matches("online.");
+                self.cmd(act, "code", String::new(), code);
+            }
+            // the transport failed, by its key
+            "online.error" => {
+                let key = crate::versus::TRANSPORT_ERRORS
+                    .iter()
+                    .copied()
+                    .find(|k| *k == value.trim())
+                    .unwrap_or("online.signal_failed");
+                if let Some(v) = self.versus.as_mut() {
+                    v.error = Some(key);
+                    self.ui_version += 1;
+                }
+            }
+            "online.rematch" => {
+                if let Some(v) = self.versus.as_mut() {
+                    v.rematch = true;
+                    self.ui_version += 1;
+                }
+            }
             "save.download" => {
                 self.save_export += 1;
                 self.ui_version += 1;
@@ -533,6 +841,18 @@ impl Game {
             ("fov.max", crate::world::FOV_MAX.to_string()),
         ];
         v.extend(crate::rounds::values());
+        // M5: online play
+        v.push(("online.code_length", crate::versus::CODE_LENGTH.to_string()));
+        v.push((
+            "online.sum_seconds",
+            fx::decimal(
+                fx::ratio(
+                    crate::online::SUM_EVERY as i32,
+                    crate::ticks::TICKS_PER_SECOND as i32,
+                ),
+                1,
+            ),
+        ));
         v.extend(crate::chivalry::values()); // M4
         v
     }
@@ -544,6 +864,13 @@ pub fn apply(w: &mut World, k: &crate::save::Kept) {
     w.settings.invert_pitch = k.invert_pitch;
     w.settings.fov = k.fov;
     w.settings.aim_help = k.aim_help;
+}
+
+/// M5: what the save keeps that only the drawing reads, into the world an
+/// online duel's page draws: the field of view. The look speed and the
+/// pitch are in the records already (`versus::scaled`).
+pub fn apply_display(w: &mut World, k: &crate::save::Kept) {
+    w.settings.fov = k.fov;
 }
 
 /// A settings button's step: "+" one up, "-" one down.

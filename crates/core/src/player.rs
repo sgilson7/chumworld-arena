@@ -329,7 +329,12 @@ fn candidates(w: &World, id: usize, range: Fx) -> Vec<usize> {
 /// the player's mouse looks this tick, and the movement that turns the view.
 pub fn look_mouse(w: &mut World, input: &Input) -> Mouse {
     for id in 0..count(w) {
-        let range = if id == 0 { HOLD_RANGE } else { FOE_RANGE };
+        // M5: the second seat holds on as the player does (`seat.rs`)
+        let range = if id == 0 || crate::seat::is(w, id) {
+            HOLD_RANGE
+        } else {
+            FOE_RANGE
+        };
         let f = fighter(w, id);
         let next = if !f.drawn() || f.health.down() {
             None
@@ -347,13 +352,7 @@ pub fn look_mouse(w: &mut World, input: &Input) -> Mouse {
         parts_mut(w, id).1.engaged = next;
     }
     let looks = if w.first_person() {
-        // M1 (CA-Q6: A): the mouse turns the view unless the right button
-        // holds the guard (T7) or the left is held; T8: while the left is
-        // held, through the gesture and the committed cut, the mouse steers
-        // the cut only and the view stays still (M1 let a committed cut's
-        // mouse turn the view, which flung it on a hard swipe)
-        let cutting = input.button(input::SWING);
-        !w.me.drawn() || w.me.health.down() || !(input.button(input::HOLD_LOOK) || cutting)
+        first_person_looks(&w.me, input)
     } else {
         !w.me.drawn() || input.button(input::HOLD_LOOK) || w.me.health.down()
     };
@@ -363,6 +362,17 @@ pub fn look_mouse(w: &mut World, input: &Input) -> Mouse {
     } else {
         Mouse::default()
     }
+}
+
+/// M1 (CA-Q6: A), in first person: the mouse turns the view unless the
+/// right button holds the guard (T7) or the left is held. T8: while the
+/// left is held, through the gesture and the committed cut, the mouse
+/// steers the cut only and the view stays still (M1 let a committed cut's
+/// mouse turn the view, which flung it on a hard swipe). M5: the second
+/// seat's knight reads its record the same way (`seat.rs`).
+pub fn first_person_looks(f: &Fighter, input: &Input) -> bool {
+    let cutting = input.button(input::SWING);
+    !f.drawn() || f.health.down() || !(input.button(input::HOLD_LOOK) || cutting)
 }
 
 /// The movement that turns the view: the record's, its up and down turned
@@ -447,12 +457,22 @@ fn view_lift(w: &World) -> i32 {
 /// above it). Its side rides by itself, the shell being the body's and the
 /// body facing where the view does. Returns the pitch it set.
 pub fn ride_guard(w: &mut World) -> Option<i32> {
-    if !w.first_person() || w.me.sheath != Sheath::Drawn || w.me.health.down() || w.me.arm.swing.cut.is_some()
-    {
+    if !w.first_person() {
         return None;
     }
-    let pitch = (w.guard_pitch + view_lift(w)).clamp(arm::PITCH_MIN, arm::PITCH_MAX);
-    w.me.arm.shell.pitch = pitch;
+    let (guard, lift) = (w.guard_pitch, view_lift(w));
+    ride_guard_of(&mut w.me, guard, lift)
+}
+
+/// `ride_guard` for any fighter seen from its own helmet: its guard's pitch
+/// against the view, and the view's pitch from its opening (M5: the second
+/// seat's knight, `seat.rs`).
+pub fn ride_guard_of(f: &mut Fighter, guard_pitch: i32, lift: i32) -> Option<i32> {
+    if f.sheath != Sheath::Drawn || f.health.down() || f.arm.swing.cut.is_some() {
+        return None;
+    }
+    let pitch = (guard_pitch + lift).clamp(arm::PITCH_MIN, arm::PITCH_MAX);
+    f.arm.shell.pitch = pitch;
     Some(pitch)
 }
 
@@ -460,11 +480,20 @@ pub fn ride_guard(w: &mut World) -> Option<i32> {
 /// ride (the freed hand, a cut's end) sets where the guard sits against
 /// the view from now on.
 pub fn keep_guard(w: &mut World, ridden: Option<i32>) {
-    if !w.first_person() || w.me.sheath != Sheath::Drawn {
+    if !w.first_person() {
         return;
     }
-    if ridden != Some(w.me.arm.shell.pitch) {
-        w.guard_pitch = w.me.arm.shell.pitch - view_lift(w);
+    let lift = view_lift(w);
+    keep_guard_of(&w.me, &mut w.guard_pitch, lift, ridden);
+}
+
+/// `keep_guard` for any fighter seen from its own helmet (M5, `seat.rs`).
+pub fn keep_guard_of(f: &Fighter, guard_pitch: &mut i32, lift: i32, ridden: Option<i32>) {
+    if f.sheath != Sheath::Drawn {
+        return;
+    }
+    if ridden != Some(f.arm.shell.pitch) {
+        *guard_pitch = f.arm.shell.pitch - lift;
     }
 }
 
@@ -554,6 +583,10 @@ fn hold_on_shoulder(w: &mut World) {
 /// Every foe looks straight at whom it holds on.
 fn foes_look(w: &mut World) {
     for id in 1..count(w) {
+        // M5: the second seat's knight looks where its own view does (`seat::look`)
+        if crate::seat::is(w, id) {
+            continue;
+        }
         let f = fighter(w, id);
         let look = f.engaged.map(|k| {
             let b = body(w, id);
@@ -1460,7 +1493,10 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
 /// A foe of `kind` ahead of the player, facing them, sword drawn. A second
 /// and later foe stands to one side or the other of the first.
 pub fn spawn(w: &mut World, kind: Kind) {
-    spawn_keyed(w, kind, crate::pilot::kind_name(kind));
+    // the book's entry the act would drive it by: the champion and the
+    // mirror are named as themselves but piloted on Knight B's (R7.303, R5.27)
+    let key = crate::pilot::pilot_named(crate::pilot::kind_name(kind)).map_or("bandit", |(_, k)| k);
+    spawn_keyed(w, kind, key);
 }
 
 /// The same, driven by the pilot book's entry `key` (M2: the knight).
@@ -1618,6 +1654,17 @@ mod tests {
         far.foes[0].body.pos = far.player.pos.add(facing(0, 0).scale(fx::int(16)));
         far.step(&Input::default());
         assert_eq!(far.me.engaged, None);
+    }
+
+    #[test]
+    fn a_ladder_foe_spawned_by_kind_is_driven_by_its_book_entry() {
+        // R5.27: the champion and the mirror have no entry of their own yet
+        let mut w = World::new(1);
+        spawn(&mut w, Kind::Champion);
+        spawn(&mut w, Kind::Squire);
+        let keys: Vec<&str> = w.foes.iter().map(|f| f.brain.key.as_str()).collect();
+        assert_eq!(keys, ["knight_b", "squire"]);
+        assert_eq!(w.foes[0].fighter.kind, Kind::Champion);
     }
 
     #[test]

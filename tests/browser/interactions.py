@@ -27,10 +27,12 @@ def run(page, check, engine):
     page.click("#title button")
     page.wait_for_selector('body[data-screen="menu"]', timeout=10000)
     labels = [b.inner_text().strip().lower() for b in page.query_selector_all("#menu button")]
-    want = [STRINGS[k].lower() for k in ("practice", "host", "join", "settings")]
-    check(labels == want, f"the menu offers Practice, Host, Join and Settings {labels}")
-    check(page.is_disabled('#menu button[data-action="online.none"] >> nth=0'), "Host is shown but not open")
-    check(STRINGS["online_next"] in page.inner_text("#menu"), "the menu says why Host and Join are not open")
+    want = [STRINGS[k].lower() for k in ("practice", "host", "join", "pasted_codes", "settings")]
+    check(labels == want, f"the menu offers Practice, Host, Join, Pasted codes and Settings {labels}")
+    # M5: Host and Join are open; this check never presses either, so it still
+    # sees no WebSocket and no request off the origin (CA-4, online_fence.rs)
+    check(page.is_enabled('#menu button[data-action="online.host"]'), "Host is open")
+    check(STRINGS["online_menu_note"] in page.inner_text("#menu"), "the menu says how online play meets")
 
     # the settings: the field of view up a degree, kept in this browser's save
     page.click('#menu button[data-value="settings"]')

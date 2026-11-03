@@ -38,11 +38,23 @@ A foe the computer fights with a short sword, through the same input a player gi
 
 Not: bot, enemy AI, NPC
 
+### Banneret
+
+The ladder's opponent at rung B: fluted plate from head to foot, a rounded helm with a plume, a blue tabard with a gilt band and a cape behind. A working label until the person names it.
+
+Not: Lord, paladin
+
 ### Black helm
 
 The knight in blackened plate, a bucket helm and wide shoulders, with a torn cloak behind: the player's knight in Practice unless the save chooses the other. A working label until the person names it.
 
 Not: Black Knight, black knight
+
+### Champion
+
+The ladder's second-hardest opponent, rung A: broad tourney plate in pale steel and gilt, huge pauldrons, a red skirt and a flat-topped great helm with two gilt wings. A working label until the person names it.
+
+Not: Champion Gundyr, Gundyr
 
 ### Chop
 
@@ -55,6 +67,12 @@ Not: overhead slash
 What the sword does while the left button is held and the mouse moves: the way the mouse goes picks a level cut, a chop, a rising cut, a diagonal cut or a thrust.
 
 Not: slash, swipe, combo
+
+### Desync
+
+The two browsers in an online duel no longer agree on the duel: each sums its duel every {online.sum_seconds} second, and the sums for the same moment differ. The duel stops, and the game says so; it is a fault in the game.
+
+Not: lag, rubber-banding
 
 ### Diagonal cut
 
@@ -114,9 +132,15 @@ How much harm a body can take. A blade takes more the faster it moves when it hi
 
 Not: HP, hit points
 
+### Hedge knight
+
+The ladder's fourth opponent from the foot (rung D): a knight in half plate under a long green surcoat torn at the hem, cloth hose below the knee, and a pointed helm over a mail collar. A working label until the person names it.
+
+Not: Ser Duncan
+
 ### Host
 
-Opening a duel for another browser to join online. Online play comes after the first release of Practice.
+Opening a duel for another browser to join online, by a room code or by pasted codes. The host fights as the black helm.
 
 Not: server, lobby
 
@@ -134,7 +158,7 @@ Not: Ivory King, Burnt Ivory King
 
 ### Join
 
-Entering a duel another browser has opened online.
+Entering a duel another browser has opened online, by its room code or by pasted codes. The one who joins fights as the ivory crown.
 
 Not: connect, matchmaking
 
@@ -168,11 +192,23 @@ The rings of steel under plate. A part whose plate has broken off shows its mail
 
 Not: chainmail, chain mail
 
+### Mirror
+
+The ladder's last opponent, rung S: blackened plate with bright edges and a smooth egg-shaped helm with no face. A working label until the person names it.
+
+Not: Mirror Knight, mirror knight
+
 ### Parry
 
 Turning a blow aside with your own blade: the blades meet and neither reaches a body. It is the arm and blade meeting, not a button.
 
 Not: deflect
+
+### Pasted codes
+
+Meeting online with no relay: the host's page makes an invitation, a long code the host sends to the other player by any means; the other player pastes it and sends back a reply, which the host pastes in turn.
+
+Not: token, key, password
 
 ### Plate
 
@@ -186,6 +222,12 @@ A duel against the computer's knight, from the menu: best of three rounds.
 
 Not: training mode, tutorial
 
+### Relay
+
+A public machine on the internet that introduces two browsers by room code. Once they have met, the duel passes between the browsers directly and the relay carries none of it.
+
+Not: server, lobby
+
 ### Riposte
 
 A cut begun within {chivalry.riposte_s} seconds of your blade parrying one. It draws back faster, drives harder, and keeps pressing for a moment when a blade meets it.
@@ -195,6 +237,12 @@ Not: counter, counterattack
 ### Rising cut
 
 A cut from low in front up over the shoulder: hold the left button and move the mouse up.
+
+### Room code
+
+{online.code_length} letters the host's page shows and the other player types after choosing Join, so the two browsers find each other through the relays.
+
+Not: lobby code, PIN, password
 
 ### Round
 
@@ -213,6 +261,16 @@ Not: sprint
 What the game keeps in this browser between visits: your settings and your knight's look. You can download it as a file and load it again.
 
 Not: profile, account, cloud save
+
+### Sellsword
+
+The ladder's second opponent from the foot (rung E): a hired fighter in a studded leather coat with steel plates inside, steel on the forearms, a helm with a tail and a chin plate, and one big plate on the right shoulder only. A working label until the person names it.
+
+Not: Sellsword Twinblades, Sellsword set
+
+### Squire
+
+The ladder's first opponent (rung F): a young fighter in a padded quilted coat, a mail hood round an open face and a broad-brimmed steel hat, his only plate. A working label until the person names it.
 
 ### Stamina
 
@@ -237,6 +295,12 @@ Not: TDM
 A straight stab ahead: hold the left button and turn the wheel away from you.
 
 Not: lunge, poke
+
+### Veteran
+
+The ladder's opponent at rung C, the sheet's "pit veteran": bare upper arms, one huge pauldron on the left shoulder, a leather coat over a mail skirt and an open helm with a T-shaped face. Only his helm, the pauldron's arm and his forearms wear plate. A working label until the person names it.
+
+Not: gladiator, berserker
 
 ### Walk
 

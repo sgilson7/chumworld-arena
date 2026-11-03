@@ -1710,7 +1710,7 @@
   {
     "name": "M1: the guard rides with the view's pitch",
     "file": "crates/core/src/player.rs",
-    "find": "    w.me.arm.shell.pitch = pitch;\n    Some(pitch)",
+    "find": "    f.arm.shell.pitch = pitch;\n    Some(pitch)",
     "replace": "    Some(pitch)",
     "test": "in_first_person_the_guard_follows_the_view_s_heading_and_pitch"
   },
@@ -1727,13 +1727,6 @@
     "find": "let cutting = input.button(input::SWING);",
     "replace": "let cutting = false;",
     "test": "in_first_person_a_gesture_still_snaps_to_the_four_cuts_and_the_view_holds_while_it_is_read"
-  },
-  {
-    "name": "M1, T7: the right button holds the view",
-    "file": "crates/core/src/player.rs",
-    "find": "!(input.button(input::HOLD_LOOK) || cutting)",
-    "replace": "!cutting",
-    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
   },
   {
     "name": "M1: the soft pull turns the view",
@@ -1988,13 +1981,6 @@
     "test": "the_duel_is_seen_from_the_eye_at_the_field_of_view_set"
   },
   {
-    "name": "M2: Host and Join shown but not open",
-    "file": "crates/core/src/api.rs",
-    "find": "                enabled: false,\n                ..button(g, \"online.none\", \"\", label, false)",
-    "replace": "                enabled: true,\n                ..button(g, \"online.none\", \"\", label, false)",
-    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
-  },
-  {
     "name": "M2: a round's result names the blow",
     "file": "crates/core/src/api.rs",
     "find": "                    &[(\"blow\", s.get(k.key()))],",
@@ -2074,8 +2060,8 @@
   {
     "name": "M3 plate: no plate for an unarmoured kind",
     "file": "crates/core/src/plate.rs",
-    "find": "    if armoured(kind) {\n        INTEGRITY",
-    "replace": "    if true {\n        INTEGRITY",
+    "find": "        _ => 0,\n    }\n}",
+    "replace": "        _ => (1 << PARTS) - 1,\n    }\n}",
     "test": "a_kind_without_plate_takes_chumworld_s_blow_unchanged"
   },
   {
@@ -2266,6 +2252,580 @@
     "find": "            cull_near(&mut out.list, from, p.head, head_cull(&f.build()));",
     "replace": "            cull_near(&mut out.list, from, p.head, HEAD_CULL);",
     "test": "neither_knight_s_helm_is_drawn_across_its_own_eye"
+  },
+  {
+    "name": "M6 FED squire: the brim is wide",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "const BRIM_MM: i32 = 330;",
+    "replace": "const BRIM_MM: i32 = 220;",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED sellsword: the one pauldron stands out",
+    "file": "crates/core/src/models/knight/sellsword.rs",
+    "find": "let size = v3(k.w(320 - 30 * i), k.s(124 - 12 * i), k.w(270 - 30 * i));",
+    "replace": "let size = v3(k.w(120 - 30 * i), k.s(124 - 12 * i), k.w(270 - 30 * i));",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED hedge: the point stands over the dome",
+    "file": "crates/core/src/models/knight/hedge.rs",
+    "find": "const POINT_MM: i32 = 380;",
+    "replace": "const POINT_MM: i32 = 300;",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 FED z-fight: the hat's crown clears the hood",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "v3(k.s(214), k.s(150), k.s(208)),",
+    "replace": "v3(k.s(200), k.s(150), k.s(194)),",
+    "test": "no_face_of_a_ladder_opponent_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 FED triangle cap",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "    for y in QUILTS {",
+    "replace": "    for y in QUILTS.repeat(20) {",
+    "test": "each_ladder_opponent_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 FED coverage: the squire's only plate is his hat",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Squire => b(HEAD),",
+    "replace": "        Kind::Squire => b(HEAD) | b(TORSO),",
+    "test": "each_ladder_opponent_wears_plate_where_the_sheet_draws_steel"
+  },
+  {
+    "name": "M6 FED coverage: the hedge knight's shins are bare",
+    "file": "crates/core/src/plate.rs",
+    "find": "((1 << PARTS) - 1) & !b(SHIN[LEFT]) & !b(SHIN[RIGHT])",
+    "replace": "((1 << PARTS) - 1) & !b(SHIN[LEFT])",
+    "test": "each_ladder_opponent_wears_plate_where_the_sheet_draws_steel"
+  },
+  {
+    "name": "M6 FED model: a part with no plate is drawn in its garment",
+    "file": "crates/core/src/models/knight/fed.rs",
+    "find": "    if cover & bit(seg) != 0 {\n        k.under(seg)",
+    "replace": "    if cover & bit(seg) != 0 || cover != 0 {\n        k.under(seg)",
+    "test": "each_ladder_opponent_is_drawn_in_plate_only_where_it_wears_it"
+  },
+  {
+    "name": "M6 FED sever: plate only on covered parts",
+    "file": "crates/core/src/plate.rs",
+    "find": "        if c & wounds::bit(s) != 0 {\n            *v = INTEGRITY[s];",
+    "replace": "        if c != 0 {\n            *v = INTEGRITY[s];",
+    "test": "a_part_without_plate_is_cut_off_and_a_plated_one_is_not"
+  },
+  {
+    "name": "M6 FED open helm: below the brim is a gap",
+    "file": "crates/core/src/plate.rs",
+    "find": "if open_helm(kind) && up < scaled(kind, OPEN_HELM_MM) {",
+    "replace": "if false && up < scaled(kind, OPEN_HELM_MM) {",
+    "test": "the_squire_s_hat_is_plate_only_above_its_brim"
+  },
+  {
+    "name": "M6 FED open helm: the brim is drawn where the gap ends",
+    "file": "crates/core/src/models/knight/squire.rs",
+    "find": "    let lo = OPEN_HELM_MM;\n",
+    "replace": "    let lo = OPEN_HELM_MM + 40;\n",
+    "test": "the_squire_s_hat_is_plate_only_above_its_brim"
+  },
+  {
+    "name": "M6 FED slit: the sellsword's slit at the visor gap",
+    "file": "crates/core/src/models/knight/sellsword.rs",
+    "find": "let at = p.head.add(k.up.scale(slit_y)).add(k.fwd.scale(z));",
+    "replace": "let at = p.head.add(k.up.scale(slit_y + k.s(60))).add(k.fwd.scale(z));",
+    "test": "the_drawn_slit_is_where_the_visor_gap_is_on_the_closed_helms"
+  },
+  {
+    "name": "M6 FED colours: the hedge knight's device clear of the lamp",
+    "file": "data/models.json",
+    "find": "      \"accent\": [\n        170,\n        146,\n        70\n      ],",
+    "replace": "      \"accent\": [\n        201,\n        180,\n        106\n      ],",
+    "test": "the_ladder_schemes_stand_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M6 costume C: one huge left pauldron",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let size = v3(k.w(440 - 20 * i), k.s(120 - 8 * i), k.w(350 - 30 * i));",
+    "replace": "let size = v3(k.w(140 - 20 * i), k.s(120 - 8 * i), k.w(350 - 30 * i));",
+    "test": "the_veteran_keeps_one_huge_left_pauldron_in_every_pose"
+  },
+  {
+    "name": "M6 costume C: a T-shaped face",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "v3(k.s(56), a - b, k.s(30)),",
+    "replace": "v3(k.s(156), a - b, k.s(30)),",
+    "test": "the_veteran_s_helm_has_a_t_shaped_face"
+  },
+  {
+    "name": "M6 costume C: bare upper arms in skin",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let (lu, cu) = skin_or_mail(k, UPPER_ARM[s], skin);",
+    "replace": "let (lu, cu) = skin_or_mail(k, UPPER_ARM[s], k.sc.frame);",
+    "test": "the_veteran_s_upper_arms_are_bare_skin"
+  },
+  {
+    "name": "M6 costume C: no faces of two colours in one plane",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let below = ankle.sub(V3::UP.scale(k.s(24)));",
+    "replace": "let below = ankle;",
+    "test": "no_face_of_the_veteran_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume C: under the triangle cap",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "    for i in 0..3 {\n        let at = k.off(sh, -(130 + 40 * i), -40 - 80 * i, 0);",
+    "replace": "    for i in 0..300 {\n        let at = k.off(sh, -(130 + 40 * i), -40 - 80 * i, 0);",
+    "test": "the_veteran_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume C: the eyes where the visor gap is",
+    "file": "crates/core/src/models/knight/veteran.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 40);",
+    "test": "the_veteran_s_eyes_are_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume C: colours clear of the highlights",
+    "file": "data/models.json",
+    "find": "      \"accent\": [\n        72,\n        34,\n        30\n      ],",
+    "replace": "      \"accent\": [\n        150,\n        34,\n        30\n      ],",
+    "test": "the_veteran_s_colours_stand_clear_of_the_highlights"
+  },
+  {
+    "name": "M6 plate C: the veteran's plate where the sheet puts it",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Veteran => {",
+    "replace": "        Kind::Veteran if false => {",
+    "test": "the_veteran_wears_plate_on_his_helm_left_arm_and_forearms_only"
+  },
+  {
+    "name": "M6 plate C: a bare arm severs, a pauldroned one does not",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Veteran => {",
+    "replace": "        Kind::Veteran if false => {",
+    "test": "the_veteran_s_bare_arm_is_cut_off_and_his_pauldroned_arm_is_not"
+  },
+  {
+    "name": "M6 costume B: the plume over the helm",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "let p1 = p0.add(k.up.scale(k.s(170))).add(k.back.scale(k.s(80)));",
+    "replace": "let p1 = p0.add(k.up.scale(k.s(0))).add(k.back.scale(k.s(80)));",
+    "test": "the_banneret_keeps_his_plume_and_cape_in_every_pose"
+  },
+  {
+    "name": "M6 costume B: the cape swings back behind the legs",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        tan = tan.max(need);",
+    "replace": "        let _ = need;",
+    "test": "the_banneret_s_cape_never_passes_through_his_legs"
+  },
+  {
+    "name": "M6 costume B: the cape hangs straight at rest",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "const CAPE_REST_TAN: Fx = ONE / 10;",
+    "replace": "const CAPE_REST_TAN: Fx = ONE / 2;",
+    "test": "the_banneret_s_cape_hangs_straight_when_he_stands"
+  },
+  {
+    "name": "M6 costume B: no faces of two colours in one plane",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "k.fwd.scale(depth + k.s(10))",
+    "replace": "k.fwd.scale(depth)",
+    "test": "no_face_of_the_banneret_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume B: under the triangle cap",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        k.push(seg, Layer::Plate, Role::Trim, Mesh::Cube, at, rgb);",
+    "replace": "        k.push(seg, Layer::Plate, Role::Trim, Mesh::Sphere, at, rgb);",
+    "test": "the_banneret_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume B: every part plated, mail when bare",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "        if k.plated(SHIN[s]) {",
+    "replace": "        if false {",
+    "test": "every_part_of_the_banneret_is_plated_and_shows_mail_when_bare"
+  },
+  {
+    "name": "M6 costume B: the slit where the visor gap is",
+    "file": "crates/core/src/models/knight/banneret.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 40);",
+    "test": "the_banneret_s_slit_is_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume B: colours clear of the highlights",
+    "file": "data/models.json",
+    "find": "      \"plume\": [\n        74,\n        30,\n        40\n      ]",
+    "replace": "      \"plume\": [\n        150,\n        30,\n        40\n      ]",
+    "test": "the_banneret_s_colours_stand_clear_of_the_highlights"
+  },
+  {
+    "name": "M6 costume A: the champion's pauldrons broadest",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let r = v3(k.w(205), k.s(124), k.w(160));",
+    "replace": "let r = v3(k.w(60), k.s(124), k.w(160));",
+    "test": "the_champion_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's wings over its helm",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "[(340, 34, 150, 170), (230, 60, 90, 140)]",
+    "replace": "[(40, 34, 150, 170), (30, 60, 90, 140)]",
+    "test": "the_champion_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's helm band stands proud",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let band = k.s(PROUD_MM + 2);",
+    "replace": "let band = 0;",
+    "test": "no_face_of_the_champion_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume A: the champion under the triangle cap",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "                Mesh::Pyramid,",
+    "replace": "                Mesh::Sphere,",
+    "test": "the_champion_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume A: every part of the champion dressed",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "if k.plated(fa) {",
+    "replace": "if false && k.plated(fa) {",
+    "test": "the_champion_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M6 costume A: the champion's slit where the visor gap is",
+    "file": "crates/core/src/models/champion.rs",
+    "find": "let slit_y = k.s((VISOR_MM.0 + VISOR_MM.1) / 2);",
+    "replace": "let slit_y = k.s(VISOR_MM.1 + 30);",
+    "test": "the_champion_s_slit_is_where_the_visor_gap_is"
+  },
+  {
+    "name": "M6 costume A: the champion's scheme clear of the highlights",
+    "file": "data/models.json",
+    "find": "\"second\": [\n        196,\n        158,\n        70",
+    "replace": "\"second\": [\n        201,\n        162,\n        74",
+    "test": "the_champion_s_scheme_stands_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M6 plate A/S: the champion and the mirror come in plate",
+    "file": "crates/core/src/plate.rs",
+    "find": "        Kind::Champion | Kind::Mirror => (1 << PARTS) - 1,",
+    "replace": "        Kind::Champion => (1 << PARTS) - 1,",
+    "test": "the_champion_and_the_mirror_come_in_whole_plate_with_the_longsword"
+  },
+  {
+    "name": "M6 costume S: the mirror's helm an egg",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "k.s(290)",
+    "replace": "k.s(160)",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's bright rims",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "        if on {",
+    "replace": "        if false && on {",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's pauldrons narrow",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "let r = v3(k.w(108), k.s(84), k.w(108));",
+    "replace": "let r = v3(k.w(200), k.s(84), k.w(108));",
+    "test": "the_mirror_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's rims stand proud of the plate",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "let rr = r + k.proud() + k.s(PROUD_MM);",
+    "replace": "let rr = r + k.proud();",
+    "test": "no_face_of_the_mirror_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "M6 costume S: the mirror under the triangle cap",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "k.push(seg, Layer::Plate, Role::Trim, Mesh::Dot, at, sc.second);",
+    "replace": "k.push(seg, Layer::Plate, Role::Trim, Mesh::Sphere, at, sc.second);",
+    "test": "the_mirror_is_under_the_triangle_cap"
+  },
+  {
+    "name": "M6 costume S: every part of the mirror dressed",
+    "file": "crates/core/src/models/mirror.rs",
+    "find": "if k.plated(fa) {",
+    "replace": "if false && k.plated(fa) {",
+    "test": "the_mirror_is_dressed_in_every_pose"
+  },
+  {
+    "name": "M6 costume S: the mirror's scheme clear of the highlights",
+    "file": "data/models.json",
+    "find": "\"second\": [\n        206,\n        216,\n        230",
+    "replace": "\"second\": [\n        214,\n        219,\n        224",
+    "test": "the_mirror_s_scheme_stands_clear_of_the_highlight_colours"
+  },
+  {
+    "name": "M6 merge: a ladder foe spawned by kind takes its book entry",
+    "file": "crates/core/src/player.rs",
+    "find": "map_or(\"bandit\", |(_, k)| k);",
+    "replace": "map_or(\"bandit\", |_| crate::pilot::kind_name(kind));",
+    "test": "a_ladder_foe_spawned_by_kind_is_driven_by_its_book_entry"
+  },
+  {
+    "name": "M5 kit: another build is let in",
+    "file": "crates/core/src/online.rs",
+    "find": "if protocol != PROTOCOL || build != self.build {",
+    "replace": "if protocol != PROTOCOL {",
+    "test": "another_build_or_protocol_is_turned_away_with_a_reason"
+  },
+  {
+    "name": "M5 kit: a tick runs on a guess",
+    "file": "crates/core/src/online.rs",
+    "find": "world.tick([a, b]);",
+    "replace": "world.tick([a, a]);",
+    "test": "two_lagged_copies_reach_the_world_of_a_copy_fed_on_time"
+  },
+  {
+    "name": "M5 kit: a message round trip loses the input",
+    "file": "crates/core/src/online.rs",
+    "find": "    Input {\n        tick: u32,\n        input: Input,\n    },",
+    "replace": "    Input {\n        tick: u32,\n        #[serde(skip)]\n        input: Input,\n    },",
+    "test": "every_message_round_trips"
+  },
+  {
+    "name": "M5 kit: the room name carries the build",
+    "file": "crates/core/src/online.rs",
+    "find": "format!(\"{app_id}-p{PROTOCOL}-{code}\")",
+    "replace": "format!(\"{app_id}-b-{code}\")",
+    "test": "the_room_name_carries_the_protocol_and_not_the_build"
+  },
+  {
+    "name": "M5 kit: garbage inputs are taken",
+    "file": "crates/core/src/online.rs",
+    "find": "if !window.contains(&tick) || self.inputs[other].contains_key(&tick) {",
+    "replace": "if false {",
+    "test": "garbage_on_the_wire_changes_only_the_status"
+  },
+  {
+    "name": "M5 kit: a copy guesses the other seat",
+    "file": "crates/core/src/online.rs",
+    "find": "let (Some(&a), Some(&b)) = (self.inputs[0].get(&t), self.inputs[1].get(&t)) else {",
+    "replace": "let (Some(&a), Some(&b)) = (self.inputs[0].get(&t), Some(self.inputs[1].get(&t).unwrap_or(&Input::default()))) else {",
+    "test": "a_copy_waits_for_the_other_seat_and_does_not_guess"
+  },
+  {
+    "name": "M5 kit: a third browser takes the seat",
+    "file": "crates/core/src/online.rs",
+    "find": "        if self.peer.is_some() || self.greeting.is_some() {",
+    "replace": "        if false {",
+    "test": "a_peer_that_leaves_is_reported_and_a_third_is_told_the_room_is_full"
+  },
+  {
+    "name": "M5 kit: disagreeing sums pass",
+    "file": "crates/core/src/online.rs",
+    "find": "            if a != b {\n                self.status = DESYNC;",
+    "replace": "            if a != b {\n                self.status = PLAYING;",
+    "test": "worlds_that_disagree_are_reported_as_a_desync"
+  },
+  {
+    "name": "M5 kit: an early sum is dropped",
+    "file": "crates/core/src/online.rs",
+    "find": "                self.theirs.insert(tick, sum);",
+    "replace": "                let _ = (tick, sum);",
+    "test": "worlds_that_disagree_are_reported_as_a_desync"
+  },
+  {
+    "name": "M5 wire: the input is not the record's own JSON",
+    "file": "crates/core/src/online.rs",
+    "find": "    Input {\n        tick: u32,\n        input: Input,\n    },",
+    "replace": "    Input {\n        tick: u32,\n        #[serde(rename = \"i\")]\n        input: Input,\n    },",
+    "test": "an_input_on_the_wire_is_the_record_s_own_json"
+  },
+  {
+    "name": "M5 rollback: a wrong guess is kept",
+    "file": "crates/core/src/rollback.rs",
+    "find": "            self.redo = Some(self.redo.map_or(tick, |r| r.min(tick)));",
+    "replace": "            let _ = tick;",
+    "test": "rollback_reaches_the_world_lockstep_reaches_under_delay_and_reordering"
+  },
+  {
+    "name": "M5 rollback: the guess is not the last record",
+    "file": "crates/core/src/rollback.rs",
+    "find": "            .or_else(|| theirs.range(..t).next_back().map(|(_, i)| i))",
+    "replace": "            .or(None)",
+    "test": "a_forced_misprediction_recovers_to_the_same_state"
+  },
+  {
+    "name": "M5 rollback: a forced misprediction is not run again",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        for t in from..self.tick {\n            self.run(t);\n        }",
+    "replace": "        for t in from..from {\n            self.run(t);\n        }",
+    "test": "a_forced_misprediction_recovers_to_the_same_state"
+  },
+  {
+    "name": "M5 rollback: the window is not kept",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        self.tick >= self.frontier + WINDOW",
+    "replace": "        self.tick >= self.frontier + WINDOW + 4",
+    "test": "a_copy_never_runs_more_than_its_window_past_its_confirmed_ticks"
+  },
+  {
+    "name": "M5 rollback: a stale record is taken",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        let honest = tick >= self.frontier && tick <= self.tick + LEAD;",
+    "replace": "        let honest = tick <= self.tick + LEAD;",
+    "test": "a_copy_never_runs_more_than_its_window_past_its_confirmed_ticks"
+  },
+  {
+    "name": "M5 rollback: sums of guessed worlds",
+    "file": "crates/core/src/rollback.rs",
+    "find": "        while self.next_sum <= self.tick && self.next_sum <= self.frontier && self.redo.is_none() {",
+    "replace": "        while self.next_sum <= self.tick && self.redo.is_none() {",
+    "test": "rollback_reaches_the_world_lockstep_reaches_under_delay_and_reordering"
+  },
+  {
+    "name": "M5 seat: the guest's knight stands at a pilot's guard",
+    "file": "crates/core/src/seat.rs",
+    "find": "    f.fighter = crate::player::Fighter::new(kind, crate::models::kind_held(kind), 1, at, yaw, true);",
+    "replace": "    let _ = (at, yaw);",
+    "test": "the_guest_s_knight_stands_as_the_host_s_does"
+  },
+  {
+    "name": "M5 seat: the guest's mouse does not turn its view",
+    "file": "crates/core/src/seat.rs",
+    "find": "    if looks {\n        s.aim = s.aim.turned(m);\n    }",
+    "replace": "    if looks {\n        let _ = m;\n    }",
+    "test": "the_guest_s_mouse_turns_the_guest_s_view_as_the_host_s_turns_the_host_s"
+  },
+  {
+    "name": "M5 seat: the guest's knight does not face its view",
+    "file": "crates/core/src/motion.rs",
+    "find": "        let fp = (id == 0 && w.first_person()) || crate::seat::is(w, id);",
+    "replace": "        let fp = id == 0 && w.first_person();",
+    "test": "the_guest_s_mouse_turns_the_guest_s_view_as_the_host_s_turns_the_host_s"
+  },
+  {
+    "name": "M5 seat: the guest's right button does not free the hand",
+    "file": "crates/core/src/seat.rs",
+    "find": "    w.foes[0].fighter.mouse_looks = looks;",
+    "replace": "    w.foes[0].fighter.mouse_looks = true;",
+    "test": "the_guest_s_right_button_moves_the_hand_and_not_the_view"
+  },
+  {
+    "name": "M5 seat: the guest's guard does not ride its view",
+    "file": "crates/core/src/seat.rs",
+    "find": "    crate::player::ride_guard_of(&mut w.foes[0].fighter, guard, l)",
+    "replace": "    let _ = (guard, l);\n    None",
+    "test": "a_record_moves_either_seat_s_knight_alike"
+  },
+  {
+    "name": "M5 seat: the guest's page is not turned round",
+    "file": "crates/core/src/seat.rs",
+    "find": "    std::mem::swap(&mut w.aim, &mut s.aim);",
+    "replace": "    let _ = s;",
+    "test": "the_guest_s_page_sees_the_world_turned_round"
+  },
+  {
+    "name": "M5 seat: the score is not turned round",
+    "file": "crates/core/src/seat.rs",
+    "find": "        r.wins.swap(0, 1);",
+    "replace": "        let _ = &r.wins;",
+    "test": "the_guest_s_page_sees_the_world_turned_round"
+  },
+  {
+    "name": "M5 seat: one seat's rematch begins a duel",
+    "file": "crates/core/src/seat.rs",
+    "find": "    over && inputs.iter().all(|i| i.keys & REMATCH != 0)",
+    "replace": "    over && inputs.iter().any(|i| i.keys & REMATCH != 0)",
+    "test": "a_rematch_needs_both_seats"
+  },
+  {
+    "name": "M5 seat: the guest's record reaches no knight",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            let i = w.seat.as_ref().map(|s| s.input).unwrap_or_default();",
+    "replace": "            let i = Input::default();",
+    "test": "a_record_moves_either_seat_s_knight_alike"
+  },
+  {
+    "name": "M5 versus: a bad room code is read",
+    "file": "crates/core/src/versus.rs",
+    "find": "    let ok = code.len() == CODE_LENGTH && code.bytes().all(|b| CODE_LETTERS.contains(&b));",
+    "replace": "    let ok = !code.is_empty();",
+    "test": "a_room_code_is_five_letters_and_is_read_back_loosely"
+  },
+  {
+    "name": "M5 versus: the look speed is not in the record",
+    "file": "crates/core/src/versus.rs",
+    "find": "    let s = |v: i32| (v as i64 * k.look_pct as i64 / 100) as i32;",
+    "replace": "    let s = |v: i32| v;",
+    "test": "the_reader_s_look_speed_and_pitch_go_into_the_record"
+  },
+  {
+    "name": "M5 game: Host opens no link",
+    "file": "crates/core/src/game.rs",
+    "find": "            (Role::Host, Way::Room) => self.cmd(\"open\", \"room\", room, String::new()),",
+    "replace": "            (Role::Host, Way::Room) => {\n                let _ = room;\n            }",
+    "test": "host_shows_a_room_code_and_join_takes_one"
+  },
+  {
+    "name": "M5 game: a silence never ends the duel",
+    "file": "crates/core/src/game.rs",
+    "find": "                if now - h > crate::versus::TIMEOUT_US {",
+    "replace": "                if now - h > crate::versus::TIMEOUT_US * 1000 {",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: an ended duel stays on the duel screen",
+    "file": "crates/core/src/game.rs",
+    "find": "        if ended && self.screen != Screen::Online && self.screen != Screen::Settings {",
+    "replace": "        if false && ended {",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: a left duel's bye is lost",
+    "file": "crates/core/src/game.rs",
+    "find": "            self.parting.extend(v.session.take_outbox());",
+    "replace": "            v.session.take_outbox();",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 game: the duel never starts online",
+    "file": "crates/core/src/game.rs",
+    "find": "        if fresh {\n            self.play_ticks = 0;\n            self.show(Screen::Duel);\n        }",
+    "replace": "        if fresh {\n            self.play_ticks = 0;\n        }",
+    "test": "two_games_meet_by_pasted_codes_and_agree"
+  },
+  {
+    "name": "M5 game: the rematch is never asked",
+    "file": "crates/core/src/versus.rs",
+    "find": "            i.keys |= crate::seat::REMATCH;",
+    "replace": "            i.keys |= 0;",
+    "test": "an_online_rematch_waits_for_both_players"
+  },
+  {
+    "name": "M5 game: a closing page leaves no word",
+    "file": "crates/core/src/game.rs",
+    "find": "            \"page.leaving\" => self.leave_online(),",
+    "replace": "            \"page.leaving\" => {}",
+    "test": "a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words"
+  },
+  {
+    "name": "M5 api: the menu keeps Host shut",
+    "file": "crates/core/src/api.rs",
+    "find": "                    button(g, \"online.host\", \"room\", \"host\", false),",
+    "replace": "                    Action {\n                        enabled: false,\n                        ..button(g, \"online.host\", \"room\", \"host\", false)\n                    },",
+    "test": "the_title_leads_to_the_menu_with_practice_host_join_and_settings"
+  },
+  {
+    "name": "M1, T7: the right button holds the view",
+    "file": "crates/core/src/player.rs",
+    "find": "!(input.button(input::HOLD_LOOK) || cutting)",
+    "replace": "!cutting",
+    "test": "in_first_person_the_right_button_holds_a_guard_in_front_and_the_view"
   },
   {
     "name": "M4: a cut costs stamina by its way",
@@ -2630,5 +3190,26 @@
     "find": "            Plan {\n                right: true,\n                ..plain((s.guard_side_deg",
     "replace": "            Plan {\n                right: false,\n                ..plain((s.guard_side_deg",
     "test": "the_knight_raises_the_guard_through_its_record_when_a_cut_comes"
+  },
+  {
+    "name": "M4 R6.26: the online duel plays with the layer on",
+    "file": "crates/core/src/seat.rs",
+    "find": "    w.settings.chivalry = true;\n",
+    "replace": "",
+    "test": "the_guest_seat_s_knight_pays_feints_guards_kicks_and_holds_its_view_from_its_own_record"
+  },
+  {
+    "name": "M4 R6.26: the online duel's rollback test plays the layer",
+    "file": "crates/core/src/seat.rs",
+    "find": "    w.settings.chivalry = true;\n",
+    "replace": "    w.settings.chivalry = false;\n",
+    "test": "rollback_reaches_lockstep_s_world_through_stamina_feints_guards_and_kicks"
+  },
+  {
+    "name": "M4 R6.26: each fighter's kick reads its own record",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        let inp = if id == 0 { *input } else { foes[id - 1] };",
+    "replace": "        let inp = *input;",
+    "test": "the_guest_seat_s_knight_pays_feints_guards_kicks_and_holds_its_view_from_its_own_record"
   }
 ]

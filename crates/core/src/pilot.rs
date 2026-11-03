@@ -228,6 +228,13 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "ant_king" => Some(Kind::AntKing),
         "knight_a" => Some(Kind::KnightA),
         "knight_b" => Some(Kind::KnightB),
+        "squire" => Some(Kind::Squire),
+        "sellsword" => Some(Kind::Sellsword),
+        "hedge" => Some(Kind::Hedge),
+        "veteran" => Some(Kind::Veteran),
+        "banneret" => Some(Kind::Banneret),
+        "champion" => Some(Kind::Champion),
+        "mirror" => Some(Kind::Mirror),
         _ => None,
     }
 }
@@ -247,7 +254,12 @@ pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
 /// A foe kind's name, as the act, the book and the strings (`who_<kind>`)
 /// name it.
 pub fn kind_name(k: Kind) -> &'static str {
-    key_of(k)
+    match k {
+        // M6 (R7.303): named as themselves, piloted on Knight B's entry
+        Kind::Champion => "champion",
+        Kind::Mirror => "mirror",
+        _ => key_of(k),
+    }
 }
 
 fn key_of(k: Kind) -> &'static str {
@@ -257,6 +269,13 @@ fn key_of(k: Kind) -> &'static str {
         Kind::AntKing => "ant_king",
         Kind::KnightA => "knight_a",
         Kind::KnightB => "knight_b",
+        Kind::Squire => "squire",
+        Kind::Sellsword => "sellsword",
+        Kind::Hedge => "hedge",
+        Kind::Veteran => "veteran",
+        Kind::Banneret => "banneret",
+        // M6 (R7.303): until the coordinator gives the ladder its pilots
+        Kind::Champion | Kind::Mirror => "knight_b",
         _ => "bandit",
     }
 }
@@ -279,6 +298,9 @@ pub enum Control {
     Still,
     /// these records in turn, for tests (CW-3)
     Script(Vec<Input>),
+    /// M5: a person in another browser, through the record the second seat
+    /// holds for this tick (`seat.rs`)
+    Seat,
 }
 
 /// A pilot's own memory between ticks.
@@ -476,6 +498,10 @@ pub fn decide(w: &World, id: usize) -> (Input, Brain) {
         Control::Still => return (Input::default(), b),
         Control::Script(list) => {
             let i = list.get(b.ticks as usize - 1).copied().unwrap_or_default();
+            return (i, b);
+        }
+        Control::Seat => {
+            let i = w.seat.as_ref().map(|s| s.input).unwrap_or_default();
             return (i, b);
         }
         Control::Tree => {}

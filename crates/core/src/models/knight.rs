@@ -65,6 +65,16 @@ pub enum Role {
     /// B's belt, where the skirt starts
     Waist,
     Trim,
+    /// M6 (R7.101): the squire's kettle hat's brim
+    Brim,
+    /// M6 (R7.101): the point of the hedge knight's bascinet
+    Point,
+    /// M6: the banneret's plume
+    Plume,
+    /// M6: the banneret's cape
+    Cape,
+    /// M6 (R7.301): the champion's wings over its great helm
+    Wing,
 }
 
 /// One shape of a knight and what it is.
@@ -117,7 +127,17 @@ pub const SLOTS: [&str; 8] = [
 
 /// The scheme's name in `data/models.json`.
 pub fn scheme_name(kind: Kind) -> &'static str {
-    if kind == Kind::KnightB {
+    // M6 (R7.301): the ladder's champion and mirror
+    match kind {
+        Kind::Champion => return "champion",
+        Kind::Mirror => return "mirror",
+        _ => {}
+    }
+    if kind == Kind::Veteran {
+        "veteran"
+    } else if kind == Kind::Banneret {
+        "banneret"
+    } else if kind == Kind::KnightB {
         "knight_b"
     } else {
         "knight_a"
@@ -141,62 +161,62 @@ pub fn scheme(kind: Kind) -> Scheme {
 }
 
 /// Limb and joint radii, millimetres on the player (`figure.rs`'s).
-const THIGH_R: i32 = 76;
-const SHIN_R: i32 = 63;
-const UPPER_ARM_R: i32 = 56;
-const FOREARM_R: i32 = 52;
-const KNEE_R: i32 = 70;
-const ELBOW_R: i32 = 57;
-const HAND_R: i32 = 64;
-const SHOULDER_R: i32 = 62;
-const HEAD_R: (i32, i32, i32) = (190, 205, 182);
+pub(super) const THIGH_R: i32 = 76;
+pub(super) const SHIN_R: i32 = 63;
+pub(super) const UPPER_ARM_R: i32 = 56;
+pub(super) const FOREARM_R: i32 = 52;
+pub(super) const KNEE_R: i32 = 70;
+pub(super) const ELBOW_R: i32 = 57;
+pub(super) const HAND_R: i32 = 64;
+pub(super) const SHOULDER_R: i32 = 62;
+pub(super) const HEAD_R: (i32, i32, i32) = (190, 205, 182);
 const PLAYER_HEIGHT: i64 = 1700;
 /// A ten-sided column's faces lie at cos 18° of its radius.
-const COS18: Fx = ONE * 951 / 1000;
+pub(super) const COS18: Fx = ONE * 951 / 1000;
 
-struct K {
-    out: Knight,
-    b: Build,
-    ink: Fx,
-    right: V3,
-    up: V3,
-    back: V3,
-    fwd: V3,
-    pose: Pose,
-    sc: Scheme,
-    bare: u16,
+pub(super) struct K {
+    pub(super) out: Knight,
+    pub(super) b: Build,
+    pub(super) ink: Fx,
+    pub(super) right: V3,
+    pub(super) up: V3,
+    pub(super) back: V3,
+    pub(super) fwd: V3,
+    pub(super) pose: Pose,
+    pub(super) sc: Scheme,
+    pub(super) bare: u16,
 }
 
 impl K {
-    fn s(&self, v: i32) -> Fx {
+    pub(super) fn s(&self, v: i32) -> Fx {
         (v as i64 * ONE as i64 * self.b.height as i64 / (PLAYER_HEIGHT * ONE as i64)) as Fx
     }
 
-    fn w(&self, v: i32) -> Fx {
+    pub(super) fn w(&self, v: i32) -> Fx {
         (self.s(v) as i64 * self.b.girth_pct as i64 * crate::pose::BODY_GIRTH_PCT as i64 / 10_000) as Fx
     }
 
-    fn proud(&self) -> Fx {
+    pub(super) fn proud(&self) -> Fx {
         self.s(PROUD_MM)
     }
 
-    fn at(&self, p: V3) -> Affine {
+    pub(super) fn at(&self, p: V3) -> Affine {
         frame(self.right, self.up, self.back, p)
     }
 
     /// `x` right, `y` up and `z` back of `p` (millimetres; x and z widened).
-    fn off(&self, p: V3, x: i32, y: i32, z: i32) -> V3 {
+    pub(super) fn off(&self, p: V3, x: i32, y: i32, z: i32) -> V3 {
         p.add(self.right.scale(self.w(x)))
             .add(self.up.scale(self.s(y)))
             .add(self.back.scale(self.w(z)))
     }
 
-    fn plated(&self, seg: usize) -> bool {
+    pub(super) fn plated(&self, seg: usize) -> bool {
         self.bare & bit(seg) == 0
     }
 
     /// The body's colour on part `seg`: frame under plate, mail when bare.
-    fn under(&self, seg: usize) -> (Layer, Rgb) {
+    pub(super) fn under(&self, seg: usize) -> (Layer, Rgb) {
         if self.plated(seg) {
             (Layer::Frame, self.sc.frame)
         } else {
@@ -204,7 +224,7 @@ impl K {
         }
     }
 
-    fn push(&mut self, seg: usize, layer: Layer, role: Role, mesh: Mesh, at: Affine, rgb: Rgb) {
+    pub(super) fn push(&mut self, seg: usize, layer: Layer, role: Role, mesh: Mesh, at: Affine, rgb: Rgb) {
         let ink = self.ink;
         self.out.parts.push(Tagged {
             part: Part {
@@ -221,7 +241,7 @@ impl K {
         });
     }
 
-    fn glow(&mut self, seg: usize, at: Affine, rgb: Rgb) {
+    pub(super) fn glow(&mut self, seg: usize, at: Affine, rgb: Rgb) {
         self.out.parts.push(Tagged {
             part: Part {
                 mesh: Mesh::Dot,
@@ -238,14 +258,14 @@ impl K {
     }
 
     /// A faceted ball of radii `r` in the body's axes at `p`.
-    fn ball(&mut self, seg: usize, layer: Layer, role: Role, p: V3, r: V3, rgb: Rgb) {
+    pub(super) fn ball(&mut self, seg: usize, layer: Layer, role: Role, p: V3, r: V3, rgb: Rgb) {
         let a = put(&self.at(p), V3::ZERO, v3(2 * r.x, 2 * r.y, 2 * r.z));
         self.push(seg, layer, role, Mesh::Facet, a, rgb);
     }
 
     /// A box `size` across centred at `p` in the body's axes, turned by `turn`.
     #[allow(clippy::too_many_arguments)]
-    fn boxed(
+    pub(super) fn boxed(
         &mut self,
         seg: usize,
         layer: Layer,
@@ -262,7 +282,7 @@ impl K {
 
     /// A ten-sided column of radius `r` from `a` to `b`.
     #[allow(clippy::too_many_arguments)]
-    fn limb(&mut self, seg: usize, layer: Layer, role: Role, a: V3, b: V3, r: Fx, rgb: Rgb) {
+    pub(super) fn limb(&mut self, seg: usize, layer: Layer, role: Role, a: V3, b: V3, r: Fx, rgb: Rgb) {
         let at = bar(a, b, (2 * r, 2 * r), self.right);
         self.push(seg, layer, role, Mesh::Cyl, at, rgb);
     }
@@ -271,7 +291,7 @@ impl K {
     /// of the way: turned as the limb is, so its faces stand `PROUD_MM` ×
     /// cos 18° off the limb's.
     #[allow(clippy::too_many_arguments)]
-    fn sleeve(&mut self, seg: usize, a: V3, b: V3, t0: Fx, t1: Fx, r: Fx, rgb: Rgb) {
+    pub(super) fn sleeve(&mut self, seg: usize, a: V3, b: V3, t0: Fx, t1: Fx, r: Fx, rgb: Rgb) {
         let (p, q) = (a.lerp(b, t0), a.lerp(b, t1));
         let rr = r + self.proud();
         let at = bar(p, q, (2 * rr, 2 * rr), self.right);
@@ -281,13 +301,24 @@ impl K {
 
 /// The half-width at height `dy` from the middle of an ellipsoid of
 /// half-width `r` and half-height `ry`.
-fn across_at(r: Fx, ry: Fx, dy: Fx) -> Fx {
+pub(super) fn across_at(r: Fx, ry: Fx, dy: Fx) -> Fx {
     let k = fx::div(dy, ry.max(1));
     fx::mul(r, fx::sqrt((ONE - fx::mul(k, k)).max(0)))
 }
 
 /// A knight of `kind` on `pose`, its plate off the parts in `bare`.
 pub fn model(kind: Kind, pose: &Pose, bare: u16) -> Knight {
+    // M6 (R7.101): the ladder's lighter opponents, each in its own file
+    if let Some(k) = fed::model(kind, pose, bare) {
+        return k;
+    }
+    // M6: the ladder's opponents in their own files
+    if kind == Kind::Veteran {
+        return veteran::model(pose, bare);
+    }
+    if kind == Kind::Banneret {
+        return banneret::model(pose, bare);
+    }
     let t = table();
     let b = build(kind);
     let fwd = facing(pose.facing, 0);
@@ -311,6 +342,15 @@ pub fn model(kind: Kind, pose: &Pose, bare: u16) -> Knight {
     };
     let b_knight = kind == Kind::KnightB;
     body(&mut k);
+    // M6 (R7.301): the ladder's champion and mirror dress in their own files
+    if kind == Kind::Champion {
+        super::champion::dress(&mut k);
+        return k.out;
+    }
+    if kind == Kind::Mirror {
+        super::mirror::dress(&mut k);
+        return k.out;
+    }
     legs(&mut k, b_knight);
     torso(&mut k, b_knight);
     arms(&mut k, b_knight);
@@ -331,7 +371,7 @@ pub fn plate(kind: Kind, pose: &Pose, bare: u16, s: usize) -> Vec<Part> {
 
 /// The figure's own shapes, every one in the frame colour (mail where
 /// bare).
-fn body(k: &mut K) {
+pub(super) fn body(k: &mut K) {
     let p = k.pose;
     for s in [LEFT, RIGHT] {
         let (lt, ct) = k.under(THIGH[s]);
@@ -378,7 +418,7 @@ fn body(k: &mut K) {
 }
 
 /// The belly's middle and radii (`figure.rs`'s).
-fn belly(k: &K) -> (V3, V3) {
+pub(super) fn belly(k: &K) -> (V3, V3) {
     let p = k.pose;
     let mid = p.pelvis.lerp(p.chest, ONE / 2);
     let half = p.chest.sub(p.pelvis).len() / 2 + k.s(60);
@@ -386,7 +426,7 @@ fn belly(k: &K) -> (V3, V3) {
 }
 
 /// The shoulders' yoke (`figure.rs`'s).
-fn yoke(k: &K) -> (V3, V3) {
+pub(super) fn yoke(k: &K) -> (V3, V3) {
     (k.off(k.pose.chest, 0, -26, 4), v3(k.w(188), k.s(100), k.w(118)))
 }
 
@@ -847,5 +887,40 @@ fn helm(k: &mut K, b_knight: bool) {
     }
 }
 
+/// M6: the drawing state for `kind` on `pose`, as `model` sets it up, for
+/// the ladder's opponents (`veteran.rs`, `banneret.rs`).
+fn start(kind: Kind, pose: &Pose, bare: u16) -> K {
+    let fwd = facing(pose.facing, 0);
+    let up0 = pose.chest.sub(pose.pelvis).norm();
+    let up = if up0 == V3::ZERO { V3::UP } else { up0 };
+    let back0 = fwd.neg();
+    let back = back0.sub(up.scale(back0.dot(up))).norm();
+    let back = if back == V3::ZERO { v3(0, 0, ONE) } else { back };
+    let right = up.cross(back).norm();
+    K {
+        out: Knight::default(),
+        b: build(kind),
+        ink: table().ink_figure,
+        right,
+        up,
+        back,
+        fwd: back.neg(),
+        pose: *pose,
+        sc: scheme(kind),
+        bare,
+    }
+}
+
+mod banneret;
+#[cfg(test)]
+mod ladder_poses;
+mod veteran;
+
 #[cfg(test)]
 mod tests;
+
+// M6 (R7.101): rungs F, E and D of the ladder, built on this file's builder
+mod fed;
+mod hedge;
+mod sellsword;
+mod squire;

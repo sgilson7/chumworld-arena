@@ -111,8 +111,10 @@ async function main() {
       // the browser grants the pointer only inside a click
       if (a.engage) input.engage();
       node.blur();
-      // a button that asks for a file sends the file's text
+      // a button that asks for a file sends the file's text; one that names
+      // a box sends the box's text (M5)
       if (a.file) save.pick((text) => act(a.name, text));
+      else if (a.from) act(a.name, el(a.from) ? el(a.from).value : "");
       else act(a.name, a.value);
     });
     return node;
@@ -130,6 +132,7 @@ async function main() {
       row.append(make("span", s.label, "label"), value, ...s.actions.map(button));
       box.append(row);
     });
+    (p.fields || []).forEach((f) => box.append(field(f)));
     (p.actions || []).forEach((a) => box.append(button(a)));
     if (p.note) box.append(make("p", p.note, "note"));
     if (p.rows) {
@@ -143,6 +146,38 @@ async function main() {
       box.append(table);
     }
     return box;
+  }
+
+  // M5: a box of text: a code to copy (fixed, marked ready once it holds
+  // one) or a box to paste or type a code into.
+  function field(f) {
+    const label = make("label", undefined, "field");
+    const box = make(f.line ? "input" : "textarea");
+    box.id = f.id;
+    box.value = f.value;
+    box.readOnly = f.fixed;
+    box.spellcheck = false;
+    box.autocomplete = "off";
+    box.dataset.ready = String(Boolean(f.fixed && f.value));
+    if (f.fixed) box.addEventListener("focus", () => box.select());
+    label.append(make("span", f.label, "label"), box);
+    return label;
+  }
+
+  // M5: online play. Nothing for it loads until the core gives the
+  // transport its first command (Host, Join or Pasted codes); then the one
+  // page file that reaches the transport is imported (web/online.js).
+  let online = null;
+  let onlineLoading = null;
+  function follow(o) {
+    el("online-sums").textContent = o.sums;
+    if (online) online.follow(o);
+    else if (o.cmds.length && !onlineLoading) {
+      onlineLoading = import("./online.js").then((m) => {
+        online = m.makeOnline(game, (name, value) => act(name, value));
+        online.follow(ui.online);
+      });
+    }
   }
 
   // One fighter's health: who, the words, and a bar the core's share fills.
@@ -201,7 +236,12 @@ async function main() {
     hints = u.hints;
     document.title = u.title;
     body.dataset.screen = u.screen;
+    // (what a reader has typed or pasted into a box stays through a redraw)
+    const typed = new Map([...el("overlay").querySelectorAll("input, textarea")].filter((n) => !n.readOnly).map((n) => [n.id, n.value]));
     el("overlay").replaceChildren(...u.panels.map(panel));
+    typed.forEach((value, id) => {
+      if (el(id) && !el(id).readOnly) el(id).value = value;
+    });
     el("overlay").hidden = u.panels.length === 0;
     el("bars").replaceChildren(...u.bars.map(bar));
     for (const item of u.hud) {
@@ -220,6 +260,7 @@ async function main() {
     // a screen of buttons opens with its first one focused, for the keyboard
     const first = el("overlay").querySelector("button");
     if (changed && first) first.focus({ preventScroll: true });
+    follow(u.online);
   }
 
   // Esc, a lost pointer and a hidden tab: the core decides what they mean.
@@ -234,6 +275,8 @@ async function main() {
     if (locked && !now) act("pointer.lost", "");
     locked = now;
   });
+  // M5: a page closing or navigated away leaves an online duel first
+  window.addEventListener("pagehide", () => act("page.leaving", ""));
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) act("page.hidden", "");
   });
@@ -252,6 +295,9 @@ async function main() {
     const [name, value] = asked.split(":");
     act(name, value || "");
   }
+  // M5: this build's name for the online hello, from this module's own
+  // stamped address (scripts/build.sh), so two builds are told apart
+  act("online.build", new URL(import.meta.url).searchParams.get("v") || "dev");
   // the save this browser keeps, if any, read by the core before anything shows
   act("save.stored", save.stored());
   show(JSON.parse(game.ui()).ok);
@@ -273,6 +319,7 @@ async function main() {
       renderer.setStatic(game.static_values());
     }
     renderer.frame(game.view(), game.instances(), game.draws());
+    if (online) online.pump();
     if (game.ui_version() !== uiVersion) {
       uiVersion = game.ui_version();
       show(JSON.parse(game.ui()).ok);

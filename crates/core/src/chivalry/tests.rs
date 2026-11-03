@@ -680,3 +680,67 @@ fn the_right_button_guards_only_in_first_person() {
     assert_eq!(w.me.chiv.guard, None);
     assert!(w.me.mouse_looks);
 }
+
+// ---- M5's guest seat: every M4 rule, and T7 and T8, from its own record ----
+
+#[test]
+fn the_guest_seat_s_knight_pays_feints_guards_kicks_and_holds_its_view_from_its_own_record() {
+    use crate::online::Sim;
+    let mut w = crate::seat::duel();
+    assert!(w.settings.chivalry);
+    let idle = [Input::default(), Input::default()];
+    while w.rounds.as_ref().unwrap().phase != crate::rounds::Phase::Fight {
+        w.tick(idle);
+    }
+    for _ in 0..30 {
+        w.tick(idle);
+    }
+    let seat = |w: &World| w.seat.as_ref().unwrap().aim;
+    let f = |w: &World| w.foes[0].fighter.clone();
+    assert_eq!(f(&w).chiv.stamina, 10_000);
+    // a chop's gesture (12), the view held through a hard swipe (T8)
+    let aim = seat(&w);
+    w.tick([Input::default(), cut(0, 6_000, 0, 0)]);
+    assert!(f(&w).arm.swing.cut.is_some());
+    assert_eq!(f(&w).chiv.stamina, 8_800);
+    w.tick([
+        Input::default(),
+        Input {
+            buttons: SWING,
+            dx: 30_000,
+            dy: 9_000,
+            ..Input::default()
+        },
+    ]);
+    assert_eq!(
+        seat(&w),
+        aim,
+        "the seat's view holds while its left button is held"
+    );
+    // the right button in the wind-up: a feint (15), then the guard (T7)
+    w.tick([
+        Input::default(),
+        Input {
+            buttons: SWING | HOLD_LOOK,
+            ..Input::default()
+        },
+    ]);
+    assert_eq!(f(&w).arm.swing.cut, None);
+    assert_eq!(f(&w).chiv.stamina, 7_300);
+    w.tick([
+        Input::default(),
+        Input {
+            buttons: HOLD_LOOK,
+            dx: 5_000,
+            ..Input::default()
+        },
+    ]);
+    assert!(f(&w).chiv.guard.is_some());
+    assert_eq!(f(&w).arm.shell.side, deg(-18) + 1365);
+    assert_eq!(seat(&w), aim, "and while its right button is held");
+    // let go, F: a kick (20)
+    w.tick(idle);
+    w.tick([Input::default(), press(KICK)]);
+    assert_eq!(f(&w).chiv.kick, 1);
+    assert_eq!(f(&w).chiv.stamina, 5_300);
+}

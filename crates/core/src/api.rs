@@ -39,6 +39,31 @@ pub struct Action {
     pub engage: bool,
     /// M2: ask the reader for a file first, and send its text as the value
     pub file: bool,
+    /// M5: send the text of this field (by its id) as the value
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub from: String,
+}
+
+/// M5: a box of text on a panel: a code to copy (`fixed`) or one to paste
+/// or type in. The page sets `data-ready` on a fixed box that holds text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Field {
+    pub id: String,
+    pub label: String,
+    pub value: String,
+    pub fixed: bool,
+    /// one line (a room code) or several (a pasted code)
+    pub line: bool,
+}
+
+/// M5: online play as the page's transport and checks need it: the
+/// commands for the transport (`versus::Cmd`), the status in words, and
+/// this browser's own checksums (`tick:sum`, newest last).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OnlineView {
+    pub cmds: Vec<crate::versus::Cmd>,
+    pub status: String,
+    pub sums: String,
 }
 
 /// M2: one setting as the settings screen shows it: what it is, its value
@@ -81,6 +106,9 @@ pub struct Panel {
     pub note: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub settings: Vec<Setting>,
+    /// M5: boxes of text, after the text and before the buttons
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fields: Vec<Field>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub rows_heading: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -140,6 +168,8 @@ pub struct Ui {
     /// go of it when this is false, and takes it again on a click when true
     pub capture: bool,
     pub save: SaveView,
+    /// M5: online play
+    pub online: OnlineView,
     pub version: u32,
 }
 
@@ -177,6 +207,7 @@ fn button(g: &Game, name: &str, value: &str, label: &str, engage: bool) -> Actio
         enabled: true,
         engage,
         file: false,
+        from: String::new(),
     }
 }
 
@@ -187,6 +218,7 @@ fn panel(id: &str) -> Panel {
         text: String::new(),
         note: String::new(),
         settings: Vec::new(),
+        fields: Vec::new(),
         rows_heading: String::new(),
         rows: Vec::new(),
         actions: Vec::new(),
@@ -362,18 +394,15 @@ pub fn ui(g: &Game) -> Ui {
             ..panel("title")
         }),
         Screen::Menu => {
-            let off = |label: &str| Action {
-                enabled: false,
-                ..button(g, "online.none", "", label, false)
-            };
             panels.push(Panel {
                 heading: s.get("title"),
                 text: s.get("menu_text"),
-                note: s.get("online_next"),
+                note: s.get("online_menu_note"),
                 actions: vec![
                     button(g, "screen.show", "duel", "practice", true),
-                    off("host"),
-                    off("join"),
+                    button(g, "online.host", "room", "host", false),
+                    button(g, "online.join", "room", "join", false),
+                    button(g, "screen.show", "paste", "pasted_codes", false),
                     button(g, "screen.show", "settings", "settings", false),
                 ],
                 ..panel("menu")
@@ -428,9 +457,34 @@ pub fn ui(g: &Game) -> Ui {
                 });
             }
         }
+        Screen::Paste => panels.push(Panel {
+            heading: s.get("pasted_codes"),
+            text: s.get("paste_text"),
+            actions: vec![
+                button(g, "online.host", "code", "paste_host", false),
+                button(g, "online.join", "code", "paste_join", false),
+                button(g, "screen.show", "menu", "back_to_menu", false),
+            ],
+            ..panel("paste")
+        }),
+        Screen::Online => {
+            if let Some(v) = g.versus.as_ref() {
+                panels.push(online_panel(g, v));
+                panels.push(Panel {
+                    text: status_text(g, v),
+                    ..panel("online-status")
+                });
+            }
+        }
         Screen::Result => {
             if let Some(r) = rounds {
                 let won = r.winner() == Some(0);
+                // M5: online, a rematch is both players' choice
+                let rematch = match g.versus.as_ref() {
+                    Some(_) => button(g, "online.rematch", "", "rematch", true),
+                    None => button(g, "screen.show", "duel", "rematch", true),
+                };
+                let waiting = g.versus.as_ref().is_some_and(|v| v.rematch);
                 panels.push(Panel {
                     heading: s.get(if won { "result_won" } else { "result_lost" }),
                     text: fill(
@@ -441,10 +495,12 @@ pub fn ui(g: &Game) -> Ui {
                         }),
                         &[("you", r.wins[0].to_string()), ("foe", r.wins[1].to_string())],
                     ),
-                    actions: vec![
-                        button(g, "screen.show", "duel", "rematch", true),
-                        button(g, "screen.show", "menu", "back_to_menu", false),
-                    ],
+                    note: if waiting {
+                        s.get("online.rematch_wait")
+                    } else {
+                        String::new()
+                    },
+                    actions: vec![rematch, button(g, "screen.show", "menu", "back_to_menu", false)],
                     ..panel("result")
                 });
             }
@@ -478,6 +534,16 @@ pub fn ui(g: &Game) -> Ui {
             shown: g.screen == Screen::Duel && r.sudden(),
         });
     }
+    if let Some(v) = g.versus.as_ref() {
+        // M5: the online status over the duel: shown at its start and
+        // whenever it is not plain play
+        hud.push(HudItem {
+            id: "online".into(),
+            text: status_text(g, v),
+            shown: g.screen.plays()
+                && (v.status() != crate::online::PLAYING || g.play_ticks < crate::game::HINT_TICKS),
+        });
+    }
     g.world.hud(s, &mut hud);
     let values = g.glossary_values();
     Ui {
@@ -501,7 +567,103 @@ pub fn ui(g: &Game) -> Ui {
             export: g.save_export,
             file_name: s.get("save_file_name"),
         },
+        online: OnlineView {
+            cmds: g.online_cmds.clone(),
+            status: g.versus.as_ref().map(|v| status_text(g, v)).unwrap_or_default(),
+            sums: g.versus.as_ref().map(|v| v.sums()).unwrap_or_default(),
+        },
         version: g.ui_version,
+    }
+}
+
+/// M5: the online status in words, its numbers filled in by the core.
+fn status_text(g: &Game, v: &crate::versus::Versus) -> String {
+    fill(
+        &g.strings.get(v.status()),
+        &[("seconds", (crate::versus::TIMEOUT_US / 1_000_000).to_string())],
+    )
+}
+
+/// M5: a box of text.
+fn field(g: &Game, id: &str, label: &str, value: &str, fixed: bool, line: bool) -> Field {
+    Field {
+        id: id.into(),
+        label: g.strings.get(label),
+        value: value.into(),
+        fixed,
+        line,
+    }
+}
+
+/// M5: a button that sends a field's text.
+fn sends(g: &Game, name: &str, from: &str, label: &str) -> Action {
+    Action {
+        from: from.into(),
+        ..button(g, name, "", label, false)
+    }
+}
+
+/// M5: the online screen: hosting or joining, by room code or pasted
+/// codes, or the duel ended and why.
+fn online_panel(g: &Game, v: &crate::versus::Versus) -> Panel {
+    use crate::versus::{Role, Way};
+    let s = &g.strings;
+    let back = button(g, "screen.show", "menu", "back_to_menu", false);
+    if v.ended() {
+        return Panel {
+            heading: s.get("online.ended"),
+            text: status_text(g, v),
+            actions: vec![back],
+            ..panel("online")
+        };
+    }
+    let instead = |role: &str| button(g, role, "code", "paste_instead", false);
+    match (v.role, v.way) {
+        (Role::Host, Way::Room) => Panel {
+            heading: s.get("host"),
+            text: s.get("host_room_text"),
+            fields: vec![field(g, "room-out", "room_code", &v.code, true, true)],
+            actions: vec![instead("online.host"), back],
+            ..panel("online")
+        },
+        (Role::Guest, Way::Room) if v.code.is_empty() => Panel {
+            heading: s.get("join"),
+            text: s.get("join_room_text"),
+            fields: vec![field(g, "room-in", "room_code", "", false, true)],
+            actions: vec![
+                sends(g, "online.room", "room-in", "join"),
+                instead("online.join"),
+                back,
+            ],
+            ..panel("online")
+        },
+        (Role::Guest, Way::Room) => Panel {
+            heading: s.get("join"),
+            text: s.get("join_room_text"),
+            fields: vec![field(g, "room-out", "room_code", &v.code, true, true)],
+            actions: vec![instead("online.join"), back],
+            ..panel("online")
+        },
+        (Role::Host, Way::Paste) => Panel {
+            heading: s.get("paste_host"),
+            text: s.get("paste_host_text"),
+            fields: vec![
+                field(g, "offer-out", "invitation", &v.offer, true, false),
+                field(g, "answer-in", "reply", "", false, false),
+            ],
+            actions: vec![sends(g, "online.accept", "answer-in", "accept_reply"), back],
+            ..panel("online")
+        },
+        (Role::Guest, Way::Paste) => Panel {
+            heading: s.get("paste_join"),
+            text: s.get("paste_join_text"),
+            fields: vec![
+                field(g, "offer-in", "invitation", "", false, false),
+                field(g, "answer-out", "reply", &v.answer, true, false),
+            ],
+            actions: vec![sends(g, "online.reply", "offer-in", "make_reply"), back],
+            ..panel("online")
+        },
     }
 }
 
@@ -588,13 +750,16 @@ mod tests {
             .iter()
             .map(|a| a["label"].as_str().unwrap())
             .collect();
-        assert_eq!(labels, ["Practice", "Host", "Join", "Settings"]);
+        assert_eq!(labels, ["Practice", "Host", "Join", "Pasted codes", "Settings"]);
         assert_eq!(p["actions"][0]["engage"], true);
         assert_eq!(p["actions"][0]["value"], "duel");
-        // M2: Host and Join shown, but not yet open, and the menu says why
-        assert_eq!(p["actions"][1]["enabled"], false);
-        assert_eq!(p["actions"][2]["enabled"], false);
-        assert_eq!(p["note"], "Host and Join open when online play comes next.");
+        // M5: Host and Join open, by room code, and Pasted codes beside them
+        assert_eq!(p["actions"][1]["enabled"], true);
+        assert_eq!(p["actions"][1]["name"], "online.host");
+        assert_eq!(p["actions"][2]["name"], "online.join");
+        assert_eq!(p["actions"][3]["value"], "paste");
+        // and nothing asks the transport for a link until one is chosen (CA-4)
+        assert!(v["ok"]["online"]["cmds"].as_array().unwrap().is_empty());
         assert!(
             v["ok"]["bars"].as_array().unwrap().is_empty(),
             "no bars before the duel"
@@ -731,5 +896,233 @@ mod tests {
         assert_eq!(n["actions"]["forward"], 1);
         assert_eq!(n["actions"]["swing"], 1 << 24);
         assert_eq!(n["view"]["eye"][1], render::VIEW_VALUES);
+    }
+
+    // ---- M5: online play, two games joined by a wire in the test ----
+
+    use crate::ticks::TICK_US;
+
+    /// Hands each game's outbox to the other, as the transport would.
+    fn carry(a: &mut Game, b: &mut Game) {
+        for _ in 0..4 {
+            for (_, text) in serde_json::from_str::<Vec<(u32, String)>>(&a.online_outbox()).unwrap() {
+                b.online_message(1, &text);
+            }
+            for (_, text) in serde_json::from_str::<Vec<(u32, String)>>(&b.online_outbox()).unwrap() {
+                a.online_message(1, &text);
+            }
+        }
+    }
+
+    /// A frame a tick later in each game, with these bits held.
+    fn frame(g: &mut Game, bits: u32, dx: i32) {
+        let now = g.clock.last().unwrap_or(0) + TICK_US;
+        g.advance(now, bits, dx, 0, 0);
+    }
+
+    /// Host and guest by pasted codes, linked, the duel begun in both.
+    fn linked() -> (Game, Game) {
+        let mut host = game();
+        let mut guest = game();
+        act(&mut host, "online.host", "code");
+        act(&mut guest, "online.join", "code");
+        let cmds = |g: &Game| {
+            ui(g)
+                .online
+                .cmds
+                .iter()
+                .map(|c| c.act.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(cmds(&host), ["open", "invite"]);
+        assert_eq!(cmds(&guest), ["open"]);
+        act(&mut host, "online.offer", "Oinvitation");
+        act(&mut guest, "online.reply", "Oinvitation");
+        assert_eq!(ui(&guest).online.cmds.last().unwrap().code, "Oinvitation");
+        act(&mut guest, "online.answer", "Areply");
+        act(&mut host, "online.accept", "Areply");
+        host.online_connected(1);
+        guest.online_connected(1);
+        carry(&mut host, &mut guest);
+        frame(&mut host, 0, 0);
+        frame(&mut guest, 0, 0);
+        (host, guest)
+    }
+
+    #[test]
+    fn host_shows_a_room_code_and_join_takes_one() {
+        let mut g = game();
+        let u = json(&act(&mut g, "online.host", "room"));
+        assert_eq!(u["ok"]["screen"], "online");
+        let p = &u["ok"]["panels"][0];
+        assert_eq!(p["heading"], "Host");
+        let code = p["fields"][0]["value"].as_str().unwrap().to_string();
+        assert_eq!(code.len(), 5);
+        let open = &u["ok"]["online"]["cmds"][0];
+        assert_eq!(open["act"], "open");
+        assert_eq!(open["mode"], "room");
+        assert_eq!(open["room"], format!("chumworld-arena-p1-{code}"));
+        assert_eq!(open["host"], true);
+        assert_eq!(u["ok"]["panels"][1]["id"], "online-status");
+        assert_eq!(u["ok"]["panels"][1]["text"], "Waiting for the other player.");
+
+        let mut j = game();
+        let u = json(&act(&mut j, "online.join", "room"));
+        assert!(
+            u["ok"]["online"]["cmds"].as_array().unwrap().is_empty(),
+            "no link before a code"
+        );
+        assert_eq!(u["ok"]["panels"][0]["fields"][0]["id"], "room-in");
+        let bad = json(&act(&mut j, "online.room", "AB1"));
+        assert_eq!(bad["error"], "A room code is five letters, such as KMRTW.");
+        let u = json(&act(&mut j, "online.room", &code.to_lowercase()));
+        let open = &u["ok"]["online"]["cmds"][0];
+        assert_eq!(open["room"], format!("chumworld-arena-p1-{code}"));
+        assert_eq!(open["host"], false);
+        // back to the menu closes the link
+        let u = json(&act(&mut j, "screen.show", "menu"));
+        let cmds = u["ok"]["online"]["cmds"].as_array().unwrap();
+        assert_eq!(cmds.last().unwrap()["act"], "close");
+        assert!(j.versus.is_none());
+    }
+
+    /// Two browsers meet by pasted codes and fight: each sees from its own
+    /// knight, the host in Knight A and the guest in Knight B, and their
+    /// checksums agree.
+    #[test]
+    fn two_games_meet_by_pasted_codes_and_agree() {
+        let (mut host, mut guest) = linked();
+        assert_eq!(host.screen, Screen::Duel);
+        assert_eq!(guest.screen, Screen::Duel);
+        assert_eq!(host.world.me.kind, crate::pose::Kind::KnightA);
+        assert_eq!(guest.world.me.kind, crate::pose::Kind::KnightB);
+        assert_eq!(bars(&host)[1].who, "The ivory crown");
+        assert_eq!(bars(&guest)[1].who, "The black helm");
+        let fwd = crate::input::FORWARD;
+        for t in 0..200 {
+            frame(&mut host, if t % 40 < 25 { fwd } else { 0 }, 30);
+            frame(&mut guest, fwd, -50);
+            carry(&mut host, &mut guest);
+        }
+        let (h, g) = (host.versus.as_ref().unwrap(), guest.versus.as_ref().unwrap());
+        assert_eq!(h.status(), crate::online::PLAYING);
+        assert_eq!(g.status(), crate::online::PLAYING);
+        assert!(h.session.made.len() >= 5, "{:?}", h.session.made);
+        let common: Vec<_> = h
+            .session
+            .made
+            .iter()
+            .filter(|m| g.session.made.contains(m))
+            .collect();
+        assert!(common.len() >= 5, "the checksums agree tick for tick");
+        assert!(h.session.link.agreed.is_some());
+        // the guest's own knight walked, and the host sees it there
+        let mut seen_by_host = host.world.foes[0].body.pos;
+        let guest_own = guest.world.player.pos;
+        if host.versus.as_ref().unwrap().session.tick == guest.versus.as_ref().unwrap().session.tick {
+            assert_eq!(seen_by_host, guest_own);
+        }
+        seen_by_host = h.session.world.foes[0].body.pos;
+        assert_ne!(seen_by_host, crate::seat::duel().foes[0].body.pos);
+        assert!(ui(&host).online.sums.contains(':'));
+    }
+
+    /// The other player leaving, going quiet, or disagreeing, each ends the
+    /// duel with its reason in words and a way back to the menu.
+    #[test]
+    fn a_leaving_a_silence_and_a_desync_each_end_the_duel_in_words() {
+        // leaving
+        let (mut host, mut guest) = linked();
+        act(&mut guest, "screen.show", "menu");
+        carry(&mut guest, &mut host);
+        frame(&mut host, 0, 0);
+        assert_eq!(host.screen, Screen::Online);
+        let u = ui(&host);
+        assert_eq!(u.panels[0].heading, "The online duel has ended");
+        assert_eq!(u.panels[0].text, "The other player left the duel.");
+        assert_eq!(u.panels[0].actions[0].value, "menu");
+
+        // the other page closing (pagehide): it leaves first
+        let (mut host, mut guest) = linked();
+        act(&mut guest, "page.leaving", "");
+        assert!(guest.versus.is_none());
+        carry(&mut guest, &mut host);
+        frame(&mut host, 0, 0);
+        assert_eq!(ui(&host).panels[0].text, "The other player left the duel.");
+
+        // the transport losing the other browser
+        let (mut host, _guest) = linked();
+        host.online_left(1);
+        frame(&mut host, 0, 0);
+        assert_eq!(ui(&host).panels[0].text, "The other player left the duel.");
+
+        // silence: ten seconds with no word
+        let (mut host, _guest) = linked();
+        for _ in 0..(10 * 60 + 5) {
+            frame(&mut host, 0, 0);
+        }
+        assert_eq!(host.screen, Screen::Online);
+        assert_eq!(
+            ui(&host).panels[0].text,
+            "No word from the other player for 10 seconds, so the duel has ended."
+        );
+
+        // a desync
+        let (mut host, mut guest) = linked();
+        guest.versus.as_mut().unwrap().session.world.me.health.hp -= 1;
+        for _ in 0..90 {
+            frame(&mut host, 0, 0);
+            frame(&mut guest, 0, 0);
+            carry(&mut host, &mut guest);
+        }
+        assert_eq!(host.screen, Screen::Online);
+        assert!(
+            ui(&host).panels[0].text.starts_with("Desync: "),
+            "{}",
+            ui(&host).panels[0].text
+        );
+    }
+
+    /// Rematch online waits for both players, then the duel begins again.
+    #[test]
+    fn an_online_rematch_waits_for_both_players() {
+        let (mut host, mut guest) = linked();
+        for g in [&mut host, &mut guest] {
+            let r = g.versus.as_mut().unwrap().session.world.rounds.as_mut().unwrap();
+            r.phase = crate::rounds::Phase::Over;
+            r.wins = [2, 0];
+        }
+        for _ in 0..5 {
+            frame(&mut host, 0, 0);
+            frame(&mut guest, 0, 0);
+            carry(&mut host, &mut guest);
+        }
+        assert_eq!(host.screen, Screen::Result);
+        let u = ui(&guest);
+        assert_eq!(
+            u.panels[0].heading, "The knight wins the duel",
+            "the guest lost 0 to 2"
+        );
+        assert_eq!(u.panels[0].actions[0].name, "online.rematch");
+        act(&mut host, "online.rematch", "");
+        assert_eq!(
+            ui(&host).panels[0].note,
+            "Waiting for the other player to choose Rematch."
+        );
+        for _ in 0..20 {
+            frame(&mut host, 0, 0);
+            frame(&mut guest, 0, 0);
+            carry(&mut host, &mut guest);
+        }
+        assert_eq!(host.screen, Screen::Result, "one player alone does not begin it");
+        act(&mut guest, "online.rematch", "");
+        for _ in 0..20 {
+            frame(&mut host, 0, 0);
+            frame(&mut guest, 0, 0);
+            carry(&mut host, &mut guest);
+        }
+        assert_eq!(host.screen, Screen::Duel);
+        assert_eq!(guest.screen, Screen::Duel);
+        assert_eq!(host.world.rounds.as_ref().unwrap().wins, [0, 0]);
     }
 }

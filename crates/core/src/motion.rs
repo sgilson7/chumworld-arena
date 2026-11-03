@@ -188,7 +188,8 @@ pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
             let b = player::body(w, id);
             (w.ground(b.pos.x, b.pos.z), false)
         };
-        let fp = id == 0 && w.first_person();
+        // (M5: the second seat's knight faces its view too, `seat.rs`)
+        let fp = (id == 0 && w.first_person()) || crate::seat::is(w, id);
         let (b, f) = player::parts_mut(w, id);
         f.gait.road = road_share(f.gait.road, road);
         step_body(b, f, &inp, yaw, n, toward, ground);
@@ -350,6 +351,15 @@ pub fn mass(kind: Kind) -> i32 {
         Kind::Lookout => 60,
         // M3 (R5.1): a knight and some 25 kg of plate
         Kind::KnightA | Kind::KnightB => 110,
+        // M6 (R7.103): padding, a brigandine, half plate
+        Kind::Squire => 80,
+        Kind::Sellsword => 90,
+        Kind::Hedge => 100,
+        // M6 (R7.201): a big man in leather and a little plate; a knight
+        Kind::Veteran => 95,
+        Kind::Banneret => 108,
+        // M6 (R7.301): the champion and the mirror in full plate, as a knight
+        Kind::Champion | Kind::Mirror => 110,
     }
 }
 
