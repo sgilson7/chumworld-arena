@@ -3673,5 +3673,89 @@
     "find": "                f.arm.shell.side = side;\n",
     "replace": "",
     "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
+  },
+  {
+    "name": "T11 watch: a watched pilot flies the player's fighter",
+    "file": "crates/core/src/world.rs",
+    "find": "        let input = match self.watch.clone() {",
+    "replace": "        let input = match None::<crate::pilot::Brain> {",
+    "test": "a_tree_is_drawn_as_it_was_read"
+  },
+  {
+    "name": "T11 watch: the player's pilot reads its own tree",
+    "file": "crates/core/src/pilot.rs",
+    "find": "    let ring = id != 0 && dueller(w) != Some(id);",
+    "replace": "    let ring = dueller(w) != Some(id);",
+    "test": "watch_opens_a_fight_of_two_pilots_with_both_trees"
+  },
+  {
+    "name": "T11 watch: a watched pilot can hold a guard",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    (w.first_person() || w.watch.is_some())",
+    "replace": "    w.first_person()",
+    "test": "watch_opens_a_fight_of_two_pilots_with_both_trees"
+  },
+  {
+    "name": "T11 watch: each check read is traced",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            t.checks[i][k] = Some(ok);\n",
+    "replace": "",
+    "test": "a_tree_is_drawn_as_it_was_read"
+  },
+  {
+    "name": "T11 watch: the rule that fired is traced",
+    "file": "crates/core/src/pilot.rs",
+    "find": "            t.fired = Some(i);\n",
+    "replace": "",
+    "test": "a_tree_is_drawn_as_it_was_read"
+  },
+  {
+    "name": "T11 watch: the watched clock runs at its speed",
+    "file": "crates/core/src/watch.rs",
+    "find": "        v.time_us += elapsed / SPEEDS[v.speed] as i64;",
+    "replace": "        v.time_us += elapsed;",
+    "test": "the_watched_clock_runs_at_its_speed_pauses_and_steps_one_tick"
+  },
+  {
+    "name": "T11 watch: paused, the watched clock stops",
+    "file": "crates/core/src/watch.rs",
+    "find": "    if !v.paused {",
+    "replace": "    if true {",
+    "test": "the_watched_clock_runs_at_its_speed_pauses_and_steps_one_tick"
+  },
+  {
+    "name": "T11 watch: a step runs one tick",
+    "file": "crates/core/src/watch.rs",
+    "find": "            g.world.step(&Input::default());\n            ran += 1;",
+    "replace": "            ran += 1;",
+    "test": "the_watched_clock_runs_at_its_speed_pauses_and_steps_one_tick"
+  },
+  {
+    "name": "T11 watch: the camera's pitch is held",
+    "file": "crates/core/src/watch.rs",
+    "find": "            v.pitch = (v.pitch - per(dy)).clamp(ORBIT_PITCH_MIN, ORBIT_PITCH_MAX);",
+    "replace": "            v.pitch -= per(dy);",
+    "test": "the_camera_circles_and_comes_closer_within_its_limits"
+  },
+  {
+    "name": "T11 watch: the camera's distance is held",
+    "file": "crates/core/src/watch.rs",
+    "find": "            v.dist = (d as Fx).clamp(ORBIT_DIST_MIN, ORBIT_DIST_MAX);",
+    "replace": "            v.dist = d as Fx;",
+    "test": "the_camera_circles_and_comes_closer_within_its_limits"
+  },
+  {
+    "name": "T11 watch: a picker steps round to the first",
+    "file": "crates/core/src/watch.rs",
+    "find": "            return Ok((at + 1) % PILOTS.len());",
+    "replace": "            return Ok((at + 1).min(PILOTS.len() - 1));",
+    "test": "the_pickers_step_through_the_pilots_and_refuse_a_stranger"
+  },
+  {
+    "name": "T11 watch: the overlay off draws no labels",
+    "file": "crates/core/src/watch.rs",
+    "find": "    if v.overlay {",
+    "replace": "    if true {",
+    "test": "the_pickers_step_through_the_pilots_and_refuse_a_stranger"
   }
 ]

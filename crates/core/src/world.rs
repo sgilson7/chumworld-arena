@@ -160,6 +160,9 @@ pub struct World {
     /// M5: the second seat, online: the foe is a person in another browser,
     /// seen from its own helmet (`seat.rs`); none offline
     pub seat: Option<crate::seat::Seat>,
+    /// T11: watch mode: the pilot that flies the player's fighter, its
+    /// record taking the page's place each tick (`pilot::decide_with`)
+    pub watch: Option<crate::pilot::Brain>,
 }
 
 impl World {
@@ -191,6 +194,7 @@ impl World {
             rounds: None,
             eye_view: false,
             seat: None,
+            watch: None,
         }
     }
 
@@ -213,6 +217,17 @@ impl World {
             return;
         }
         self.tick += 1;
+        // T11: watched, a pilot's record stands in for the page's
+        let watched;
+        let input = match self.watch.clone() {
+            Some(b) => {
+                let (i, b) = crate::pilot::decide_with(self, 0, b);
+                self.watch = Some(b);
+                watched = i;
+                &watched
+            }
+            None => input,
+        };
         // (M2: between rounds, and once a duel is over, the player's record
         // is set aside)
         let input = &crate::rounds::input(self, input);

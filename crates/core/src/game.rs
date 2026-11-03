@@ -49,6 +49,8 @@ pub enum Screen {
     /// M6: the ladder's rank cards, and one rung's dossier
     Ladder,
     Dossier,
+    /// T11: two pilots fight while the reader reads their trees
+    Watch,
 }
 
 impl Screen {
@@ -65,6 +67,7 @@ impl Screen {
             Screen::Paste => "paste",
             Screen::Ladder => "ladder",
             Screen::Dossier => "dossier",
+            Screen::Watch => "watch",
         }
     }
 
@@ -158,6 +161,8 @@ pub struct Game {
     pub hosted: u64,
     /// M5: a duel's last words, kept for the transport after it is left
     pub parting: Vec<(u32, String)>,
+    /// T11: watch mode's choices, camera and clock (`watch.rs`)
+    pub watching: crate::watch::Watch,
     /// M6: the rung whose dossier is open, or whose duel is under way
     pub rung: usize,
     /// M6: the duel under way is the ladder's, on `rung` (not Practice)
@@ -217,6 +222,7 @@ impl Game {
             invited: String::new(),
             hosted: 0,
             parting: Vec::new(),
+            watching: crate::watch::Watch::default(),
             rung: 0,
             climbing: false,
             earned: None,
@@ -294,6 +300,12 @@ impl Game {
     pub fn advance(&mut self, now_us: i64, bits: u32, dx: i32, dy: i32, wheel: i32) {
         if self.versus.is_some() {
             self.advance_online(now_us, bits, dx, dy, wheel);
+            return;
+        }
+        // T11: watch mode runs on its own clock (`watch.rs`)
+        if self.screen == Screen::Watch {
+            crate::watch::advance(self, now_us);
+            self.draw();
             return;
         }
         let ticks = self.clock.frame(now_us, bits);
@@ -608,6 +620,10 @@ impl Game {
     }
 
     pub fn camera(&self) -> Camera {
+        // T11: watch mode's camera circles the pair
+        if self.screen == Screen::Watch {
+            return crate::watch::camera(self);
+        }
         if !self.in_duel() {
             // M2 (R2.11): the title and the menu look across the ring from
             // behind its middle; a duel cuts straight to the eye
@@ -733,6 +749,12 @@ impl Game {
                 }
                 // M5: the choice of hosting or joining by pasted codes
                 "paste" => self.show(Screen::Paste),
+                // T11: watch mode, a new watched fight
+                "watch" => {
+                    self.leave_duel();
+                    crate::watch::start(self);
+                    self.show(Screen::Watch);
+                }
                 // M6: the ladder's rank cards; from a ladder duel, back to them
                 "ladder" => {
                     self.leave_duel();
@@ -855,6 +877,8 @@ impl Game {
             }
             // M5: the page is going away: an online duel is left, so the
             // other browser hears of it at once rather than after a silence
+            // T11: watch mode's controls
+            n if n.starts_with("watch.") => crate::watch::act(self, &n["watch.".len()..], value)?,
             "page.leaving" => self.leave_online(),
             // M5: online play (`versus.rs`)
             "online.build" => self.build = value.trim().to_string(),

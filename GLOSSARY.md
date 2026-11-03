@@ -352,6 +352,30 @@ Not: gladiator, berserker
 
 Moving at {walk.speed} metres a second with W, A, S or D, relative to where you look.
 
+### Watch
+
+A screen from the main menu where two fighters duel on their own trees while you read them: one tick at a time, or at full, half, quarter or eighth speed.
+
+Not: spectate, replay
+
+### Tree
+
+What a computer's fighter thinks with: its rules, read from the top every few ticks. The first rule whose checks all hold is the move it makes.
+
+Not: brain, script
+
+### Rule
+
+One line of a tree: its checks, then the move it makes when they all hold.
+
+Not: branch, node
+
+### Check
+
+One test in a rule, read in order: true, false, or not reached when an earlier check of the rule was false or a rule above it ran.
+
+Not: condition, test
+
 ### Winded
 
 Out of stamina. Your arms work at {chivalry.winded_pct}% of their strength, so cuts come slow and land soft, until your stamina is back to {chivalry.winded_until}.

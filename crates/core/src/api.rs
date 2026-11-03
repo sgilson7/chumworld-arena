@@ -191,6 +191,9 @@ pub struct Ui {
     pub save: SaveView,
     /// M5: online play
     pub online: OnlineView,
+    /// T11: watch mode's fight and trees (`watch::View`), on its screen only
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub watch: Option<crate::watch::View>,
     pub version: u32,
 }
 
@@ -581,6 +584,7 @@ pub fn ui(g: &Game) -> Ui {
                 actions: vec![
                     button(g, "screen.show", "duel", "practice", true),
                     button(g, "screen.show", "ladder", "ladder", false),
+                    button(g, "screen.show", "watch", "watch", false),
                     button(g, "online.host", "room", "host", false),
                     button(g, "online.join", "room", "join", false),
                     button(g, "screen.show", "paste", "pasted_codes", false),
@@ -711,6 +715,7 @@ pub fn ui(g: &Game) -> Ui {
             ..panel("ladder")
         }),
         Screen::Dossier => panels.push(dossier(g)),
+        Screen::Watch => panels.push(watch_panel(g)),
         Screen::Duel => {}
     }
     let mut hud = vec![HudItem {
@@ -778,7 +783,78 @@ pub fn ui(g: &Game) -> Ui {
             status: g.versus.as_ref().map(|v| status_text(g, v)).unwrap_or_default(),
             sums: g.versus.as_ref().map(|v| v.sums()).unwrap_or_default(),
         },
+        watch: (g.screen == Screen::Watch).then(|| crate::watch::view(g)),
         version: g.ui_version,
+    }
+}
+
+/// T11: watch mode's controls: the two pickers, start again, pause or
+/// resume, a tick at a time, the four speeds, whose tree is shown, the
+/// overlay, and back to the menu.
+fn watch_panel(g: &Game) -> Panel {
+    let s = &g.strings;
+    let v = &g.watching;
+    let named = |name: &str, value: &str, label: String| Action {
+        label,
+        ..button(g, name, value, "watch", false)
+    };
+    let names = crate::watch::names(g);
+    let mut actions = vec![
+        named(
+            "watch.left",
+            "",
+            fill(&s.get("watch_left"), &[("name", names[0].clone())]),
+        ),
+        named(
+            "watch.right",
+            "",
+            fill(&s.get("watch_right"), &[("name", names[1].clone())]),
+        ),
+        button(g, "watch.start", "", "watch_start", false),
+        button(
+            g,
+            "watch.pause",
+            "",
+            if v.paused { "watch_resume" } else { "watch_pause" },
+            false,
+        ),
+        button(g, "watch.step", "", "watch_step", false),
+    ];
+    for sp in crate::watch::SPEEDS {
+        actions.push(button(
+            g,
+            "watch.speed",
+            &sp.to_string(),
+            &format!("speed_{sp}"),
+            false,
+        ));
+    }
+    for (k, side) in ["left", "right"].iter().enumerate() {
+        let mut b = named(
+            "watch.show",
+            side,
+            fill(&s.get("watch_show"), &[("name", names[k].clone())]),
+        );
+        b.enabled = v.show != k;
+        actions.push(b);
+    }
+    actions.push(button(
+        g,
+        "watch.overlay",
+        if v.overlay { "off" } else { "on" },
+        if v.overlay {
+            "watch_overlay_off"
+        } else {
+            "watch_overlay_on"
+        },
+        false,
+    ));
+    actions.push(button(g, "screen.show", "menu", "back_to_menu", false));
+    Panel {
+        heading: s.get("watch_heading"),
+        text: s.get("watch_text"),
+        actions,
+        ..panel("watch")
     }
 }
 
@@ -988,17 +1064,27 @@ mod tests {
             .collect();
         assert_eq!(
             labels,
-            ["Practice", "Ladder", "Host", "Join", "Pasted codes", "Settings"]
+            [
+                "Practice",
+                "Ladder",
+                "Watch",
+                "Host",
+                "Join",
+                "Pasted codes",
+                "Settings"
+            ]
         );
         assert_eq!(p["actions"][0]["engage"], true);
         assert_eq!(p["actions"][0]["value"], "duel");
         // M6: the ladder, under Practice
         assert_eq!(p["actions"][1]["value"], "ladder");
+        // T11: Watch, under the ladder
+        assert_eq!(p["actions"][2]["value"], "watch");
         // M5: Host and Join open, by room code, and Pasted codes beside them
-        assert_eq!(p["actions"][2]["enabled"], true);
-        assert_eq!(p["actions"][2]["name"], "online.host");
-        assert_eq!(p["actions"][3]["name"], "online.join");
-        assert_eq!(p["actions"][4]["value"], "paste");
+        assert_eq!(p["actions"][3]["enabled"], true);
+        assert_eq!(p["actions"][3]["name"], "online.host");
+        assert_eq!(p["actions"][4]["name"], "online.join");
+        assert_eq!(p["actions"][5]["value"], "paste");
         // and nothing asks the transport for a link until one is chosen (CA-4)
         assert!(v["ok"]["online"]["cmds"].as_array().unwrap().is_empty());
         assert!(

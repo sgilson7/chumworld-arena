@@ -28,6 +28,8 @@ pub const ABOVE: Fx = ONE / 5;
 pub const HEAD: Fx = ONE * 17 / 10;
 /// The vertical field of view.
 pub const FOV: i32 = deg(60);
+/// T11: watch mode's field of view across, degrees
+pub const WATCH_FOV_DEG: i32 = 70;
 /// How far the view may look down and up.
 pub const PITCH_MIN: i32 = -deg(55);
 pub const PITCH_MAX: i32 = deg(35);

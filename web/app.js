@@ -259,6 +259,7 @@ async function main() {
   }
 
   // Builds the screen from the core's view model.
+  let shownPanels = "";
   function show(u) {
     const changed = !ui || ui.screen !== u.screen;
     ui = u;
@@ -266,13 +267,20 @@ async function main() {
     document.title = u.title;
     body.dataset.screen = u.screen;
     // (what a reader has typed or pasted into a box stays through a redraw)
-    const typed = new Map([...el("overlay").querySelectorAll("input, textarea")].filter((n) => !n.readOnly).map((n) => [n.id, n.value]));
-    el("overlay").replaceChildren(...u.panels.map(panel));
-    typed.forEach((value, id) => {
-      if (el(id) && !el(id).readOnly) el(id).value = value;
-    });
+    // T11: the panels are rebuilt only when they change, so a view that
+    // changes every tick (watch mode) leaves its buttons under the pointer
+    const panels = JSON.stringify(u.panels);
+    if (panels !== shownPanels) {
+      shownPanels = panels;
+      const typed = new Map([...el("overlay").querySelectorAll("input, textarea")].filter((n) => !n.readOnly).map((n) => [n.id, n.value]));
+      el("overlay").replaceChildren(...u.panels.map(panel));
+      typed.forEach((value, id) => {
+        if (el(id) && !el(id).readOnly) el(id).value = value;
+      });
+    }
     el("overlay").hidden = u.panels.length === 0;
     el("bars").replaceChildren(...u.bars.map(bar));
+    watch(u.watch);
     for (const item of u.hud) {
       let node = el(`hud-${item.id}`);
       if (!node) {
@@ -292,9 +300,60 @@ async function main() {
     follow(u.online);
   }
 
+  // T11: watch mode, drawn from the core's view: the line over the fight,
+  // each fighter's move over it, and the shown fighter's tree, each check
+  // marked as the core read it
+  function watch(w) {
+    el("watch").hidden = !w;
+    if (!w) return;
+    el("watch-line").textContent = w.line;
+    el("watch-labels").replaceChildren(
+      ...w.labels.map((l) => {
+        const node = make("span", l.text, "watch-label");
+        node.style.left = l.left;
+        node.style.top = l.top;
+        return node;
+      }),
+    );
+    const side = w.sides[w.show];
+    const rules = side.rules.map((r) => {
+      const row = make("li", undefined, r.ran ? "rule ran" : "rule");
+      for (const c of r.checks) {
+        const pill = make("span", c.text, "check");
+        pill.dataset.state = c.state;
+        row.append(pill);
+      }
+      row.append(make("span", r.act, "act"));
+      return row;
+    });
+    const list = make("ol", undefined, "rules");
+    list.replaceChildren(...rules);
+    el("watch-tree").replaceChildren(make("h2", side.heading), list, make("p", side.keys, "keys"), make("p", w.hint, "hint"));
+  }
+  // dragging the view circles the camera, the wheel brings it closer, Space
+  // pauses and the full stop steps one tick: each an act the core decides
+  let dragging = false;
+  canvas.addEventListener("pointerdown", () => {
+    dragging = Boolean(ui && ui.watch);
+  });
+  window.addEventListener("pointerup", () => {
+    dragging = false;
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (dragging && ui && ui.watch) act("watch.orbit", `${e.movementX} ${e.movementY}`);
+  });
+  canvas.addEventListener("wheel", (e) => {
+    if (ui && ui.watch) act("watch.zoom", String(e.deltaY));
+  });
+
   // Esc, a lost pointer and a hidden tab: the core decides what they mean.
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape") act("key.escape", "");
+    if (ui && ui.watch && e.code === "Space") {
+      e.preventDefault();
+      act("watch.pause", "");
+    }
+    if (ui && ui.watch && e.code === "Period") act("watch.step", "");
   });
   let locked = false;
   document.addEventListener("pointerlockchange", () => {

@@ -314,6 +314,25 @@ pub struct Brain {
     pub dir: i32,
     /// ticks it has been driven
     pub ticks: u32,
+    /// T11 (watch mode): what its tree checked the last time it chose,
+    /// for the page to draw
+    pub trace: Option<Trace>,
+}
+
+/// T11: one reading of a tree, as watch mode draws it: for each rule, each
+/// check true, false, or not reached (`None`: an earlier check of the rule
+/// was false, the rule was passed over for an interrupt, or a rule above
+/// it fired), and which rule fired.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Trace {
+    /// the world's tick when it was read
+    pub tick: u64,
+    /// the tree's name in the book
+    pub tree: String,
+    /// read while a move was under way: only interrupting rules could fire
+    pub interrupts: bool,
+    pub checks: Vec<Vec<Option<bool>>>,
+    pub fired: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -355,8 +374,25 @@ pub fn foe_keyed(book: &Book, kind: Kind, key: &str, at: V3, yaw: i32, salt: u64
             rng: Rng::new(salt),
             dir: 1,
             ticks: 0,
+            trace: None,
         },
     }
+}
+
+/// T11: a pilot's brain for book entry `key` (as `pilot_named` names it),
+/// flying under its tree, its chance seeded from `salt`.
+pub fn brain(key: &str, salt: u64) -> Option<Brain> {
+    let (kind, key) = pilot_named(key)?;
+    Some(Brain {
+        kind,
+        key: key.to_string(),
+        control: Control::Tree,
+        current: None,
+        rng: Rng::new(salt),
+        dir: 1,
+        ticks: 0,
+        trace: None,
+    })
 }
 
 /// What a pilot sees of a fighter.
@@ -486,10 +522,15 @@ pub const GUARD: (i32, i32, i32) = (-12, -40, 80);
 /// One pilot's record for this tick, and its memory for the next. Reads the
 /// world; changes nothing in it (CW-3).
 pub fn decide(w: &World, id: usize) -> (Input, Brain) {
-    let foe = &w.foes[id - 1];
-    let mut b = foe.brain.clone();
+    decide_with(w, id, w.foes[id - 1].brain.clone())
+}
+
+/// T11: `decide` for any fighter with brain `b`: a foe's own, or in watch
+/// mode the pilot that flies the player's fighter (`World::watch`), which
+/// moves it through the same record a person's keys make (CA-3).
+pub fn decide_with(w: &World, id: usize, mut b: Brain) -> (Input, Brain) {
     b.ticks += 1;
-    let f = &foe.fighter;
+    let f = player::fighter(w, id);
     match &b.control {
         Control::Still => return (Input::default(), b),
         Control::Script(list) => {
@@ -511,22 +552,39 @@ pub fn decide(w: &World, id: usize) -> (Input, Brain) {
     }
     let book = &w.pilots.book;
     let spec = &book.kinds[b.key.as_str()];
-    let ring = dueller(w) != Some(id);
-    let tree = &book.trees[if ring { "ring" } else { spec.tree.as_str() }];
+    let ring = id != 0 && dueller(w) != Some(id);
+    let tree_name = if ring { "ring" } else { spec.tree.as_str() };
+    let tree = &book.trees[tree_name];
+    let key = b.key.clone();
     let me = seen_now(w, id);
     let they = w
         .pilots
         .memory
         .ago(spec.reaction_ticks as usize, them)
         .unwrap_or_else(|| seen_now(w, them));
-    let view = View { w, id, f, me, they };
+    let view = View {
+        w,
+        id,
+        f,
+        me,
+        they,
+        key: &key,
+    };
     if (w.tick + id as u64).is_multiple_of(CHECK_TICKS) {
         let under_way = b.current.map(|(m, _)| m);
-        let pick = match under_way {
+        let read = match under_way {
             Some(m) if m.committed() => None,
-            Some(_) => pick(tree, &view, &mut b.rng, true),
-            None => pick(tree, &view, &mut b.rng, false),
+            Some(_) => Some(pick(tree, &view, &mut b.rng, true)),
+            None => Some(pick(tree, &view, &mut b.rng, false)),
         };
+        let pick = read
+            .map(|(m, mut t)| {
+                t.tick = w.tick;
+                t.tree = tree_name.to_string();
+                b.trace = Some(t);
+                m
+            })
+            .flatten();
         if let Some(m) = pick {
             if under_way != Some(m) {
                 start(&mut b, m, &spec.cuts);
@@ -584,11 +642,35 @@ fn pick_cut(rng: &mut Rng, c: &Cuts) -> Move {
 
 /// The first rule whose conditions all hold (only those marked `interrupt`
 /// when a move is under way).
-fn pick(tree: &[Rule], v: &View, rng: &mut Rng, interrupts: bool) -> Option<Move> {
-    tree.iter()
-        .filter(|r| !interrupts || r.interrupt)
-        .find(|r| r.when.iter().all(|c| holds(c, v, rng)))
-        .map(|r| r.act)
+/// The first rule whose checks all hold (only interrupting rules while a
+/// move is under way), and the trace of the reading. Checks are read in
+/// order and a rule's reading stops at its first false check, so a chance
+/// is drawn only when it is reached, exactly as before the trace (T11).
+fn pick(tree: &[Rule], v: &View, rng: &mut Rng, interrupts: bool) -> (Option<Move>, Trace) {
+    let mut t = Trace {
+        interrupts,
+        checks: tree.iter().map(|r| vec![None; r.when.len()]).collect(),
+        ..Trace::default()
+    };
+    for (i, r) in tree.iter().enumerate() {
+        if interrupts && !r.interrupt {
+            continue;
+        }
+        let mut all = true;
+        for (k, c) in r.when.iter().enumerate() {
+            let ok = holds(c, v, rng);
+            t.checks[i][k] = Some(ok);
+            if !ok {
+                all = false;
+                break;
+            }
+        }
+        if all {
+            t.fired = Some(i);
+            return (Some(r.act), t);
+        }
+    }
+    (None, t)
 }
 
 /// What a pilot has to go on this tick.
@@ -598,6 +680,8 @@ struct View<'a> {
     f: &'a Fighter,
     me: Seen,
     they: Seen,
+    /// T11: its entry in the book
+    key: &'a str,
 }
 
 impl View<'_> {
@@ -613,7 +697,7 @@ impl View<'_> {
 
     /// The band I keep to, centimetres feet to feet.
     fn band(&self) -> (i32, i32) {
-        let k = self.w.pilots.book.kinds[self.w.foes[self.id - 1].brain.key.as_str()].keep_cm;
+        let k = self.w.pilots.book.kinds[self.key].keep_cm;
         (self.reach_cm() + k[0], self.reach_cm() + k[1])
     }
 }
@@ -743,7 +827,7 @@ fn play(m: Move, t: u32, v: &View, dir: i32) -> Option<Plan> {
         gesture: Some(if t == READY_TICKS { way } else { (0, 0, 0) }),
         right: false,
     };
-    let px = v.w.pilots.book.kinds[v.w.foes[v.id - 1].brain.key.as_str()].strike_px * 100;
+    let px = v.w.pilots.book.kinds[v.key].strike_px * 100;
     let guard = hold(v, GUARD, dir);
     Some(match m {
         Move::Guard | Move::Cast if t <= 12 => guard,

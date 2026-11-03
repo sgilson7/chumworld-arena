@@ -155,3 +155,28 @@ body:not([data-screen="duel"]):not([data-screen="round"]) #hud { display: none; 
   #title h1, #menu h1 { font-size: 30px; }
   table.controls td { padding: 1px 0; }
 }
+
+/* T11: watch mode. The controls sit at the left, the tree at the right, the
+   fight between them; each check is marked by fill and by border, never by
+   colour alone. */
+body[data-screen="watch"] #overlay { align-items: flex-end; justify-content: flex-start; background: none; pointer-events: none; padding: 12px; }
+body[data-screen="watch"] #overlay .panel { pointer-events: auto; max-width: 300px; padding: 14px 16px; }
+body[data-screen="watch"] #overlay .panel h1 { font-size: 18px; margin-bottom: 6px; }
+body[data-screen="watch"] #overlay .panel p { font-size: 13px; margin-bottom: 8px; }
+body[data-screen="watch"] #overlay .panel button { display: inline-block; width: auto; padding: 6px 10px; margin: 0 6px 6px 0; font-size: 12px; letter-spacing: 0.04em; box-shadow: none; }
+body[data-screen="watch"] #overlay .panel button + button { margin-top: 0; }
+#watch-line { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); margin: 0; padding: 6px 14px; border-radius: 4px; background: var(--glass); font-size: 14px; }
+#watch-labels { position: fixed; inset: 0; pointer-events: none; }
+.watch-label { position: absolute; transform: translate(-50%, -100%); padding: 3px 8px; border-radius: 3px; background: var(--ink); color: var(--stone); font-size: 13px; font-weight: 700; white-space: nowrap; }
+#watch-tree { position: fixed; top: 56px; right: 12px; bottom: 12px; width: min(460px, 46vw); overflow: auto; padding: 12px 14px; border-radius: 6px; background: var(--glass); border: 1px solid var(--stone-edge); }
+#watch-tree h2 { margin: 0 0 8px; font-size: 15px; }
+#watch-tree .rules { margin: 0; padding-left: 22px; display: grid; gap: 5px; }
+#watch-tree .rule { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--ink-soft); }
+#watch-tree .check { padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px dashed var(--stone-edge); }
+#watch-tree .check[data-state="true"] { background: var(--ink); color: var(--stone); border: 1px solid var(--ink); }
+#watch-tree .check[data-state="false"] { border: 1px solid var(--ink-soft); color: var(--ink); }
+#watch-tree .act { padding: 1px 8px; border-radius: 3px; font-size: 12px; border: 1px solid var(--stone-edge); }
+#watch-tree .rule.ran { color: var(--ink); }
+#watch-tree .rule.ran .act { border: 2px solid var(--you); background: rgba(201, 178, 122, 0.25); font-weight: 700; }
+#watch-tree .keys { margin: 10px 0 4px; font-size: 13px; }
+#watch-tree .hint { margin: 0; font-size: 12px; color: var(--ink-soft); }

@@ -249,7 +249,8 @@ impl Default for Chiv {
 /// drawn, standing, between cuts and kicks, the right button held.
 pub fn guards(w: &World, id: usize, inp: &Input) -> bool {
     let f = player::fighter(w, id);
-    w.first_person()
+    // (T11: in watch mode too, where both fighters are pilots)
+    (w.first_person() || w.watch.is_some())
         && inp.button(input::HOLD_LOOK)
         && f.sheath == Sheath::Drawn
         && !f.health.down()

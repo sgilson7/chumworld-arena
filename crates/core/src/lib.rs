@@ -47,5 +47,6 @@ pub mod sky;
 pub mod swing;
 pub mod ticks;
 pub mod versus;
+pub mod watch;
 pub mod world;
 pub mod wounds;
