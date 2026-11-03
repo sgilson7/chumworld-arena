@@ -360,6 +360,14 @@ pub fn mass(kind: Kind) -> i32 {
         Kind::Banneret => 108,
         // M6 (R7.301): the champion and the mirror in full plate, as a knight
         Kind::Champion | Kind::Mirror => 110,
+        // T11 (R18.1): leather and cloth, a robe, half plate, a jack, a
+        // breastplate and tassets, and a big bare-armed man
+        Kind::Woodsman => 85,
+        Kind::Friar => 78,
+        Kind::Warden => 104,
+        Kind::Reiver => 90,
+        Kind::Pikeman => 96,
+        Kind::Headsman => 100,
     }
 }
 

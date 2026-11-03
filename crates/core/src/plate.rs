@@ -107,6 +107,13 @@ pub fn armoured(kind: Kind) -> bool {
     covered(kind) != 0
 }
 
+/// A kind drawn by the knights' builder (`models/knight.rs`): the knights
+/// and every campaign opponent, the friar and the headsman included though
+/// they wear no plate (R18.3). The figures of CHUMWORLD's world are not.
+pub fn costumed(kind: Kind) -> bool {
+    armoured(kind) || matches!(kind, Kind::Friar | Kind::Headsman)
+}
+
 /// The parts a kind wears plate on by design, a bit each (`wounds::bit`):
 /// the one table of plate coverage, keyed by kind (R5.25). Every part for a
 /// knight; for the ladder's opponents what each concept sheet draws in
@@ -138,6 +145,21 @@ pub fn covered(kind: Kind) -> u16 {
         Kind::Banneret => (1 << PARTS) - 1,
         // M6 (R7.302): the champion and the mirror on all ten, as a knight
         Kind::Champion | Kind::Mirror => (1 << PARTS) - 1,
+        // T11 (R18.2): the campaign's new opponents, by the concept sheet's
+        // plate line: the woodsman's bracers; the warden above the waist;
+        // the reiver's bonnet and jack of plates; the pikeman's morion,
+        // breastplate and tassets; the friar and the headsman wear none
+        Kind::Woodsman => b(FOREARM[LEFT]) | b(FOREARM[RIGHT]),
+        Kind::Warden => {
+            b(HEAD)
+                | b(TORSO)
+                | b(UPPER_ARM[LEFT])
+                | b(UPPER_ARM[RIGHT])
+                | b(FOREARM[LEFT])
+                | b(FOREARM[RIGHT])
+        }
+        Kind::Reiver => b(HEAD) | b(TORSO),
+        Kind::Pikeman => b(HEAD) | b(TORSO) | b(THIGH[LEFT]) | b(THIGH[RIGHT]),
         _ => 0,
     }
 }
@@ -165,7 +187,8 @@ pub const OPEN_HELM_MM: i32 = 60;
 
 /// A kind whose helm is open below `OPEN_HELM_MM`.
 pub fn open_helm(kind: Kind) -> bool {
-    kind == Kind::Squire
+    // (T11: the reiver's bonnet and the pikeman's morion leave the face open)
+    matches!(kind, Kind::Squire | Kind::Reiver | Kind::Pikeman)
 }
 
 /// The parts with no plate on them, a bit each (`wounds::bit`).

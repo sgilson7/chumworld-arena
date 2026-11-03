@@ -4016,5 +4016,61 @@
     "find": "                r.held = held;\n",
     "replace": "",
     "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "R18 woodsman: the mantle is wider than the shoulders",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "let r = yr.x + k.s(170);",
+    "replace": "let r = yr.x - k.s(60);",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 friar: the robe reaches the feet",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "coat_on(k, -640, 500,",
+    "replace": "coat_on(k, -460, 500,",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 warden: a pauldron stands over each shoulder",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "k.off(p.shoulder[s], 0, 30, 0),",
+    "replace": "k.off(p.shoulder[s], 0, -120, 0),",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 reiver: the brim is half again the crown",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "let r = k.s(340);",
+    "replace": "let r = k.s(240);",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 pikeman: the comb stands over the crown",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "let top = c.add(k.up.scale(k.s(150)));",
+    "replace": "let top = c.add(k.up.scale(k.s(40)));",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 headsman: the hood rises to a point",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "let tip = p.head.add(k.up.scale(hr.y + k.s(260)));",
+    "replace": "let tip = p.head.add(k.up.scale(hr.y + k.s(60)));",
+    "test": "each_ladder_opponent_keeps_its_silhouette_in_every_pose"
+  },
+  {
+    "name": "R18 friar: the tonsure stands off the head",
+    "file": "crates/core/src/models/knight/campaign.rs",
+    "find": "v3(hr.x + 4 * pr, hr.y * 6 / 10, hr.z + 4 * pr),",
+    "replace": "v3(hr.x + pr, hr.y * 6 / 10, hr.z + pr),",
+    "test": "no_face_of_a_ladder_opponent_shares_a_plane_with_another_colour"
+  },
+  {
+    "name": "R18.3 the unplated opponents are drawn by the knights' builder",
+    "file": "crates/core/src/plate.rs",
+    "find": "armoured(kind) || matches!(kind, Kind::Friar | Kind::Headsman)",
+    "replace": "armoured(kind)",
+    "test": "the_unplated_campaign_opponents_are_drawn_in_their_costumes"
   }
 ]

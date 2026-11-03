@@ -238,7 +238,13 @@ fn clothes(kind: Kind, variant: u8, t: &Table) -> Clothes {
         | Kind::Veteran
         | Kind::Banneret
         | Kind::Champion
-        | Kind::Mirror => Clothes {
+        | Kind::Mirror
+        | Kind::Woodsman
+        | Kind::Friar
+        | Kind::Warden
+        | Kind::Reiver
+        | Kind::Pikeman
+        | Kind::Headsman => Clothes {
             skin: c("eye"),
             shirt: c("eye"),
             sleeve: c("eye"),
@@ -283,7 +289,7 @@ fn head_radii(kind: Kind) -> (i32, i32, i32) {
 /// The model of a kind on a pose, dressed.
 pub fn model(kind: Kind, pose: &Pose, dress: Dress) -> Model {
     // M3: the knights in whole plate (`knight.rs`)
-    if crate::plate::armoured(kind) {
+    if crate::plate::costumed(kind) {
         return super::knight::model(kind, pose, 0).model();
     }
     let t = table();
@@ -564,7 +570,13 @@ fn outfit(
         | Kind::Veteran
         | Kind::Banneret
         | Kind::Champion
-        | Kind::Mirror => {}
+        | Kind::Mirror
+        | Kind::Woodsman
+        | Kind::Friar
+        | Kind::Warden
+        | Kind::Reiver
+        | Kind::Pikeman
+        | Kind::Headsman => {}
         Kind::Villager => villager(
             f,
             dress.variant % VILLAGER_VARIANTS,

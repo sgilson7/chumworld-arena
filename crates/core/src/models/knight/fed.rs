@@ -19,6 +19,10 @@ pub(super) fn model(kind: Kind, pose: &Pose, bare: u16) -> Option<Knight> {
         Kind::Squire => Some(super::squire::model(pose, bare)),
         Kind::Sellsword => Some(super::sellsword::model(pose, bare)),
         Kind::Hedge => Some(super::hedge::model(pose, bare)),
+        // T11 (R18): the campaign's new opponents
+        Kind::Woodsman | Kind::Friar | Kind::Warden | Kind::Reiver | Kind::Pikeman | Kind::Headsman => {
+            Some(super::campaign::model(kind, pose, bare))
+        }
         _ => None,
     }
 }
@@ -30,6 +34,9 @@ pub(super) fn scheme_of(kind: Kind) -> Option<(&'static str, &'static [&'static 
         Kind::Squire => Some(("squire", super::squire::SLOTS)),
         Kind::Sellsword => Some(("sellsword", super::sellsword::SLOTS)),
         Kind::Hedge => Some(("hedge", super::hedge::SLOTS)),
+        Kind::Woodsman | Kind::Friar | Kind::Warden | Kind::Reiver | Kind::Pikeman | Kind::Headsman => {
+            Some((super::campaign::key(kind), super::campaign::slots(kind)))
+        }
         _ => None,
     }
 }

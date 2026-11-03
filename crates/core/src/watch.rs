@@ -21,7 +21,7 @@ use serde::Serialize;
 
 /// Who can be watched, in the order the pickers step through them: the
 /// computer's knight, then the campaign's opponents (by their book keys).
-pub const PILOTS: [&str; 12] = [
+pub const PILOTS: [&str; 18] = [
     "knight",
     "sentry",
     "press",
@@ -34,6 +34,13 @@ pub const PILOTS: [&str; 12] = [
     "banneret",
     "champion",
     "mirror",
+    // R18: the campaign's new opponents, in their own costumes
+    "woodsman",
+    "friar",
+    "warden",
+    "reiver",
+    "pikeman",
+    "headsman",
 ];
 /// T11: the styles, named by their own names rather than their bodies.
 pub const STYLES: [&str; 4] = ["sentry", "press", "bully", "trickster"];
@@ -822,8 +829,8 @@ mod tests {
             "banneret",
             "after the veteran"
         );
-        g.act("watch.right", "mirror").unwrap();
-        assert_eq!(g.world.foes[0].brain.key, "mirror");
+        g.act("watch.right", "headsman").unwrap();
+        assert_eq!(g.world.foes[0].brain.key, "headsman");
         g.act("watch.right", "").unwrap();
         assert_eq!(g.world.foes[0].brain.key, "knight", "round to the first");
         assert_eq!(

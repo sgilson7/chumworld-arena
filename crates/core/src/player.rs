@@ -1343,7 +1343,7 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
         // duel's start uses to put the player in plate)
         "me" => {
             let kind = crate::pilot::kind_named(value.trim())
-                .filter(|k| crate::plate::armoured(*k))
+                .filter(|k| crate::plate::costumed(*k))
                 .ok_or_else(|| format!("The player is a knight_a or a knight_b, not \"{value}\"."))?;
             w.me = Fighter::new(
                 kind,

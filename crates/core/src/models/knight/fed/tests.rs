@@ -13,14 +13,26 @@ use crate::input::{self, Input};
 use crate::plate::{covered, full, OPEN_HELM_MM};
 use crate::world::World;
 
-const FED: [Kind; 3] = [Kind::Squire, Kind::Sellsword, Kind::Hedge];
+const FED: [Kind; 9] = [
+    Kind::Squire,
+    Kind::Sellsword,
+    Kind::Hedge,
+    // T11 (R18): the campaign's new opponents
+    Kind::Woodsman,
+    Kind::Friar,
+    Kind::Warden,
+    Kind::Reiver,
+    Kind::Pikeman,
+    Kind::Headsman,
+];
 const TRIANGLE_CAP: usize = 6_000;
 
 fn key(kind: Kind) -> &'static str {
     match kind {
         Kind::Squire => "squire",
         Kind::Sellsword => "sellsword",
-        _ => "hedge",
+        Kind::Hedge => "hedge",
+        _ => super::super::campaign::key(kind),
     }
 }
 
@@ -165,9 +177,61 @@ fn each_ladder_opponent_keeps_its_silhouette_in_every_pose() {
                         "pose {n}: pauldron {out}, left shoulder {left}"
                     );
                 }
-                _ => {
+                Kind::Hedge => {
                     let (point, dome) = (top(&k, Role::Point, up), top(&k, Role::Helm, up));
                     assert!(point - dome >= ONE / 10, "pose {n}: point {point}, dome {dome}");
+                }
+                Kind::Woodsman => {
+                    // the mantle is wider than the shoulders' balls
+                    let shoulders = (p.shoulder[RIGHT].sub(p.shoulder[LEFT])).dot(right).abs()
+                        + 2 * k_w(kind, SHOULDER_R);
+                    let mantle = span(&k, Role::Pauldron, right);
+                    assert!(
+                        mantle > shoulders,
+                        "pose {n}: mantle {mantle}, shoulders {shoulders}"
+                    );
+                }
+                Kind::Friar => {
+                    // the robe's hem comes within 15 cm of the lower foot
+                    let hem = in_role(&k, Role::Hem)
+                        .iter()
+                        .map(|t| reach(&t.part, up).0)
+                        .min()
+                        .unwrap();
+                    let foot = p.foot[LEFT].dot(up).min(p.foot[RIGHT].dot(up));
+                    assert!(hem - foot <= ONE * 15 / 100, "pose {n}: hem {hem}, foot {foot}");
+                }
+                Kind::Warden => {
+                    // a pauldron on each arm, standing over its shoulder joint
+                    for s in [LEFT, RIGHT] {
+                        let hi = in_role(&k, Role::Pauldron)
+                            .iter()
+                            .filter(|t| t.seg as usize == UPPER_ARM[s])
+                            .map(|t| reach(&t.part, up).1)
+                            .max();
+                        let hi = hi.unwrap_or_else(|| panic!("pose {n}: no pauldron on {s}"));
+                        assert!(
+                            hi > p.shoulder[s].dot(up) + k_w(kind, SHOULDER_R),
+                            "pose {n}: pauldron {s} at {hi}"
+                        );
+                    }
+                }
+                Kind::Reiver => {
+                    let (brim, crown) = (span(&k, Role::Brim, right), span(&k, Role::Helm, right));
+                    assert!(brim * 100 >= crown * 150, "pose {n}: brim {brim}, crown {crown}");
+                }
+                Kind::Pikeman => {
+                    let (comb, crown) = (top(&k, Role::Point, up), top(&k, Role::Helm, up));
+                    assert!(comb - crown >= ONE / 20, "pose {n}: comb {comb}, crown {crown}");
+                }
+                _ => {
+                    // the hood's point stands 30 cm or more over the head's middle
+                    let point = top(&k, Role::Point, up);
+                    let head = p.head.dot(up);
+                    assert!(
+                        point - head >= ONE * 3 / 10,
+                        "pose {n}: point {point}, head {head}"
+                    );
                 }
             }
         }
@@ -247,6 +311,14 @@ fn each_ladder_opponent_wears_plate_where_the_sheet_draws_steel() {
     assert_eq!(full(Kind::Squire), [66, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     assert_eq!(full(Kind::Sellsword), [66, 45, 0, 27, 27, 27, 0, 0, 0, 0]);
     assert_eq!(full(Kind::Hedge), [66, 45, 27, 27, 27, 27, 30, 0, 30, 0]);
+    // T11 (R18): bracers; nothing; plate above the waist; bonnet and jack;
+    // morion, breastplate and tassets; nothing
+    assert_eq!(full(Kind::Woodsman), [0, 0, 0, 27, 0, 27, 0, 0, 0, 0]);
+    assert_eq!(full(Kind::Friar), [0; 10]);
+    assert_eq!(full(Kind::Warden), [66, 45, 27, 27, 27, 27, 0, 0, 0, 0]);
+    assert_eq!(full(Kind::Reiver), [66, 45, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(full(Kind::Pikeman), [66, 45, 0, 0, 0, 0, 30, 0, 30, 0]);
+    assert_eq!(full(Kind::Headsman), [0; 10]);
     // the knights are untouched: plate everywhere
     assert_eq!(full(Kind::KnightA), crate::plate::INTEGRITY);
 }
@@ -437,6 +509,20 @@ fn the_ladder_schemes_stand_clear_of_the_highlight_colours() {
             }
         }
     }
-    // 9 squire slots, 8 sellsword, 8 hedge, each against 4 marks
-    assert_eq!(checked, (9 + 8 + 8) * 4);
+    // 9 squire slots, 8 sellsword, 8 hedge; woodsman 9, friar 10, warden
+    // 8, reiver 9, pikeman 9, headsman 9; each against 4 marks
+    assert_eq!(checked, (9 + 8 + 8 + 9 + 10 + 8 + 9 + 9 + 9) * 4);
+}
+
+/// The friar and the headsman wear no plate, yet the ring draws them in
+/// their costumes: the figure path hands every campaign opponent to the
+/// knights' builder (R18.3).
+#[test]
+fn the_unplated_campaign_opponents_are_drawn_in_their_costumes() {
+    for kind in [Kind::Friar, Kind::Headsman, Kind::Woodsman] {
+        let p = rest_pose(kind, V3::ZERO, 0);
+        let drawn = crate::models::figure_model(kind, &p, Default::default()).triangles();
+        let costume = super::super::model(kind, &p, 0).model().triangles();
+        assert_eq!(drawn, costume, "{kind:?}");
+    }
 }

@@ -327,7 +327,7 @@ pub fn bars(g: &Game) -> Vec<Bar> {
                 // the knight it wears ("The ivory crown"), whatever pilot
                 // thinks for it
                 let f = &g.world.foes[id - 1];
-                if crate::plate::armoured(f.fighter.kind) {
+                if crate::plate::costumed(f.fighter.kind) {
                     s.get(&format!("who_{}", crate::pilot::kind_name(f.fighter.kind)))
                 } else {
                     s.get(&format!("who_{}", f.brain.key))

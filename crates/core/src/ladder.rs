@@ -93,9 +93,8 @@ const fn rung(
 
 /// The battles, by region from the Yard to the High Tourney. The seven
 /// ladder rungs keep their order (C needs E, B a clean C, A needs B, S a
-/// clean A); the six new battles each carry a new weapon. Until their own
-/// costumes are built, the new opponents fight in a ladder opponent's body
-/// (R16.2).
+/// clean A); the six new battles each carry a new weapon, each opponent
+/// in its own costume (R18).
 pub const RUNGS: [Rung; 13] = [
     rung("F", "squire", Kind::Squire, 0, None, &[]),
     rung("E", "sellsword", Kind::Sellsword, 0, None, &[Need::Won(0)]),
@@ -104,7 +103,7 @@ pub const RUNGS: [Rung; 13] = [
     rung(
         "",
         "woodsman",
-        Kind::Sellsword,
+        Kind::Woodsman,
         1,
         Some(Held::Axe),
         &[Need::Won(2)],
@@ -112,17 +111,17 @@ pub const RUNGS: [Rung; 13] = [
     rung(
         "",
         "friar",
-        Kind::Squire,
+        Kind::Friar,
         1,
         Some(Held::Quarterstaff),
         &[Need::Won(3), Need::Won(4)],
     ),
     rung("B", "banneret", Kind::Banneret, 2, None, &[Need::Clean(3)]),
-    rung("", "warden", Kind::Hedge, 2, Some(Held::Mace), &[Need::Won(5)]),
+    rung("", "warden", Kind::Warden, 2, Some(Held::Mace), &[Need::Won(5)]),
     rung(
         "",
         "reiver",
-        Kind::Veteran,
+        Kind::Reiver,
         2,
         Some(Held::Broadsword),
         &[Need::With(4, Held::Axe)],
@@ -130,7 +129,7 @@ pub const RUNGS: [Rung; 13] = [
     rung(
         "",
         "pikeman",
-        Kind::Banneret,
+        Kind::Pikeman,
         2,
         Some(Held::Spear),
         &[Need::AnyOf(&[6, 7, 8], 2)],
@@ -146,7 +145,7 @@ pub const RUNGS: [Rung; 13] = [
     rung(
         "",
         "headsman",
-        Kind::Champion,
+        Kind::Headsman,
         3,
         Some(Held::GreatAxe),
         &[Need::Won(8)],

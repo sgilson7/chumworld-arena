@@ -1773,7 +1773,7 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
     let marked = l.flash.iter().any(|&t| t > 0) || (blood && l.stain.iter().any(|&t| t > 0));
     // M6: the look the figure wears (`Fighter::dress`), its own kind unless
     // the player wears a won rung's look
-    let knight = crate::plate::armoured(f.dress);
+    let knight = crate::plate::costumed(f.dress);
     if l.lost == 0 && !marked && !knight {
         models::figure_dressed(f.dress, p, dress, look, out);
         return;
@@ -1814,7 +1814,7 @@ pub fn figure(w: &World, id: usize, p: &Pose, dress: Dress, look: &Look, out: &m
 /// in the plate it still wears (`bare`: the parts showing mail), labelled
 /// by the knight's own model; anyone else by `labels`.
 fn dressed(kind: Kind, p: &Pose, dress: Dress, bare: u16) -> (Model, std::borrow::Cow<'static, [u8]>) {
-    if crate::plate::armoured(kind) {
+    if crate::plate::costumed(kind) {
         let k = models::knight_model(kind, p, bare);
         let labels = k.segs();
         (k.model(), std::borrow::Cow::Owned(labels))

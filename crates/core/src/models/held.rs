@@ -24,6 +24,13 @@ pub fn kind_held(kind: Kind) -> Held {
         Kind::Squire | Kind::Sellsword | Kind::Hedge => Held::Longsword,
         Kind::Veteran | Kind::Banneret => Held::Longsword,
         Kind::Champion | Kind::Mirror => Held::Longsword,
+        // T11: each new opponent its new weapon
+        Kind::Woodsman => Held::Axe,
+        Kind::Friar => Held::Quarterstaff,
+        Kind::Warden => Held::Mace,
+        Kind::Reiver => Held::Broadsword,
+        Kind::Pikeman => Held::Spear,
+        Kind::Headsman => Held::GreatAxe,
     }
 }
 

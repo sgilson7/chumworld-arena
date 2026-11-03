@@ -72,7 +72,7 @@ pub use figure::model as figure_model;
 pub use held::model as held_model;
 
 /// Every kind of figure, in the lineup's order.
-pub const KINDS: [Kind; 18] = [
+pub const KINDS: [Kind; 24] = [
     Kind::Player,
     Kind::Orc,
     Kind::Bandit,
@@ -91,6 +91,12 @@ pub const KINDS: [Kind; 18] = [
     Kind::Banneret,
     Kind::Champion,
     Kind::Mirror,
+    Kind::Woodsman,
+    Kind::Friar,
+    Kind::Warden,
+    Kind::Reiver,
+    Kind::Pikeman,
+    Kind::Headsman,
 ];
 
 /// How many looks a villager has (`Dress::variant`).

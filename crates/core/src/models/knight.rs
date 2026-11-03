@@ -942,6 +942,8 @@ mod veteran;
 mod tests;
 
 // M6 (R7.101): rungs F, E and D of the ladder, built on this file's builder
+// T11 (R18): the campaign's six new opponents, on the same builder
+mod campaign;
 mod fed;
 mod hedge;
 mod sellsword;

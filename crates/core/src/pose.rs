@@ -48,6 +48,16 @@ pub enum Kind {
     /// M6 (CA-7, R7.301): the ladder's rung S, the mirror in blackened
     /// plate with bright edges and a helm with no face (`models/mirror.rs`)
     Mirror,
+    /// T11 (CA-7): the campaign's six new opponents, each in its own
+    /// costume (`models/knight/campaign.rs`) and carrying its new weapon:
+    /// the woodsman (axe), the friar (quarterstaff), the warden (mace), the
+    /// reiver (broadsword), the pikeman (spear) and the headsman (great axe)
+    Woodsman,
+    Friar,
+    Warden,
+    Reiver,
+    Pikeman,
+    Headsman,
 }
 
 /// What a hand holds: picks the weapon's model and, in M1, its blade length.
@@ -198,6 +208,13 @@ fn size(kind: Kind) -> (i32, i32) {
         Kind::Banneret => (185, 108),
         // M6 (R7.301): the champion and the mirror on the knights' build
         Kind::Champion | Kind::Mirror => (185, 110),
+        // T11 (R18.1): the campaign's new opponents, by the concept sheet
+        Kind::Woodsman => (180, 108),
+        Kind::Friar => (178, 104),
+        Kind::Warden => (185, 112),
+        Kind::Reiver => (180, 105),
+        Kind::Pikeman => (182, 106),
+        Kind::Headsman => (188, 116),
     }
 }
 
@@ -255,6 +272,12 @@ mod tests {
             Kind::Banneret,
             Kind::Champion,
             Kind::Mirror,
+            Kind::Woodsman,
+            Kind::Friar,
+            Kind::Warden,
+            Kind::Reiver,
+            Kind::Pikeman,
+            Kind::Headsman,
         ] {
             let b = build(k);
             let pct = b.head as i64 * 100 / b.height as i64;

@@ -248,6 +248,12 @@ pub fn kind_named(name: &str) -> Option<Kind> {
         "banneret" => Some(Kind::Banneret),
         "champion" => Some(Kind::Champion),
         "mirror" => Some(Kind::Mirror),
+        "woodsman" => Some(Kind::Woodsman),
+        "friar" => Some(Kind::Friar),
+        "warden" => Some(Kind::Warden),
+        "reiver" => Some(Kind::Reiver),
+        "pikeman" => Some(Kind::Pikeman),
+        "headsman" => Some(Kind::Headsman),
         _ => None,
     }
 }
@@ -265,14 +271,6 @@ pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
         "press" => Some((Kind::KnightA, "press")),
         "bully" => Some((Kind::KnightA, "bully")),
         "trickster" => Some((Kind::KnightA, "trickster")),
-        // T11: the campaign's new opponents, each in a ladder opponent's
-        // body until its own costume is made (`ladder::RUNGS`, R16.2)
-        "woodsman" => Some((Kind::Sellsword, "woodsman")),
-        "friar" => Some((Kind::Squire, "friar")),
-        "warden" => Some((Kind::Hedge, "warden")),
-        "reiver" => Some((Kind::Veteran, "reiver")),
-        "pikeman" => Some((Kind::Banneret, "pikeman")),
-        "headsman" => Some((Kind::Champion, "headsman")),
         _ => kind_named(name).map(|k| (k, key_of(k))),
     }
 }
@@ -298,6 +296,12 @@ fn key_of(k: Kind) -> &'static str {
         // M6 (R9.x): each ladder opponent has its own entry and tree now
         Kind::Champion => "champion",
         Kind::Mirror => "mirror",
+        Kind::Woodsman => "woodsman",
+        Kind::Friar => "friar",
+        Kind::Warden => "warden",
+        Kind::Reiver => "reiver",
+        Kind::Pikeman => "pikeman",
+        Kind::Headsman => "headsman",
         _ => "bandit",
     }
 }
