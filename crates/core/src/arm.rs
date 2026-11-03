@@ -1559,9 +1559,9 @@ mod tests {
 
     /// T11: each new weapon is as long as the Campaign page's table, pommel
     /// to tip, in whole millimetres (from its grips and its model: the
-    /// broadsword 80 + 75 + 26 + 850, the axe 100 + 700, the great axe 550
-    /// + 1000, the mace 90 + 660, the staff 1200 + 700, the spear 1300 +
-    /// 800), and held in two hands only where the table says.
+    /// broadsword 80 + 75 + 26 + 850, the axe 100 + 700, the great axe
+    /// 550 + 1000, the mace 90 + 660, the staff 1200 + 700, the spear
+    /// 1300 + 800), and held in two hands only where the table says.
     #[test]
     fn the_new_weapons_are_as_long_as_the_table_and_held_as_it_says() {
         for (item, mm_long, two) in [
