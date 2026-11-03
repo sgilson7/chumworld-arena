@@ -21,8 +21,12 @@ use serde::Serialize;
 
 /// Who can be watched, in the order the pickers step through them: the
 /// computer's knight, then the campaign's opponents (by their book keys).
-pub const PILOTS: [&str; 8] = [
+pub const PILOTS: [&str; 12] = [
     "knight",
+    "sentry",
+    "press",
+    "bully",
+    "trickster",
     "squire",
     "sellsword",
     "hedge",
@@ -31,6 +35,8 @@ pub const PILOTS: [&str; 8] = [
     "champion",
     "mirror",
 ];
+/// T11: the styles, named by their own names rather than their bodies.
+pub const STYLES: [&str; 4] = ["sentry", "press", "bully", "trickster"];
 /// Time runs at a whole share of full speed (the BT lab's four).
 pub const SPEEDS: [u32; 4] = [1, 2, 4, 8];
 /// The camera: this far from the pair's middle, looking at a point this
@@ -75,8 +81,9 @@ pub struct Watch {
 impl Default for Watch {
     fn default() -> Watch {
         Watch {
-            left: 4,
-            right: 5,
+            // the veteran and the banneret
+            left: 8,
+            right: 9,
             // the BT lab starts at an eighth of full speed, slow enough to
             // follow a tree (Vagrancy, 2026-10-07)
             speed: 3,
@@ -363,6 +370,11 @@ pub fn cond_text(s: &crate::page::Strings, c: &Cond) -> String {
         Cond::StaminaAbove(k) => n(s, "cond_stamina_above", *k as i64),
         Cond::JustParried => s.get("cond_just_parried"),
         Cond::FoeTurtles(k) => n(s, "cond_foe_turtles", *k as i64),
+        Cond::FoeFeinted(k) => n(s, "cond_foe_feinted", *k as i64),
+        Cond::FoeStaggered => s.get("cond_foe_staggered"),
+        Cond::Feinted(k) => n(s, "cond_feinted", *k as i64),
+        Cond::CanFollow => s.get("cond_can_follow"),
+        Cond::FoeGuards => s.get("cond_foe_guards"),
     }
 }
 
@@ -515,13 +527,22 @@ fn side(g: &Game, id: usize, name: String) -> Side {
 pub fn names(g: &Game) -> [String; 2] {
     let w = &g.world;
     [0, 1].map(|id| {
-        if id < player::count(w) {
-            g.strings.get(&format!(
+        if id >= player::count(w) {
+            return String::new();
+        }
+        // a style by its own name; the knight and the campaign's opponents
+        // by the body they fight in
+        let key = if id == 0 {
+            w.watch.as_ref().map(|b| b.key.as_str())
+        } else {
+            Some(w.foes[id - 1].brain.key.as_str())
+        };
+        match key {
+            Some(k) if STYLES.contains(&k) => g.strings.get(&format!("who_{k}")),
+            _ => g.strings.get(&format!(
                 "who_{}",
                 crate::pilot::kind_name(player::fighter(w, id).kind)
-            ))
-        } else {
-            String::new()
+            )),
         }
     })
 }
@@ -737,7 +758,11 @@ mod tests {
     fn the_pickers_step_through_the_pilots_and_refuse_a_stranger() {
         let mut g = watching();
         g.act("watch.left", "").unwrap();
-        assert_eq!(g.world.watch.as_ref().unwrap().key, "banneret");
+        assert_eq!(
+            g.world.watch.as_ref().unwrap().key,
+            "banneret",
+            "after the veteran"
+        );
         g.act("watch.right", "mirror").unwrap();
         assert_eq!(g.world.foes[0].brain.key, "mirror");
         g.act("watch.right", "").unwrap();

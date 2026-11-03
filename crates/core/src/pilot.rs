@@ -121,6 +121,19 @@ pub enum Cond {
     /// the one I fight has begun no cut and no kick for this many ticks:
     /// it holds its guard back
     FoeTurtles(u16),
+    /// T11: the one I fight feinted within this many ticks
+    FoeFeinted(u8),
+    /// T11: the one I fight is staggered by a blow or a kick, or its blade
+    /// is beaten aside
+    FoeStaggered,
+    /// T11: I feinted within this many ticks: a real cut now meets a guard
+    /// still answering the feint
+    Feinted(u8),
+    /// T11: my follow-up window is open (`chivalry::Chiv::follow`)
+    CanFollow,
+    /// T11: the one I fight holds its guard up (the right button's guard):
+    /// a kick into it beats the blade aside (T12)
+    FoeGuards,
 }
 
 /// What a rule does: a move the pilot plays for some ticks.
@@ -247,6 +260,11 @@ pub fn kind_named(name: &str) -> Option<Kind> {
 pub fn pilot_named(name: &str) -> Option<(Kind, &'static str)> {
     match name {
         "knight" => Some((Kind::KnightB, "knight")),
+        // T11: the four styles, each in a knight's plate
+        "sentry" => Some((Kind::KnightA, "sentry")),
+        "press" => Some((Kind::KnightA, "press")),
+        "bully" => Some((Kind::KnightA, "bully")),
+        "trickster" => Some((Kind::KnightA, "trickster")),
         _ => kind_named(name).map(|k| (k, key_of(k))),
     }
 }
@@ -407,6 +425,12 @@ pub struct Seen {
     pub down: bool,
     /// M4: ticks since it last began a cut or a kick (`chivalry::Chiv::idle`)
     pub idle: u16,
+    /// T11: ticks since it feinted, if within the HUD's event time
+    pub feinted: Option<u8>,
+    /// T11: staggered, or its blade beaten aside
+    pub staggered: bool,
+    /// T11: holding its guard up
+    pub guards: bool,
 }
 
 /// The duel as it was, a tick at a time, the newest last.
@@ -462,6 +486,17 @@ pub fn seen_now(w: &World, id: usize) -> Seen {
         tip_vel: tip.vel(),
         down: f.health.down(),
         idle: f.chiv.idle,
+        feinted: feint_age(f),
+        staggered: f.gait.stagger > 0 || f.chiv.stun > 0,
+        guards: f.chiv.guard.is_some(),
+    }
+}
+
+/// T11: ticks since fighter `f` feinted, while the event is kept.
+fn feint_age(f: &Fighter) -> Option<u8> {
+    match f.chiv.event {
+        Some((crate::chivalry::Event::Feint, age)) => Some(age),
+        _ => None,
     }
 }
 
@@ -751,6 +786,11 @@ fn holds(c: &Cond, v: &View, rng: &mut Rng) -> bool {
         Cond::StaminaAbove(pct) => v.f.chiv.pct() >= *pct,
         Cond::JustParried => v.f.chiv.riposte > 0,
         Cond::FoeTurtles(ticks) => v.they.idle >= *ticks,
+        Cond::FoeFeinted(ticks) => v.they.feinted.is_some_and(|a| a < *ticks),
+        Cond::FoeStaggered => v.they.staggered,
+        Cond::Feinted(ticks) => feint_age(v.f).is_some_and(|a| a < *ticks),
+        Cond::CanFollow => v.f.chiv.follow > 0,
+        Cond::FoeGuards => v.they.guards,
     }
 }
 
@@ -983,6 +1023,54 @@ fn to_input(f: &Fighter, p: &Plan, spec: &KindSpec) -> Input {
 mod tests {
     use super::*;
     use crate::input::DRAW;
+
+    /// T11: the new checks read what they name, of the one I fight (as
+    /// it is now; `seen_now`) or of me: a feint 19 ticks old is within 20
+    /// and not within 19; a stagger or a beaten blade is staggered; a guard
+    /// held up is a guard; my own feint and my follow-up window are mine.
+    #[test]
+    fn the_new_checks_read_what_they_name() {
+        let mut w = World::new(3);
+        crate::rounds::begin(&mut w, "knight", Kind::KnightA).unwrap();
+        let check = |w: &World, c: Cond| {
+            let key = w.foes[0].brain.key.clone();
+            let v = View {
+                w,
+                id: 1,
+                f: player::fighter(w, 1),
+                me: seen_now(w, 1),
+                they: seen_now(w, 0),
+                key: &key,
+            };
+            holds(&c, &v, &mut Rng::new(1))
+        };
+        assert!(!check(&w, Cond::FoeFeinted(20)));
+        w.me.chiv.event = Some((crate::chivalry::Event::Feint, 19));
+        assert!(check(&w, Cond::FoeFeinted(20)) && !check(&w, Cond::FoeFeinted(19)));
+        w.me.chiv.event = Some((crate::chivalry::Event::Riposte, 0));
+        assert!(!check(&w, Cond::FoeFeinted(20)), "a riposte is not a feint");
+        assert!(!check(&w, Cond::FoeStaggered));
+        w.me.gait.stagger = 3;
+        assert!(check(&w, Cond::FoeStaggered));
+        w.me.gait.stagger = 0;
+        w.me.chiv.stun = 3;
+        assert!(check(&w, Cond::FoeStaggered), "beaten aside");
+        assert!(!check(&w, Cond::FoeGuards));
+        w.me.chiv.guard = Some(crate::chivalry::Guard {
+            shift: (0, 0),
+            from: (0, 0, 0),
+        });
+        assert!(check(&w, Cond::FoeGuards));
+        assert!(
+            !check(&w, Cond::Feinted(25)),
+            "the foe's own feint, not the player's"
+        );
+        w.foes[0].fighter.chiv.event = Some((crate::chivalry::Event::Feint, 0));
+        assert!(check(&w, Cond::Feinted(25)));
+        assert!(!check(&w, Cond::CanFollow));
+        w.foes[0].fighter.chiv.follow = 5;
+        assert!(check(&w, Cond::CanFollow));
+    }
 
     fn duel(kind: &str) -> World {
         let mut w = World::new(3);
