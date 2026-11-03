@@ -174,8 +174,8 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R9.15 | finding | The WebAssembly would grow little with the ladder | 1 415 KB, from 1 369 KB at M4 merged (R6.26): the four opponents' models and the ladder's screens | Nothing cut; R2.10's budget stays exceeded | MEASUREMENTS.md | done |
 | R9.16 | finding | Every break row would still find its text | Four rows had rotted under M6's `Game::start` and save version: M0's Practice foe, M2's old save, M2's blow name, M3 merge's look B | Repointed; 29 rows added for M6's rules | `tests/breaks.json` | done |
 | R10.1 | divergence | T9 would say what a join link does | T9 asks for joining by link and nothing more | The host's room-code screen also shows a join link: the page's own address with `?join=CODE`. Opening it shows Join with the code typed in and a line saying so; the player still chooses Join, so nothing goes near a relay before a press (CA-4, `online_fence.rs` unchanged). A bad code in a link is refused with the room-code message | `host_offers_a_join_link_and_the_link_fills_in_join`; `tests/breaks.json` "Join link:" (6 of 6 caught) | done |
-| R10.2 | assumption | The page may tell the core its own address | The core cannot read the address; the page sends `location.origin + location.pathname` once at start (`online.address`), as it sends the build name. With no address the host's screen shows the code alone | same test (no address, no link) | done |
-| R10.3 | worklist | — | The link is in a read-only box that selects itself on focus, as the room code is; no Copy button yet | — | open |
+| R10.2 | finding | The core would know the page's address | The core cannot read the address | The page sends `location.origin + location.pathname` once at start (`online.address`), as it sends the build name; with no address the host's screen shows the code alone | `host_offers_a_join_link_and_the_link_fills_in_join` (no address, no link) | done |
+| R10.3 | worklist | — | The link sits in a read-only box that selects itself on focus, as the room code does | No Copy button yet | — | open |
 
 ## Strings written by the agent
 
