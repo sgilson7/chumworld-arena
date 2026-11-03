@@ -101,26 +101,54 @@ pub struct Versus {
     pub rematch: bool,
     /// a duel has begun (both hellos accepted)
     pub started: bool,
+    /// T11: the duel's world holds both players' weapons (`arm`)
+    pub armed: bool,
 }
 
 impl Versus {
-    pub fn new(role: Role, way: Way, build: &str) -> Versus {
+    pub fn new(role: Role, way: Way, build: &str, held: crate::pose::Held) -> Versus {
         let seat = match role {
             Role::Host => 0,
             Role::Guest => 1,
         };
+        let mut session = Rollback::new(seat, build, crate::seat::duel());
+        session.link.arms = crate::watch::held_key(held).to_string();
         Versus {
             role,
             way,
             code: String::new(),
             offer: String::new(),
             answer: String::new(),
-            session: Rollback::new(seat, build, crate::seat::duel()),
+            session,
             error: None,
             heard_us: None,
             rematch: false,
             started: false,
+            armed: false,
         }
+    }
+
+    /// T11: once the other's hello is in and before the first tick runs,
+    /// the duel's world is built with both weapons, the host's in Knight
+    /// A's hands and the guest's in Knight B's. Both browsers build the same
+    /// world, as each knows both weapons from the two hellos.
+    pub fn arm(&mut self) {
+        if self.armed || self.session.tick > 0 {
+            return;
+        }
+        let Some(theirs) = self.session.link.their_arms.as_deref() else {
+            return;
+        };
+        let (mine, theirs) = (
+            crate::seat::arms_named(&self.session.link.arms),
+            crate::seat::arms_named(theirs),
+        );
+        let held = match self.role {
+            Role::Host => [mine, theirs],
+            Role::Guest => [theirs, mine],
+        };
+        self.session.world = crate::seat::duel_armed(held);
+        self.armed = true;
     }
 
     /// The status key the screen shows.

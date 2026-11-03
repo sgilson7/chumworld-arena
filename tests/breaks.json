@@ -3974,5 +3974,47 @@
     "find": "                self.kept.weapon = all[(at + 1) % all.len()];",
     "replace": "                self.kept.weapon = all[(at + 1).min(all.len() - 1)];",
     "test": "the_player_holds_the_weapon_the_save_keeps"
+  },
+  {
+    "name": "T11 online weapons: a hello carries the weapon",
+    "file": "crates/core/src/online.rs",
+    "find": "            arms: self.arms.clone(),",
+    "replace": "            arms: String::new(),",
+    "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "T11 online weapons: the other's weapon is kept",
+    "file": "crates/core/src/online.rs",
+    "find": "                    self.their_arms = Some(arms);\n",
+    "replace": "",
+    "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "T11 online weapons: the duel is armed before its first tick",
+    "file": "crates/core/src/game.rs",
+    "find": "            v.arm();\n",
+    "replace": "",
+    "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "T11 online weapons: the host's weapon is Knight A's",
+    "file": "crates/core/src/versus.rs",
+    "find": "            Role::Host => [mine, theirs],",
+    "replace": "            Role::Host => [theirs, mine],",
+    "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "T11 online weapons: the seat's knight holds its chosen weapon",
+    "file": "crates/core/src/seat.rs",
+    "find": "    let held = held.unwrap_or_else(|| crate::models::kind_held(kind));",
+    "replace": "    let held = crate::models::kind_held(kind);",
+    "test": "online_each_player_holds_the_weapon_it_chose"
+  },
+  {
+    "name": "T11 online weapons: a rematch keeps the weapons",
+    "file": "crates/core/src/seat.rs",
+    "find": "                r.held = held;\n",
+    "replace": "",
+    "test": "online_each_player_holds_the_weapon_it_chose"
   }
 ]

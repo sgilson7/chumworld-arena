@@ -364,6 +364,8 @@ impl Game {
         let before = (v.status(), v.session.made.back().copied(), v.rematch);
         let mut ran = false;
         if v.live() {
+            // T11: both weapons into the duel before its first tick
+            v.arm();
             for (k, b) in ticks.iter().enumerate() {
                 let m = if k == 0 {
                     self.pending.take()
@@ -457,7 +459,7 @@ impl Game {
         }
         self.hosted += 1;
         self.invited.clear();
-        let mut v = Versus::new(role, way, &self.build);
+        let mut v = Versus::new(role, way, &self.build, self.kept.weapon);
         let mut rng = crate::rng::Rng::new(self.seed ^ self.hosted.wrapping_mul(0xa076_1d64_78bd_642f));
         if role == Role::Host && way == Way::Room {
             v.code = crate::versus::room_code(&mut rng);

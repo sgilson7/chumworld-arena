@@ -78,6 +78,27 @@ pub fn duel() -> World {
     w
 }
 
+/// T11 (CA-Q19: C): the online duel with each player holding the weapon it
+/// chose, the host's then the guest's: the same world on both browsers,
+/// built before either runs a tick.
+pub fn duel_armed(held: [crate::pose::Held; 2]) -> World {
+    let mut w = duel();
+    if let Some(r) = w.rounds.as_mut() {
+        r.held = held.map(Some);
+    }
+    crate::rounds::opening(&mut w);
+    w
+}
+
+/// T11: a weapon from its key as a hello carries it; one a player may not
+/// hold, or none, is the longsword.
+pub fn arms_named(key: &str) -> crate::pose::Held {
+    crate::ladder::WEAPONS
+        .into_iter()
+        .find(|&h| crate::watch::held_key(h) == key)
+        .unwrap_or(crate::pose::Held::Longsword)
+}
+
 /// At each round's opening (`rounds::opening`): the foe is stood up as the
 /// player is (`Fighter::new`, not at a pilot's guard), on the seat's
 /// record, looking at the player from its mark.
@@ -86,9 +107,12 @@ pub fn opening(w: &mut World, at: crate::geom::V3, yaw: i32) {
         return;
     }
     let pct = w.aim.pct;
+    // T11: holding the weapon its player chose (`Rounds::held`)
+    let held = w.rounds.as_ref().and_then(|r| r.held[1]);
     let f = &mut w.foes[0];
     let kind = f.fighter.kind;
-    f.fighter = crate::player::Fighter::new(kind, crate::models::kind_held(kind), 1, at, yaw, true);
+    let held = held.unwrap_or_else(|| crate::models::kind_held(kind));
+    f.fighter = crate::player::Fighter::new(kind, held, 1, at, yaw, true);
     f.brain.control = crate::pilot::Control::Seat;
     if let Some(s) = w.seat.as_mut() {
         s.aim = Aim {
@@ -199,8 +223,14 @@ pub fn both_ask_rematch(w: &World, inputs: &[Input; SEATS]) -> bool {
 impl Sim for World {
     fn tick(&mut self, inputs: [Input; SEATS]) {
         if both_ask_rematch(self, &inputs) {
+            // (T11: each keeping the weapon it chose)
+            let held = self.rounds.as_ref().map(|r| r.held).unwrap_or_default();
             crate::rounds::begin(self, crate::game::PRACTICE_FOE, HOST_KNIGHT)
                 .expect("the knight is in the pilots' book");
+            if let Some(r) = self.rounds.as_mut() {
+                r.held = held;
+            }
+            crate::rounds::opening(self);
         }
         if let Some(s) = self.seat.as_mut() {
             s.input = inputs[ID];

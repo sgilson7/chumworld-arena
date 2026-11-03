@@ -1515,8 +1515,15 @@ mod tests {
 
     /// Host and guest by pasted codes, linked, the duel begun in both.
     fn linked() -> (Game, Game) {
+        linked_holding(crate::pose::Held::Longsword, crate::pose::Held::Longsword)
+    }
+
+    /// T11: `linked`, the host and the guest each holding a weapon.
+    fn linked_holding(h: crate::pose::Held, g: crate::pose::Held) -> (Game, Game) {
         let mut host = game();
         let mut guest = game();
+        host.kept.weapon = h;
+        guest.kept.weapon = g;
         act(&mut host, "online.host", "code");
         act(&mut guest, "online.join", "code");
         let cmds = |g: &Game| {
@@ -1676,6 +1683,59 @@ mod tests {
         seen_by_host = h.session.world.foes[0].body.pos;
         assert_ne!(seen_by_host, crate::seat::duel().foes[0].body.pos);
         assert!(ui(&host).online.sums.contains(':'));
+    }
+
+    /// T11 (CA-Q19: C): each browser's hello carries its player's weapon,
+    /// and both build the duel with both: the host's axe in Knight A's hands
+    /// and the guest's mace in Knight B's, seen from either side; the
+    /// checksums agree tick for tick; a rematch keeps both weapons.
+    #[test]
+    fn online_each_player_holds_the_weapon_it_chose() {
+        use crate::pose::Held;
+        let (mut host, mut guest) = linked_holding(Held::Axe, Held::Mace);
+        let (h, g) = (host.versus.as_ref().unwrap(), guest.versus.as_ref().unwrap());
+        assert!(h.armed && g.armed);
+        assert_eq!(
+            (h.session.world.me.held, h.session.world.foes[0].fighter.held),
+            (Held::Axe, Held::Mace)
+        );
+        assert_eq!(
+            (g.session.world.me.held, g.session.world.foes[0].fighter.held),
+            (Held::Axe, Held::Mace)
+        );
+        assert_eq!(
+            (guest.world.me.held, guest.world.foes[0].fighter.held),
+            (Held::Mace, Held::Axe),
+            "the guest's own view"
+        );
+        for t in 0..200 {
+            frame(&mut host, if t % 30 < 20 { crate::input::FORWARD } else { 0 }, 40);
+            frame(&mut guest, crate::input::FORWARD, -40);
+            carry(&mut host, &mut guest);
+        }
+        let (h, g) = (host.versus.as_ref().unwrap(), guest.versus.as_ref().unwrap());
+        assert_eq!(h.status(), crate::online::PLAYING);
+        let common = h
+            .session
+            .made
+            .iter()
+            .filter(|m| g.session.made.contains(m))
+            .count();
+        assert!(common >= 5, "the checksums agree");
+        // a rematch both ask for keeps the weapons
+        let mut w = h.session.world.clone();
+        if let Some(r) = w.rounds.as_mut() {
+            r.phase = crate::rounds::Phase::Over;
+        }
+        let ask = crate::input::Input {
+            keys: crate::seat::REMATCH,
+            ..crate::input::Input::default()
+        };
+        crate::online::Sim::tick(&mut w, [ask, ask]);
+        assert_eq!((w.me.held, w.foes[0].fighter.held), (Held::Axe, Held::Mace));
+        // a hello with a weapon no player may hold, or none, is the longsword
+        assert_eq!(crate::seat::arms_named("dragon"), Held::Longsword);
+        assert_eq!(crate::seat::arms_named(""), Held::Longsword);
     }
 
     /// The other player leaving, going quiet, or disagreeing, each ends the

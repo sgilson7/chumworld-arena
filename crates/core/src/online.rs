@@ -91,6 +91,10 @@ pub enum Msg {
     Hello {
         protocol: u32,
         build: String,
+        /// T11 (CA-Q19: C): the weapon this browser's player holds, by its
+        /// key (`watch::held_key`); the duel is built with both
+        #[serde(default)]
+        arms: String,
     },
     /// one seat's record for one tick, as the record's own type writes it
     Input {
@@ -187,6 +191,10 @@ pub struct Link {
     /// The tick of the last checksum both browsers agreed on.
     pub agreed: Option<(u32, u64)>,
     outbox: VecDeque<(Peer, String)>,
+    /// T11: this browser's weapon, sent in its hello, and the other's, once
+    /// its hello is accepted
+    pub arms: String,
+    pub their_arms: Option<String>,
 }
 
 impl Link {
@@ -200,6 +208,8 @@ impl Link {
             theirs: BTreeMap::new(),
             agreed: None,
             outbox: VecDeque::new(),
+            arms: String::new(),
+            their_arms: None,
         }
     }
 
@@ -234,6 +244,7 @@ impl Link {
         let hello = Msg::Hello {
             protocol: PROTOCOL,
             build: self.build.clone(),
+            arms: self.arms.clone(),
         };
         self.send(peer, &hello);
     }
@@ -275,7 +286,11 @@ impl Link {
             return None;
         };
         match msg {
-            Msg::Hello { protocol, build } => {
+            Msg::Hello {
+                protocol,
+                build,
+                arms,
+            } => {
                 if protocol != PROTOCOL || build != self.build {
                     self.send(
                         from,
@@ -290,6 +305,7 @@ impl Link {
                     self.greeting = None;
                     self.peer = Some(from);
                     self.status = PLAYING;
+                    self.their_arms = Some(arms);
                 }
                 None
             }
@@ -488,6 +504,7 @@ pub(crate) mod tests {
             Msg::Hello {
                 protocol: PROTOCOL,
                 build: "abc123".into(),
+                arms: String::new(),
             },
             Msg::Input {
                 tick: 7,
@@ -547,6 +564,7 @@ pub(crate) mod tests {
         let old = encode(&Msg::Hello {
             protocol: PROTOCOL + 1,
             build: "b1".into(),
+            arms: String::new(),
         });
         host.message(JOINER, &old);
         assert_eq!(host.link.status, RELOAD);
