@@ -92,6 +92,10 @@ pub struct Spec {
     pub kick_aside_deg: i32,
     pub kick_lift_cm: i32,
     pub kick_out_cm: i32,
+    pub beat_stun_ticks: u8,
+    pub beat_pass_ticks: u8,
+    pub beat_side_deg: i32,
+    pub beat_pitch_deg: i32,
     pub event_ticks: u8,
     pub pilot_feint_after_ticks: u8,
     pub guard_side_deg: i32,
@@ -147,6 +151,10 @@ pub enum Event {
     KickLands,
     KickMisses,
     Kicked,
+    /// T12: this fighter's parry or kick beat the other blade aside
+    Beats,
+    /// T12: this fighter's blade was beaten aside
+    Beaten,
 }
 
 /// One fighter's share of the layer.
@@ -172,6 +180,10 @@ pub struct Chiv {
     pub event: Option<(Event, u8)>,
     /// T7: the right button's guard held (`guard_shell`)
     pub guard: Option<Guard>,
+    /// T12: ticks left in which this fighter starts no cut, kick or guard,
+    /// and in which its blade passes through blades (`beat`)
+    pub stun: u8,
+    pub beaten: u8,
 }
 
 /// T7: a guard held with the right button: how far the mouse has shifted
@@ -196,6 +208,8 @@ impl Chiv {
             idle: 0,
             event: None,
             guard: None,
+            stun: 0,
+            beaten: 0,
         }
     }
 
@@ -237,6 +251,7 @@ pub fn guards(w: &World, id: usize, inp: &Input) -> bool {
         && !f.health.down()
         && f.arm.swing.cut.is_none()
         && f.chiv.kick == 0
+        && f.chiv.stun == 0
 }
 
 /// T7: a tick of the right button's guard. The hand's target goes to the
@@ -392,10 +407,13 @@ pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
     // a blade meeting a striking blade, not striking itself: a parry
     for k in w.blades.clashes.clone() {
         for (me, them) in [(k.a as usize, k.b as usize), (k.b as usize, k.a as usize)] {
-            if striking(w, them) && !striking(w, me) {
+            if striking(w, them) && !striking(w, me) && player::fighter(w, them).chiv.beaten == 0 {
                 let c = &mut player::parts_mut(w, me).1.chiv;
                 c.pay(s.parry_cost);
                 c.riposte = s.riposte_window_ticks;
+                // T12: and the striking blade is beaten aside
+                c.event = Some((Event::Beats, 0));
+                beat(w, them);
             }
         }
     }
@@ -421,6 +439,8 @@ pub fn step(w: &mut World, input: &Input, foes: &[Input]) {
             c.winded = false;
         }
         c.riposte = c.riposte.saturating_sub(1);
+        c.stun = c.stun.saturating_sub(1);
+        c.beaten = c.beaten.saturating_sub(1);
         c.follow = c.follow.saturating_sub(1);
         if c.follow == 0 && !busy {
             c.run = 0;
@@ -449,6 +469,7 @@ fn kick(w: &mut World, id: usize, inp: &Input) {
     let ready = f.sheath == Sheath::Drawn
         && !f.health.down()
         && f.arm.swing.cut.is_none()
+        && f.chiv.stun == 0
         && f.pressed(inp, input::KICK)
         && f.chiv.stamina >= s.kick_cost * PART;
     if ready {
@@ -490,6 +511,7 @@ fn land(w: &mut World, id: usize) {
         return;
     };
     player::parts_mut(w, id).1.chiv.event = Some((Event::KickLands, 0));
+    let guarded = player::fighter(w, j).chiv.guard.is_some();
     let from = player::body(w, id).pos;
     let d = player::body(w, j).pos.sub(from);
     let flat = v3(d.x, 0, d.z);
@@ -525,6 +547,42 @@ fn land(w: &mut World, id: usize) {
     if j == 0 {
         crate::feel::thrown(w, way, crate::feel::TILT_HIT);
     }
+    // T12: a kick into a held guard beats the blade aside as a parry does
+    if guarded {
+        player::parts_mut(w, id).1.chiv.event = Some((Event::Beats, 0));
+        beat(w, j);
+    }
+}
+
+/// T12 (CA-Q22: A): fighter `id`'s blade beaten aside by a parry or by a
+/// kick into its held guard: its cut breaks off and its guard is let go,
+/// its hand's target goes `beat_side_deg` across (to the side it was
+/// already on) and `beat_pitch_deg` down, the far side of its body, so the
+/// other blade swings clear; for `beat_stun_ticks` it starts no cut, kick
+/// or guard, and for `beat_pass_ticks` its blade passes through blades
+/// (`blade::clash_pair`).
+pub fn beat(w: &mut World, id: usize) {
+    let s = spec();
+    let f = player::parts_mut(w, id).1;
+    f.arm.swing.cut = None;
+    f.arm.swing.gesture = (0, 0, 0);
+    f.chiv.guard = None;
+    f.chiv.riposte = 0;
+    f.chiv.follow = 0;
+    f.chiv.run = 0;
+    f.chiv.stun = s.beat_stun_ticks;
+    f.chiv.beaten = s.beat_pass_ticks;
+    f.chiv.event = Some((Event::Beaten, 0));
+    let sh = &mut f.arm.shell;
+    let across = deg(s.beat_side_deg);
+    sh.side = if sh.side >= 0 { across } else { -across }.clamp(crate::arm::SIDE_MIN, crate::arm::SIDE_MAX);
+    sh.pitch = deg(s.beat_pitch_deg).clamp(crate::arm::PITCH_MIN, crate::arm::PITCH_MAX);
+    sh.swing = (0, 0, 0);
+}
+
+/// T12: whether fighter `id`'s blade passes through blades now.
+pub fn passes(w: &World, id: usize) -> bool {
+    player::fighter(w, id).chiv.beaten > 0
 }
 
 /// How far a kicking leg is out, `ONE` at the hit tick, rising to it and
@@ -587,6 +645,8 @@ pub fn event_key(e: Event) -> (&'static str, u8) {
         Event::KickLands => ("move_kick_lands", 0),
         Event::KickMisses => ("move_kick_misses", 0),
         Event::Kicked => ("move_kicked", 0),
+        Event::Beats => ("move_beats", 0),
+        Event::Beaten => ("move_beaten", 0),
     }
 }
 
@@ -649,6 +709,23 @@ pub fn act(w: &mut World, name: &str, value: &str) -> Result<(), String> {
             for f in &mut w.foes {
                 set(&mut f.fighter.chiv, p);
             }
+            Ok(())
+        }
+        // T12, test-only: fighter `value`'s blade beaten aside now, for a
+        // picture of it when a driven browser cannot time a parry
+        "beat" => {
+            let id: usize = value
+                .trim()
+                .parse()
+                .ok()
+                .filter(|&i| i < player::count(w))
+                .ok_or_else(|| {
+                    format!(
+                        "A fighter to beat aside is one of 0 to {}, not \"{value}\".",
+                        player::count(w) - 1
+                    )
+                })?;
+            beat(w, id);
             Ok(())
         }
         // every foe begins this move of its tree now (`kick`, `feint_cut`),

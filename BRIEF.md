@@ -55,6 +55,7 @@ The plan is approved in advance. The agent may create the public repository `sgi
 Later grants, word for word:
 
 - 2026-11-03, after the animation pass (T10) was committed and held: "deploy as is, add all changes to design log". Published from `734cc61`.
+- 2026-11-03, after answering CA-Q17 to CA-Q23 ("i answered the questions, go ahead and build it"): "ok, deploy in between each major change, so i want to be able to try the beat aside live after its ready while you work on watch mode". Each major change of T11 and T12 is published once `check.sh` passes.
 
 ## Journal
 

@@ -3596,5 +3596,75 @@
     "find": "            out.dithered(\n                Mesh::Cube,\n                at,\n                band,",
     "replace": "            let _ = (\n                Mesh::Cube,\n                at,\n                band,",
     "test": "a_cut_leaves_a_trail_that_fades_to_nothing"
+  },
+  {
+    "name": "T12 beat aside: a parry beats the striking blade aside",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "                beat(w, them);\n",
+    "replace": "",
+    "test": "a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line"
+  },
+  {
+    "name": "T12 beat aside: a beaten blade is not beaten again",
+    "file": "crates/core/src/chivalry.rs",
+    "find": " && player::fighter(w, them).chiv.beaten == 0",
+    "replace": "",
+    "test": "a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line"
+  },
+  {
+    "name": "T12 beat aside: the stun wears off a tick at a time",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        c.stun = c.stun.saturating_sub(1);\n",
+    "replace": "",
+    "test": "a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line"
+  },
+  {
+    "name": "T12 beat aside: a beaten hand goes down",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    sh.pitch = deg(s.beat_pitch_deg).clamp(crate::arm::PITCH_MIN, crate::arm::PITCH_MAX);\n",
+    "replace": "",
+    "test": "a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line"
+  },
+  {
+    "name": "T12 beat aside: beaten, no cut is chosen",
+    "file": "crates/core/src/swing.rs",
+    "find": "(chiv.kick > 0 || chiv.stun > 0)",
+    "replace": "chiv.kick > 0",
+    "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
+  },
+  {
+    "name": "T12 beat aside: beaten, no guard is held",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        && f.chiv.kick == 0\n        && f.chiv.stun == 0\n}",
+    "replace": "        && f.chiv.kick == 0\n}",
+    "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
+  },
+  {
+    "name": "T12 beat aside: beaten, no kick is made",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "        && f.chiv.stun == 0\n        && f.pressed(inp, input::KICK)",
+    "replace": "        && f.pressed(inp, input::KICK)",
+    "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
+  },
+  {
+    "name": "T12 beat aside: a beaten blade passes through blades",
+    "file": "crates/core/src/blade.rs",
+    "find": "    if crate::chivalry::passes(w, i) || crate::chivalry::passes(w, j) {",
+    "replace": "    if false {",
+    "test": "a_blade_beaten_aside_passes_through_blades"
+  },
+  {
+    "name": "T12 beat aside: a kick into a held guard beats it aside",
+    "file": "crates/core/src/chivalry.rs",
+    "find": "    if guarded {",
+    "replace": "    if false {",
+    "test": "a_kick_into_a_held_guard_beats_the_blade_aside"
+  },
+  {
+    "name": "T12 beat aside: the view's guard waits while beaten",
+    "file": "crates/core/src/player.rs",
+    "find": " || f.arm.swing.cut.is_some() || f.chiv.stun > 0 {",
+    "replace": " || f.arm.swing.cut.is_some() {",
+    "test": "beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends"
   }
 ]

@@ -613,8 +613,9 @@ pub fn step(w: &mut World, id: usize, inp: &Input) -> bool {
         if ended {
             sw.gesture = (0, 0, 0);
         }
-    } else if held && !(on && chiv.kick > 0) {
-        // (M4: no cut is chosen while a kick is under way)
+    } else if held && !(on && (chiv.kick > 0 || chiv.stun > 0)) {
+        // (M4: no cut is chosen while a kick is under way; T12: nor while
+        // beaten aside)
         let g = sw.gesture;
         sw.gesture = (
             g.0.saturating_add(inp.dx),

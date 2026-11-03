@@ -163,6 +163,74 @@ fn a_blade_met_while_not_striking_is_a_parry_that_costs_the_parrier_and_opens_a_
     assert_eq!(w.foes[0].fighter.chiv.riposte, 0);
 }
 
+/// T12 (CA-Q22: A): the parried blade is beaten aside: its cut breaks off,
+/// its hand's target goes 80° across to the side it was on (the still
+/// knight's guard is 12° to its left, so to its left) and 45° down; it is
+/// stunned 24 ticks and passes through blades 45, each less this tick's
+/// count (23, 44). The parrier is told its parry beat the blade.
+#[test]
+fn a_parry_beats_the_striking_blade_aside_and_holds_it_out_of_line() {
+    let mut w = duel(true, 200);
+    let mut c = swing::begin(Way::Chop, -deg(90), 0);
+    c.phase = Phase::Strike;
+    w.foes[0].fighter.arm.swing.cut = Some(c);
+    assert_eq!(w.foes[0].fighter.arm.shell.side, -deg(12));
+    w.blades.clashes = vec![Clash {
+        a: 0,
+        b: 1,
+        at: V3::ZERO,
+        speed: fx::int(6),
+    }];
+    step(&mut w, &Input::default(), &[Input::default()]);
+    let f = &w.foes[0].fighter;
+    assert_eq!(f.arm.swing.cut, None, "its cut broken off");
+    assert_eq!(
+        (f.arm.shell.side, f.arm.shell.pitch),
+        (crate::arm::SIDE_MIN, -deg(45)),
+        "80° held to the shell's 75° on the left"
+    );
+    assert_eq!((f.chiv.stun, f.chiv.beaten), (23, 44));
+    assert_eq!(f.chiv.event, Some((Event::Beaten, 1)));
+    assert_eq!(w.me.chiv.event, Some((Event::Beats, 1)));
+    assert!(crate::chivalry::passes(&w, 1) && !crate::chivalry::passes(&w, 0));
+    // a blade already beaten is not beaten again by the next meeting
+    w.foes[0].fighter.arm.swing.cut = Some(c);
+    w.foes[0].fighter.chiv.stun = 5;
+    step(&mut w, &Input::default(), &[Input::default()]);
+    assert_eq!(w.foes[0].fighter.chiv.stun, 4, "not set back to 24");
+}
+
+/// T12: beaten aside, the player chooses no cut, holds no guard and makes
+/// no kick until the stun is over; then it can again.
+#[test]
+fn beaten_aside_a_fighter_starts_no_cut_guard_or_kick_until_the_stun_ends() {
+    let mut w = duel(true, 600);
+    let before = w.me.arm.shell.pitch;
+    crate::chivalry::beat(&mut w, 0);
+    let guard = Input {
+        buttons: HOLD_LOOK,
+        ..Input::default()
+    };
+    assert!(!crate::chivalry::guards(&w, 0, &guard), "no guard");
+    w.step(&press(KICK));
+    assert_eq!(w.me.chiv.kick, 0, "no kick");
+    for t in 0..20 {
+        w.step(&cut(-6_000, 0, 0, t % 2));
+        assert_eq!(w.me.arm.swing.cut, None, "tick {t}: no cut");
+    }
+    // in first person the guard rides the view, but not while beaten: the
+    // hand stays down, then the guard comes back to where it sat
+    assert_eq!(w.me.arm.shell.pitch, -deg(45), "still thrown down");
+    while w.me.chiv.stun > 0 {
+        w.step(&Input::default());
+    }
+    w.step(&Input::default());
+    assert_eq!(w.me.arm.shell.pitch, before, "the guard back where it sat");
+    assert!(crate::chivalry::guards(&w, 0, &guard), "a guard again");
+    w.step(&cut(-6_000, 0, 0, 0));
+    assert!(w.me.arm.swing.cut.is_some(), "and a cut");
+}
+
 #[test]
 fn the_right_button_in_a_cut_s_wind_up_feints_back_to_guard_for_fifteen() {
     let mut w = duel(true, 600);
@@ -339,6 +407,42 @@ fn a_kick_in_reach_staggers_the_foe_breaks_its_cut_and_pushes_its_guard_aside() 
         w.step(&Input::default());
     }
     assert_eq!(w.me.chiv.kick, 0);
+}
+
+/// T12: a kick into a guard held up (the knight's `guard_up`) beats the
+/// blade aside as a parry does; into an open guard it does not (the kick
+/// test above: pushed 40°, no stun).
+#[test]
+fn a_kick_into_a_held_guard_beats_the_blade_aside() {
+    let mut w = duel(true, 160);
+    w.step(&press(KICK));
+    while w.me.chiv.kick < 4 {
+        w.step(&Input::default());
+    }
+    w.act("chivalry.foe_move", "guard_up").unwrap();
+    while w.me.chiv.kick < 8 {
+        w.step(&Input::default());
+    }
+    let f = &w.foes[0].fighter;
+    assert!(
+        f.chiv.stun > 0 && f.chiv.beaten > 0,
+        "stun {} beaten {}",
+        f.chiv.stun,
+        f.chiv.beaten
+    );
+    assert_eq!(f.chiv.guard, None, "the guard let go");
+    assert_eq!(w.me.chiv.event.map(|e| e.0), Some(Event::Beats));
+    let mut w = duel(true, 160);
+    w.step(&press(KICK));
+    while w.me.chiv.kick < 8 {
+        w.step(&Input::default());
+    }
+    let f = &w.foes[0].fighter;
+    assert_eq!(
+        (f.chiv.stun, f.chiv.beaten),
+        (0, 0),
+        "an open guard is only kicked"
+    );
 }
 
 #[test]

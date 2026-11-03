@@ -168,6 +168,12 @@ Entering a duel another browser has opened online, by its room code or by pasted
 
 Not: connect, matchmaking
 
+### Beaten aside
+
+A blade knocked out of line by a parry, or by a kick into a held guard: its cut breaks off, the hand is thrown to the far side of the body, and for a moment it starts nothing and passes through the other blade, so a riposte swings clear.
+
+Not: disarmed, stunned
+
 ### Kick
 
 A push with the foot, with F, while your sword is drawn and not cutting. A foe within {chivalry.kick_reach} centimetres in front staggers back, its cut breaks off and its guard is knocked aside. It costs {chivalry.kick_cost} stamina.

@@ -523,6 +523,11 @@ fn nearest_rails(a: &[(Swept, Fx)], b: &[(Swept, Fx)], prev: bool) -> (usize, us
 
 /// Two fighters' weapons this tick (Vagrancy's `clash_pair`), rail by rail.
 fn clash_pair(w: &mut World, i: usize, j: usize) {
+    // T12: a blade beaten aside passes through blades
+    if crate::chivalry::passes(w, i) || crate::chivalry::passes(w, j) {
+        set(&mut w.blades.clashing, (i as u8, j as u8), false);
+        return;
+    }
     let (sa, sb) = (
         rails_swept(&player::fighter(w, i).arm, false),
         rails_swept(&player::fighter(w, j).arm, false),
@@ -1118,6 +1123,19 @@ mod tests {
         w.blades.hits.clear();
         crate::health::step(&mut w);
         assert!(w.feel.downed.is_empty(), "once");
+    }
+
+    /// T12: the same sweep into the same guard, the guard's blade beaten
+    /// aside (`chivalry::beat`): the blades never meet, and the sweep is not
+    /// slowed by it.
+    #[test]
+    fn a_blade_beaten_aside_passes_through_blades() {
+        let mut w = guarded();
+        for _ in 0..30 {
+            w.foes[0].fighter.chiv.beaten = 10;
+            w.step(&sweep_left());
+            assert!(w.blades.clashes.is_empty() && w.blades.clashing.is_empty());
+        }
     }
 
     #[test]

@@ -493,7 +493,8 @@ pub fn ride_guard(w: &mut World) -> Option<i32> {
 /// against the view, and the view's pitch from its opening (M5: the second
 /// seat's knight, `seat.rs`).
 pub fn ride_guard_of(f: &mut Fighter, guard_pitch: i32, lift: i32) -> Option<i32> {
-    if f.sheath != Sheath::Drawn || f.health.down() || f.arm.swing.cut.is_some() {
+    // (T12: nor while beaten aside, so the hand stays thrown down)
+    if f.sheath != Sheath::Drawn || f.health.down() || f.arm.swing.cut.is_some() || f.chiv.stun > 0 {
         return None;
     }
     let pitch = (guard_pitch + lift).clamp(arm::PITCH_MIN, arm::PITCH_MAX);
@@ -514,7 +515,8 @@ pub fn keep_guard(w: &mut World, ridden: Option<i32>) {
 
 /// `keep_guard` for any fighter seen from its own helmet (M5, `seat.rs`).
 pub fn keep_guard_of(f: &Fighter, guard_pitch: &mut i32, lift: i32, ridden: Option<i32>) {
-    if f.sheath != Sheath::Drawn {
+    // (T12: a beaten hand is not where the guard sits; it comes back after)
+    if f.sheath != Sheath::Drawn || f.chiv.stun > 0 {
         return;
     }
     if ridden != Some(f.arm.shell.pitch) {

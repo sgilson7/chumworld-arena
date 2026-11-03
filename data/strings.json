@@ -156,6 +156,8 @@
   "move_kick_lands": "Kick lands: their guard is open",
   "move_kick_misses": "Kick misses",
   "move_kicked": "Kicked: your guard is open",
+  "move_beats": "Their blade is beaten aside",
+  "move_beaten": "Beaten aside: your blade is out of line",
   "ladder": "Ladder",
   "ladder_heading": "The ladder",
   "ladder_text": "{ladder.rungs} opponents, each harder than the last, from rank {ladder.foot} at the foot to rank {ladder.top} at the top. Each duel is best of three rounds. Win a rung to open the next and to wear its opponent's look.",
